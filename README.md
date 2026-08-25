@@ -68,6 +68,11 @@ Any static host works. Cloudflare Pages is the intended target here:
 - **Engine self-play** — watch Stockfish play both sides from the current
   position, or "play out" a chosen opening line so you can see how the theory
   continues at engine strength. Strength and speed follow the sliders.
+- **Analysis on demand** — "Analyze position" runs Stockfish at full strength
+  and shows its top three moves with evaluations and principal variations
+  (White's perspective), so you can go deeper than the book from any position.
+- **Idea notes** on each opening line (the middlegame plan), and **PGN export**
+  (Copy PGN) for saving or studying a game elsewhere.
 
 ## Upgrading to the multi-threaded engine
 

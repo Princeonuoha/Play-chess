@@ -184,6 +184,23 @@
   .tr-status .info{color:var(--brass)}
   .tr-status .path{display:block;margin-top:4px;font-family:"IBM Plex Mono",monospace;font-weight:400;font-size:11.5px;color:var(--muted);word-break:break-word}
   .hl.hint{box-shadow:inset 0 0 0 3px var(--brass);border-radius:2px}
+  /* Analysis + shared bits */
+  .hdr-row{display:flex;justify-content:space-between;align-items:center;gap:10px}
+  button.mini{flex:0 0 auto;padding:5px 11px;font-size:12px;font-weight:600}
+  .analysis{border-top:1px solid var(--line)}
+  .an-body{padding:2px 16px 12px;font-family:"IBM Plex Mono",monospace;font-size:12.5px;display:grid;gap:7px}
+  .an-empty{color:var(--muted);font-style:italic;font-family:Archivo,sans-serif;font-size:12px}
+  .an-line{display:flex;gap:10px;align-items:baseline}
+  .an-line .ev{flex:0 0 auto;min-width:50px;font-weight:600;color:var(--brass);text-align:right}
+  .an-line.best .ev{color:#7ea86a}
+  .an-line .pv{color:var(--ink);word-break:break-word;line-height:1.5}
+  .toast{
+    position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(8px);
+    background:var(--panel);border:1px solid var(--brass-dim);color:var(--ink);
+    padding:10px 16px;border-radius:8px;box-shadow:var(--shadow);font-size:13px;
+    opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;z-index:60;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
   footer{
     padding:14px clamp(16px,4vw,40px) 26px;color:var(--muted);font-size:11.5px;
     border-top:1px solid var(--line);line-height:1.6;
@@ -291,7 +308,12 @@
       </div>
     </div>
 
-    <div class="moves-head">Scoresheet</div>
+    <div class="analysis">
+      <div class="moves-head hdr-row" style="padding-top:12px"><span>Analysis</span><button id="btn-analyze" class="mini">Analyze position</button></div>
+      <div class="an-body" id="an-body"><div class="an-empty">Press “Analyze” for Stockfish’s top moves in the current position (full strength).</div></div>
+    </div>
+
+    <div class="moves-head hdr-row"><span>Scoresheet</span><button id="btn-pgn" class="mini">Copy PGN</button></div>
     <div class="moves" id="moves"><div class="empty">No moves yet.</div></div>
   </aside>
 </main>
@@ -310,6 +332,8 @@
     <div class="opts" id="promo-opts"></div>
   </div>
 </div>
+
+<div class="toast" id="toast"></div>
 
 <script type="module">
 import { Chess } from 'https://esm.sh/chess.js@1.4.0';
@@ -458,6 +482,7 @@ function createEngine(){
     },
     newGame(){ post('ucinewgame'); },
     go(fen, movetime){ post('position fen ' + fen); post('go movetime ' + movetime); },
+    setMultiPV(n){ post('setoption name MultiPV value ' + n); },
     stop(){ post('stop'); }
   };
 }
@@ -477,6 +502,9 @@ let trainer     = null;      // { line, ply } while drilling an opening line
 let hintSquares = null;      // {from,to} to highlight the book move
 let selfPlay    = false;     // engine plays both sides
 let engineExpected = false;  // guards a stray bestmove after stop
+let analyzing   = false;     // on-demand position analysis (MultiPV)
+let analysisData = {};       // multipv index -> {depth, cp|mate, pv:[uci]}
+let analysisFen = '';        // position being analysed
 
 const els = {
   squares: document.getElementById('squares'),
@@ -500,6 +528,10 @@ const els = {
   trStatus: document.getElementById('tr-status'),
   trWatch: document.getElementById('tr-watch'),
   btnWatch: document.getElementById('btn-watch'),
+  btnAnalyze: document.getElementById('btn-analyze'),
+  anBody: document.getElementById('an-body'),
+  btnPgn: document.getElementById('btn-pgn'),
+  toast: document.getElementById('toast'),
 };
 
 const FILES = 'abcdefgh';
@@ -679,6 +711,7 @@ function animateThen(fromSq, toSq, cb){
 function applyMove(moveObj){
   lastMove = { from: moveObj.from, to: moveObj.to };
   selected = null;
+  clearAnalysis();
   els.dots.innerHTML = '';
   animateThen(moveObj.from, moveObj.to, () => {
     renderAll();
@@ -732,6 +765,7 @@ function engineMove(){
   });
 }
 engine.on('best', (uci) => {
+  if (analyzing){ finishAnalysis(); return; }
   if (!engineExpected){ thinking = false; return; }   // ignore a stray bestmove after Stop
   engineExpected = false;
   thinking = false;
@@ -740,67 +774,105 @@ engine.on('best', (uci) => {
   const mv = game.move({ from, to, promotion: promo });
   if (mv) applyMove(mv); else renderAll();
 });
-engine.on('info', (line) => { if (thinking) parseInfo(line); });
+engine.on('info', (line) => {
+  if (analyzing){ collectAnalysis(line); return; }
+  if (thinking) parseInfo(line);
+});
 
 /* ------------------------------ Opening trainer ------------------------------ */
 const BOOK = [
   { opening:'French Defense', variation:'Advance, Main Line', you:'b',
-    moves:['e4','e6','d4','d5','e5','c5','c3','Nc6','Nf3','Qb6','a3','Nh6','b4','cxd4','cxd4','Nf5','Bb2','Be7'] },
+    idea:'Black chips at the e5/d4 pawn chain with ...c5 and ...f6; White defends the base and grabs space on the kingside.',
+    moves:['e4','e6','d4','d5','e5','c5','c3','Nc6','Nf3','Qb6','a3','Nh6','b4','cxd4','cxd4','Nf5','Bb2','Be7','g4','Nh4','Nxh4','Bxh4'] },
   { opening:'French Defense', variation:'Tarrasch, Open (3...c5)', you:'b',
-    moves:['e4','e6','d4','d5','Nd2','c5','exd5','exd5','Ngf3','Nc6','Bb5','Bd6','dxc5','Bxc5','O-O','Nge7','Nb3','Bd6'] },
+    idea:'Black accepts an isolated d-pawn for free piece play and open lines — activity over structure.',
+    moves:['e4','e6','d4','d5','Nd2','c5','exd5','exd5','Ngf3','Nc6','Bb5','Bd6','dxc5','Bxc5','O-O','Nge7','Nb3','Bd6','Nbd4','O-O'] },
   { opening:'French Defense', variation:'Tarrasch, Closed (3...Nf6)', you:'b',
-    moves:['e4','e6','d4','d5','Nd2','Nf6','e5','Nfd7','Bd3','c5','c3','Nc6','Ne2','cxd4','cxd4','f6','exf6','Nxf6'] },
+    idea:'Classic French pawn chain: Black plays ...c5 and ...f6 to break, aiming for the c- and e-files.',
+    moves:['e4','e6','d4','d5','Nd2','Nf6','e5','Nfd7','Bd3','c5','c3','Nc6','Ne2','cxd4','cxd4','f6','exf6','Nxf6','Nf3','Bd6'] },
   { opening:'French Defense', variation:'Winawer, Main Line', you:'b',
-    moves:['e4','e6','d4','d5','Nc3','Bb4','e5','c5','a3','Bxc3+','bxc3','Ne7','Qg4','Qc7','Qxg7','Rg8','Qxh7','cxd4'] },
+    idea:'Black trades the dark-squared bishop to wreck White’s queenside pawns, then counters the centre; White hunts on the kingside with Qg4.',
+    moves:['e4','e6','d4','d5','Nc3','Bb4','e5','c5','a3','Bxc3+','bxc3','Ne7','Qg4','Qc7','Qxg7','Rg8','Qxh7','cxd4','Ne2','Nbc6','f4','Bd7','Qd3','dxc3'] },
   { opening:'French Defense', variation:'Classical, Steinitz', you:'b',
-    moves:['e4','e6','d4','d5','Nc3','Nf6','e5','Nfd7','f4','c5','Nf3','Nc6','Be3','cxd4','Nxd4','Bc5'] },
+    idea:'Both sides fight over the d4/e5 squares; Black pressures d4 with ...c5, ...Nc6 and ...Qb6.',
+    moves:['e4','e6','d4','d5','Nc3','Nf6','e5','Nfd7','f4','c5','Nf3','Nc6','Be3','cxd4','Nxd4','Bc5','Qd2','O-O','O-O-O','a6'] },
   { opening:'French Defense', variation:'Rubinstein', you:'b',
-    moves:['e4','e6','d4','d5','Nc3','dxe4','Nxe4','Nd7','Nf3','Ngf6','Nxf6+','Nxf6','Bd3','c5','dxc5','Bxc5'] },
+    idea:'Black gives up the centre for a solid, low-risk structure and easy development — a drawing weapon with bite.',
+    moves:['e4','e6','d4','d5','Nc3','dxe4','Nxe4','Nd7','Nf3','Ngf6','Nxf6+','Nxf6','Bd3','c5','dxc5','Bxc5','Qe2','O-O','O-O','b6'] },
   { opening:'French Defense', variation:'MacCutcheon', you:'b',
-    moves:['e4','e6','d4','d5','Nc3','Nf6','Bg5','Bb4','e5','h6','Bd2','Bxc3','bxc3','Ne4'] },
+    idea:'Instead of retreating, Black pins with ...Bb4 and accepts doubled pawns for active piece play and the bishop pair.',
+    moves:['e4','e6','d4','d5','Nc3','Nf6','Bg5','Bb4','e5','h6','Bd2','Bxc3','bxc3','Ne4','Qg4','Kf8','Bd3','Nxd2'] },
   { opening:'French Defense', variation:'Exchange', you:'b',
-    moves:['e4','e6','d4','d5','exd5','exd5','Nf3','Nf6','Bd3','Bd6','O-O','O-O','Bg5','Bg4','Nbd2','Nbd7'] },
+    idea:'Symmetrical and open — play for piece activity and the only open file; don’t drift into a lifeless draw.',
+    moves:['e4','e6','d4','d5','exd5','exd5','Nf3','Nf6','Bd3','Bd6','O-O','O-O','Bg5','Bg4','Nbd2','Nbd7','c3','c6'] },
+
   { opening:'Sicilian Defense', variation:'Najdorf, English Attack', you:'b',
+    idea:'Opposite-side castling race: White storms with f3, g4, h4; Black counters on the queenside with ...b5 and ...a5.',
     moves:['e4','c5','Nf3','d6','d4','cxd4','Nxd4','Nf6','Nc3','a6','Be3','e5','Nb3','Be6','f3','Be7','Qd2','O-O','O-O-O','Nbd7'] },
   { opening:'Sicilian Defense', variation:'Najdorf, 6.Bg5', you:'b',
+    idea:'Sharpest Najdorf: White pins and pressures; Black seeks ...b5, ...Bb7 and counterplay down the c-file.',
     moves:['e4','c5','Nf3','d6','d4','cxd4','Nxd4','Nf6','Nc3','a6','Bg5','e6','f4','Be7','Qf3','Qc7','O-O-O','Nbd7'] },
   { opening:'Sicilian Defense', variation:'Sveshnikov', you:'b',
+    idea:'Black accepts a backward d-pawn and a hole on d5 in exchange for active pieces and the bishop pair.',
     moves:['e4','c5','Nf3','Nc6','d4','cxd4','Nxd4','Nf6','Nc3','e5','Ndb5','d6','Bg5','a6','Na3','b5','Bxf6','gxf6','Nd5','f5'] },
   { opening:'Sicilian Defense', variation:'Dragon, Yugoslav', you:'b',
+    idea:'Opposite-side attacks: Black’s g7-bishop and c-file vs White’s h-pawn storm. Fastest attack wins.',
     moves:['e4','c5','Nf3','d6','d4','cxd4','Nxd4','Nf6','Nc3','g6','Be3','Bg7','f3','O-O','Qd2','Nc6','Bc4','Bd7','O-O-O','Rc8'] },
   { opening:'Sicilian Defense', variation:'Rossolimo', you:'w',
+    idea:'White trades on c6 to damage Black’s structure and plays a positional game against the doubled pawns.',
     moves:['e4','c5','Nf3','Nc6','Bb5','g6','Bxc6','dxc6','d3','Bg7','h3','Nf6','Nc3','O-O'] },
+
   { opening:'Ruy Lopez', variation:'Berlin Defense', you:'w',
+    idea:'The famous endgame: queens come off early; White has a kingside majority, Black the bishop pair.',
     moves:['e4','e5','Nf3','Nc6','Bb5','Nf6','O-O','Nxe4','d4','Nd6','Bxc6','dxc6','dxe5','Nf5','Qxd8+','Kxd8'] },
   { opening:'Ruy Lopez', variation:'Closed, Main Line', you:'w',
+    idea:'The main battleground of classical chess: White builds with c3/d4, Black holds with ...Bb7 and manoeuvres the knight to g6/f4.',
     moves:['e4','e5','Nf3','Nc6','Bb5','a6','Ba4','Nf6','O-O','Be7','Re1','b5','Bb3','d6','c3','O-O','h3','Bb7','d4','Re8'] },
   { opening:'Ruy Lopez', variation:'Marshall Attack', you:'b',
+    idea:'Black sacrifices a pawn for a lasting kingside initiative and attacking chances against the white king.',
     moves:['e4','e5','Nf3','Nc6','Bb5','a6','Ba4','Nf6','O-O','Be7','Re1','b5','Bb3','O-O','c3','d5','exd5','Nxd5','Nxe5','Nxe5','Rxe5','c6'] },
+
   { opening:'Italian Game', variation:'Giuoco Pianissimo', you:'w',
+    idea:'The “quiet game”: slow build-up with d3/c3, then a central break with d4 at the right moment.',
     moves:['e4','e5','Nf3','Nc6','Bc4','Bc5','c3','Nf6','d3','d6','O-O','O-O','Re1','a6','a4','Ba7','h3','Be6'] },
   { opening:'Italian Game', variation:'Two Knights, Fried Liver', you:'w',
+    idea:'A sharp gambit: White sacrifices material to expose the black king in the centre — calculate carefully.',
     moves:['e4','e5','Nf3','Nc6','Bc4','Nf6','Ng5','d5','exd5','Na5','Bb5+','c6','dxc6','bxc6','Be2','h6','Nf3','e4'] },
+
   { opening:'Caro-Kann', variation:'Advance', you:'b',
+    idea:'Like a French but with the light-squared bishop already outside the pawn chain on f5 — solid and comfortable.',
     moves:['e4','c6','d4','d5','e5','Bf5','Nf3','e6','Be2','c5','Be3','Qb6','Nc3','Nc6'] },
   { opening:'Caro-Kann', variation:'Classical', you:'b',
+    idea:'Black develops the bishop to f5 first, then builds a rock-solid structure; a low-risk, positional defence.',
     moves:['e4','c6','d4','d5','Nc3','dxe4','Nxe4','Bf5','Ng3','Bg6','h4','h6','Nf3','Nd7','h5','Bh7','Bd3','Bxd3','Qxd3','e6'] },
   { opening:'Caro-Kann', variation:'Panov Attack', you:'w',
+    idea:'White takes on an isolated d-pawn for active pieces and open lines — an IQP middlegame in reverse.',
     moves:['e4','c6','d4','d5','exd5','cxd5','c4','Nf6','Nc3','e6','Nf3','Be7','cxd5','Nxd5'] },
+
   { opening:"Queen's Gambit", variation:'Declined, Main Line', you:'w',
+    idea:'White pressures the centre and the c-file; Black frees the game with ...c5 or the ...b6/...Bb7 setup.',
     moves:['d4','d5','c4','e6','Nc3','Nf6','Bg5','Be7','e3','O-O','Nf3','h6','Bh4','b6'] },
   { opening:"Queen's Gambit", variation:'Slav Defense', you:'b',
+    idea:'Black supports d5 with ...c6 (keeping the light bishop free), grabs c4, and develops the bishop to f5.',
     moves:['d4','d5','c4','c6','Nf3','Nf6','Nc3','dxc4','a4','Bf5','e3','e6','Bxc4','Bb4'] },
   { opening:"King's Indian Defense", variation:'Classical Main Line', you:'b',
+    idea:'Black cedes the centre then storms the kingside with ...f5–f4 while White attacks the queenside. A race.',
     moves:['d4','Nf6','c4','g6','Nc3','Bg7','e4','d6','Nf3','O-O','Be2','e5','O-O','Nc6','d5','Ne7'] },
   { opening:'Nimzo-Indian Defense', variation:'Rubinstein', you:'b',
+    idea:'Black trades the bishop for the c3-knight to give White doubled pawns, then blockades the light squares.',
     moves:['d4','Nf6','c4','e6','Nc3','Bb4','e3','O-O','Bd3','d5','Nf3','c5','O-O','Nc6','a3','Bxc3','bxc3'] },
   { opening:'London System', variation:'Main Line', you:'w',
+    idea:'An easy-to-learn system: Bf4, e3, c3, Bd3, Nbd2 — solid setup, then break with a well-timed e4.',
     moves:['d4','d5','Bf4','Nf6','e3','c5','Nf3','Nc6','c3','e6','Nbd2','Bd6','Bg3','O-O','Bd3'] },
+
   { opening:'Scandinavian', variation:'Main Line 3...Qa5', you:'b',
+    idea:'Black gets an early, easy development and a solid structure; the queen sits safely on a5 or c7.',
     moves:['e4','d5','exd5','Qxd5','Nc3','Qa5','d4','Nf6','Nf3','c6','Bc4','Bf5','Bd2','e6'] },
   { opening:'Petroff Defense', variation:'Classical', you:'b',
+    idea:'Symmetrical and super-solid: Black mirrors White, aiming for equality and easy piece play.',
     moves:['e4','e5','Nf3','Nf6','Nxe5','d6','Nf3','Nxe4','d4','d5','Bd3','Nc6','O-O','Be7','c4'] },
   { opening:'English Opening', variation:'Reversed Sicilian', you:'w',
+    idea:'White plays a Sicilian with an extra tempo: fianchetto the bishop and press on the long diagonal and c-file.',
     moves:['c4','e5','Nc3','Nf6','Nf3','Nc6','g3','d5','cxd5','Nxd5','Bg2','Nb6','O-O','Be7'] },
 ];
 
@@ -868,6 +940,7 @@ function startTrainer(idx){
   setEval(0, null);
   renderSquares(); renderAll();
   els.trHintMove.disabled = false;
+  if (line.idea) els.trMeta.innerHTML = '<b>Idea:</b> ' + line.idea;
   setTrStatus('info', `Training <b>${trLineLabel()}</b> as ${humanColor === 'w' ? 'White' : 'Black'}.`);
   maybeBookMove();
 }
@@ -913,6 +986,100 @@ function watchLineOut(idx){
   startSelfPlay();
 }
 
+/* ---- On-demand analysis (Stockfish top moves for the current position) ---- */
+function collectAnalysis(line){
+  const mpv = line.match(/multipv (\d+)/);
+  const sc  = line.match(/score (cp|mate) (-?\d+)/);
+  const dep = line.match(/ depth (\d+)/);
+  const pvm = line.match(/ pv (.+)$/);
+  if (!sc || !pvm) return;
+  const idx = mpv ? parseInt(mpv[1],10) : 1;
+  analysisData[idx] = {
+    depth: dep ? parseInt(dep[1],10) : 0,
+    kind: sc[1], val: parseInt(sc[2],10),
+    pv: pvm[1].trim().split(/\s+/),
+  };
+}
+function startAnalysis(){
+  if (selfPlay || thinking || animating || game.isGameOver()) return;
+  analyzing = true; analysisData = {}; analysisFen = game.fen();
+  els.btnAnalyze.disabled = true; els.btnAnalyze.textContent = 'Analyzing…';
+  engine.whenReady().then(() => {
+    engine.setStrength('max');           // analyse at full strength for the truth
+    engine.setMultiPV(3);
+    engine.go(analysisFen, Math.max(1600, moveTime));
+  });
+}
+function finishAnalysis(){
+  analyzing = false;
+  engine.setMultiPV(1);
+  els.btnAnalyze.disabled = false; els.btnAnalyze.textContent = 'Analyze position';
+  renderAnalysis();
+}
+function renderAnalysis(){
+  const keys = Object.keys(analysisData).map(Number).sort((a,b)=>a-b);
+  if (!keys.length){ clearAnalysis(); return; }
+  const sideW = analysisFen.split(' ')[1] === 'w';
+  let html = '';
+  for (const k of keys){
+    const d = analysisData[k];
+    // eval to White's perspective
+    let ev;
+    if (d.kind === 'mate'){ const m = sideW ? d.val : -d.val; ev = '#' + (m>=0?'':'-') + Math.abs(m); }
+    else { const cp = (sideW ? d.val : -d.val) / 100; ev = (cp>=0?'+':'') + cp.toFixed(2); }
+    // pv -> SAN
+    const tmp = new Chess(analysisFen);
+    const sans = [];
+    for (const uci of d.pv.slice(0, 6)){
+      const mv = tmp.move({ from:uci.slice(0,2), to:uci.slice(2,4), promotion:uci.length>4?uci[4]:undefined });
+      if (!mv) break; sans.push(mv.san);
+    }
+    const pretty = sanLine(analysisFen, sans);
+    html += `<div class="an-line${k===1?' best':''}"><span class="ev">${ev}</span><span class="pv">${pretty}</span></div>`;
+  }
+  els.anBody.innerHTML = html;
+}
+function sanLine(fen, sans){
+  // number the SAN moves from the fen's move counter
+  const parts = fen.split(' ');
+  let n = parseInt(parts[5],10) || 1;
+  let white = parts[1] === 'w';
+  let out = '';
+  for (let i=0;i<sans.length;i++){
+    if (white) out += n + '.';
+    else if (i===0) out += n + '…';
+    out += sans[i] + ' ';
+    if (!white) n++;
+    white = !white;
+  }
+  return out.trim();
+}
+function clearAnalysis(){
+  els.anBody.innerHTML = '<div class="an-empty">Press “Analyze” for Stockfish’s top moves in the current position (full strength).</div>';
+}
+
+/* ---- Toast + PGN export ---- */
+let toastTimer = null;
+function toast(msg){
+  els.toast.textContent = msg;
+  els.toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => els.toast.classList.remove('show'), 2200);
+}
+function exportPGN(){
+  game.header('Event', 'chesswithprince.com', 'Site', 'play.chesswithprince.com',
+              'Date', new Date().toISOString().slice(0,10).replace(/-/g,'.'),
+              'White', humanColor === 'w' ? 'Player' : 'Stockfish 18',
+              'Black', humanColor === 'w' ? 'Stockfish 18' : 'Player');
+  const pgn = game.pgn();
+  if (navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(pgn).then(() => toast('PGN copied to clipboard'),
+                                            () => window.prompt('Copy the PGN:', pgn));
+  } else {
+    window.prompt('Copy the PGN:', pgn);
+  }
+}
+
 /* ------------------------------ Promotion picker ------------------------------ */
 const promoMask = document.getElementById('promo-mask');
 const promoOpts = document.getElementById('promo-opts');
@@ -934,7 +1101,7 @@ promoMask.addEventListener('click', e => { if (e.target === promoMask){ promoMas
 let drag = null; // {el, from, offsetX, offsetY, moved}
 function boardRect(){ return els.board.getBoundingClientRect(); }
 
-function canMoveNow(){ return !thinking && !animating && !selfPlay && !game.isGameOver() && game.turn() === humanColor; }
+function canMoveNow(){ return !thinking && !animating && !selfPlay && !analyzing && !game.isGameOver() && game.turn() === humanColor; }
 
 els.pieces.addEventListener('pointerdown', (e) => {
   const pc = e.target.closest('.piece');
@@ -1072,6 +1239,13 @@ function newGame(){
   els.trSelect.appendChild(frag);
 })();
 
+function previewIdea(){
+  const line = BOOK[parseInt(els.trSelect.value, 10)];
+  if (line && line.idea) els.trMeta.innerHTML = '<b>Idea:</b> ' + line.idea;
+}
+els.trSelect.addEventListener('change', previewIdea);
+previewIdea();
+
 els.trStart.addEventListener('click', () => {
   if (selfPlay) stopSelfPlay();
   if (animating) return;
@@ -1085,6 +1259,12 @@ els.trWatch.addEventListener('click', () => {
 els.btnWatch.addEventListener('click', () => {
   if (selfPlay) stopSelfPlay();
   else startSelfPlay();
+});
+
+els.btnAnalyze.addEventListener('click', startAnalysis);
+els.btnPgn.addEventListener('click', () => {
+  if (game.history().length === 0){ toast('No moves to export yet'); return; }
+  exportPGN();
 });
 
 els.trHintMove.addEventListener('click', () => {
