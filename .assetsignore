@@ -1,0 +1,7 @@
+# Files that must not be published as part of the site.
+.git
+.gitignore
+.assetsignore
+wrangler.jsonc
+node_modules
+README.md

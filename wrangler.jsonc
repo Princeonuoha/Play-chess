@@ -1,0 +1,20 @@
+{
+  // Cloudflare Workers static-assets deploy for chesswithprince.com.
+  // The connected Git build runs `npx wrangler deploy`, which reads this file.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "play-chess1",
+  "compatibility_date": "2026-08-20",
+  "workers_dev": true,
+  "observability": { "enabled": true },
+
+  // Serve the repository root as static assets. `.assetsignore` keeps VCS and
+  // config files out of what gets published.
+  "assets": { "directory": "." },
+
+  // Attach the custom domain. Because chesswithprince.com is already a zone in
+  // this Cloudflare account, `custom_domain: true` provisions the DNS record and
+  // TLS certificate for the subdomain on deploy — no dashboard step needed.
+  "routes": [
+    { "pattern": "play.chesswithprince.com", "custom_domain": true }
+  ]
+}
