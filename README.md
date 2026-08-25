@@ -65,6 +65,9 @@ Any static host works. Cloudflare Pages is the intended target here:
   (with optional hint highlighting), and hands off to Stockfish when the line
   ends so you play on from the resulting position. Every line is verified legal
   against chess.js.
+- **Engine self-play** — watch Stockfish play both sides from the current
+  position, or "play out" a chosen opening line so you can see how the theory
+  continues at engine strength. Strength and speed follow the sliders.
 
 ## Upgrading to the multi-threaded engine
 

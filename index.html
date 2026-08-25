@@ -263,6 +263,10 @@
         <label>Think time <b id="tt-val">1.0 s</b></label>
         <input type="range" id="tt" min="100" max="3000" step="100" value="1000" />
       </div>
+
+      <div class="row">
+        <button id="btn-watch">▶ Watch Stockfish vs Stockfish</button>
+      </div>
     </div>
 
     <div class="trainer">
@@ -276,6 +280,9 @@
         <div class="row">
           <button class="primary" id="tr-start">Start line</button>
           <button id="tr-hintmove" disabled>Play book move</button>
+        </div>
+        <div class="row">
+          <button id="tr-watch">▶ Watch Stockfish play this line out</button>
         </div>
         <div class="row" style="align-items:center">
           <label class="chk"><input type="checkbox" id="tr-hints" /> Show hint (highlight the book move)</label>
@@ -468,6 +475,8 @@ let moveTime    = 1000;
 let animating   = false;
 let trainer     = null;      // { line, ply } while drilling an opening line
 let hintSquares = null;      // {from,to} to highlight the book move
+let selfPlay    = false;     // engine plays both sides
+let engineExpected = false;  // guards a stray bestmove after stop
 
 const els = {
   squares: document.getElementById('squares'),
@@ -489,6 +498,8 @@ const els = {
   trHintMove: document.getElementById('tr-hintmove'),
   trHints: document.getElementById('tr-hints'),
   trStatus: document.getElementById('tr-status'),
+  trWatch: document.getElementById('tr-watch'),
+  btnWatch: document.getElementById('btn-watch'),
 };
 
 const FILES = 'abcdefgh';
@@ -613,7 +624,8 @@ function renderStatus(){
   }
   hideBanner();
   const toMove = game.turn() === 'w' ? 'White' : 'Black';
-  if (thinking){ els.who.textContent = 'Stockfish is thinking…'; els.sub.textContent = toMove + ' to play'; }
+  if (selfPlay){ els.who.textContent = 'Stockfish vs Stockfish'; els.sub.textContent = toMove + (thinking ? ' is thinking…' : ' to play'); }
+  else if (thinking){ els.who.textContent = 'Stockfish is thinking…'; els.sub.textContent = toMove + ' to play'; }
   else if (game.turn() === humanColor){ els.who.textContent = 'Your move'; els.sub.textContent = toMove + ' to play' + (game.inCheck() ? ' — check' : ''); }
   else { els.who.textContent = 'Stockfish to move'; els.sub.textContent = toMove + ' to play'; }
 }
@@ -675,7 +687,8 @@ function applyMove(moveObj){
 }
 
 function afterMove(){
-  if (game.isGameOver()){ renderStatus(); return; }
+  if (game.isGameOver()){ selfPlay = false; updateWatchButtons(); renderStatus(); return; }
+  if (selfPlay){ setTimeout(() => { if (selfPlay) engineMove(); }, 350); return; }
   if (trainer){ maybeBookMove(); return; }
   if (game.turn() !== humanColor) engineMove();
 }
@@ -711,6 +724,7 @@ function tryHumanMove(from, to, promo){
 function engineMove(){
   if (game.isGameOver()) return;
   thinking = true;
+  engineExpected = true;
   renderPieces(); renderStatus();
   engine.whenReady().then(() => {
     engine.setStrength(currentElo());
@@ -718,10 +732,12 @@ function engineMove(){
   });
 }
 engine.on('best', (uci) => {
-  if (!uci || uci === '(none)'){ thinking = false; renderStatus(); return; }
+  if (!engineExpected){ thinking = false; return; }   // ignore a stray bestmove after Stop
+  engineExpected = false;
+  thinking = false;
+  if (!uci || uci === '(none)'){ selfPlay = false; updateWatchButtons(); renderStatus(); return; }
   const from = uci.slice(0,2), to = uci.slice(2,4), promo = uci.length > 4 ? uci[4] : undefined;
   const mv = game.move({ from, to, promotion: promo });
-  thinking = false;
   if (mv) applyMove(mv); else renderAll();
 });
 engine.on('info', (line) => { if (thinking) parseInfo(line); });
@@ -863,6 +879,40 @@ function exitTrainer(){
   renderHighlights();
 }
 
+/* ---- Engine self-play (Stockfish vs Stockfish) ---- */
+function updateWatchButtons(){
+  els.btnWatch.textContent = selfPlay ? '■ Stop' : '▶ Watch Stockfish vs Stockfish';
+  els.btnWatch.classList.toggle('primary', selfPlay);
+}
+function startSelfPlay(){
+  exitTrainer();
+  selfPlay = true;
+  updateWatchButtons();
+  renderPieces(); renderStatus();
+  if (!game.isGameOver()) engineMove();
+}
+function stopSelfPlay(){
+  selfPlay = false;
+  engineExpected = false;
+  engine.stop();
+  thinking = false;
+  updateWatchButtons();
+  renderAll();
+}
+function watchLineOut(idx){
+  // Seed the selected opening line, then let the engine play both sides on.
+  const line = BOOK[idx];
+  stopSelfPlay(); exitTrainer();
+  game.reset(); engine.newGame();
+  for (const san of line.moves) game.move(san);
+  const h = game.history({ verbose:true });
+  lastMove = h.length ? { from:h[h.length-1].from, to:h[h.length-1].to } : null;
+  orientation = line.you === 'w' ? 'white' : 'black';
+  selected = null; hintSquares = null;
+  renderSquares(); renderAll();
+  startSelfPlay();
+}
+
 /* ------------------------------ Promotion picker ------------------------------ */
 const promoMask = document.getElementById('promo-mask');
 const promoOpts = document.getElementById('promo-opts');
@@ -884,7 +934,7 @@ promoMask.addEventListener('click', e => { if (e.target === promoMask){ promoMas
 let drag = null; // {el, from, offsetX, offsetY, moved}
 function boardRect(){ return els.board.getBoundingClientRect(); }
 
-function canMoveNow(){ return !thinking && !animating && !game.isGameOver() && game.turn() === humanColor; }
+function canMoveNow(){ return !thinking && !animating && !selfPlay && !game.isGameOver() && game.turn() === humanColor; }
 
 els.pieces.addEventListener('pointerdown', (e) => {
   const pc = e.target.closest('.piece');
@@ -969,7 +1019,7 @@ document.getElementById('btn-flip').addEventListener('click', () => {
 });
 
 document.getElementById('btn-undo').addEventListener('click', () => {
-  if (thinking || animating) return;
+  if (thinking || animating || selfPlay) return;
   if (game.history().length === 0) return;
   // undo back to the human's turn (one full move: opponent + human)
   game.undo();
@@ -990,6 +1040,7 @@ document.getElementById('btn-undo').addEventListener('click', () => {
 document.getElementById('btn-new').addEventListener('click', newGame);
 
 function newGame(){
+  selfPlay = false; engineExpected = false; engine.stop(); updateWatchButtons();
   exitTrainer();
   const choice = document.querySelector('#side-seg .on').dataset.side;
   humanColor = choice === 'random' ? (Math.random() < 0.5 ? 'w' : 'b') : (choice === 'white' ? 'w' : 'b');
@@ -1022,8 +1073,18 @@ function newGame(){
 })();
 
 els.trStart.addEventListener('click', () => {
-  if (thinking || animating) return;
+  if (selfPlay) stopSelfPlay();
+  if (animating) return;
   startTrainer(parseInt(els.trSelect.value, 10));
+});
+
+els.trWatch.addEventListener('click', () => {
+  watchLineOut(parseInt(els.trSelect.value, 10));
+});
+
+els.btnWatch.addEventListener('click', () => {
+  if (selfPlay) stopSelfPlay();
+  else startSelfPlay();
 });
 
 els.trHintMove.addEventListener('click', () => {
