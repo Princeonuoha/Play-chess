@@ -59,6 +59,12 @@ Any static host works. Cloudflare Pages is the intended target here:
 - Engine strength via `UCI_Elo` — top of the slider ("Max") switches
   `UCI_LimitStrength` off for full strength
 - Adjustable think time
+- **Opening trainer** — pick a main line (French, Sicilian, Ruy Lopez, Italian,
+  Caro-Kann, Queen's Gambit, King's Indian, Nimzo, London, and more). The app
+  plays the theory for the other side, checks your moves against the book
+  (with optional hint highlighting), and hands off to Stockfish when the line
+  ends so you play on from the resulting position. Every line is verified legal
+  against chess.js.
 
 ## Upgrading to the multi-threaded engine
 
