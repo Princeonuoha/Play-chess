@@ -108,7 +108,7 @@
     will-change:left,top;z-index:2;
   }
   .piece.drag{transition:none;z-index:5;cursor:grabbing}
-  .piece svg{width:88%;height:88%;filter:drop-shadow(0 2px 2px rgba(0,0,0,.35))}
+  .piece svg{width:90%;height:90%;filter:drop-shadow(0 2px 3px rgba(0,0,0,.5))}
   .board.playable .piece.mine{cursor:grab}
   /* Side panel */
   .panel{
@@ -280,9 +280,11 @@ const PIECE_PATHS = {
   k: '<rect x="21" y="4" width="3" height="9.5" rx="1"/><rect x="18" y="7" width="9" height="3" rx="1"/><path d="M22.5 14.5c-6 0-10 3.6-10 9 0 2 .7 3.9 1.9 5.5l-.9 4.5h18l-.9-4.5c1.2-1.6 1.9-3.5 1.9-5.5 0-5.4-4-9-10-9z"/><path d="M12.5 33.5h20l1.6 4h-23.2z"/><rect x="10" y="37.5" width="25" height="4" rx="1.6"/>'
 };
 function pieceSVG(type, color){
-  const fill  = color === 'w' ? '#f4f6f8' : '#3a444f';
-  const rim   = color === 'w' ? '#9aa6b2' : '#6B7684';
-  return `<svg viewBox="0 0 45 45" aria-hidden="true"><g fill="${fill}" stroke="${rim}" stroke-width="1.4" stroke-linejoin="round">${PIECE_PATHS[type]}</g></svg>`;
+  // Strong contrast on both square colours: near-black fill + bright rim for
+  // black pieces; near-white fill + dark rim for white pieces.
+  const fill  = color === 'w' ? '#f6f8fa' : '#20252c';
+  const rim   = color === 'w' ? '#4a5560' : '#b3bdc9';
+  return `<svg viewBox="0 0 45 45" aria-hidden="true"><g fill="${fill}" stroke="${rim}" stroke-width="1.6" stroke-linejoin="round">${PIECE_PATHS[type]}</g></svg>`;
 }
 
 /* ---------------------------- Engine (Stockfish 18 WASM) ---------------------------- */
