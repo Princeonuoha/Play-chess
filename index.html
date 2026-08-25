@@ -286,27 +286,29 @@ function pieceSVG(type, color){
 }
 
 /* ---------------------------- Engine (Stockfish 18 WASM) ---------------------------- */
-const LOCAL_JS = 'engine/stockfish-18-lite-single.js';
-const CDN_JS   = 'https://cdn.jsdelivr.net/npm/stockfish@18.0.8/bin/stockfish-18-lite-single.js';
-const CDN_WASM = 'https://cdn.jsdelivr.net/npm/stockfish@18.0.8/bin/stockfish-18-lite-single.wasm';
+const LOCAL_JS   = 'engine/stockfish-18-lite-single.js';
+const LOCAL_WASM = 'engine/stockfish-18-lite-single.wasm';
+const CDN_JS     = 'https://cdn.jsdelivr.net/npm/stockfish@18.0.8/bin/stockfish-18-lite-single.js';
+const CDN_WASM   = 'https://cdn.jsdelivr.net/npm/stockfish@18.0.8/bin/stockfish-18-lite-single.wasm';
 
-function makeCdnWorker(jsUrl, wasmUrl){
-  // A cross-origin script cannot be a Worker directly. Load it inside a same-origin
-  // blob shim via importScripts. The Emscripten build locates its .wasm relative to
-  // the worker's own URL, which is a blob: URL here — so we pass the real .wasm URL in
-  // the worker URL's hash fragment and expose it through Module.locateFile.
-  const shim = `
-    var __wasm = decodeURIComponent((self.location.hash||'').replace(/^#/,''));
-    self.Module = self.Module || {};
-    self.Module.locateFile = function(p){ return /\\.wasm(\\?|$)/.test(p) && __wasm ? __wasm : p; };
-    importScripts(${JSON.stringify(jsUrl)});
-  `;
-  const url = URL.createObjectURL(new Blob([shim], {type:'application/javascript'}));
+// This Stockfish build reads the URL of its .wasm from the worker's own location
+// hash (the segment before the first comma), so we always pass the wasm URL there.
+function directWorker(jsUrl, wasmUrl){
+  // Same-origin script: a Worker can load it directly.
+  return new Worker(jsUrl + '#' + encodeURIComponent(wasmUrl));
+}
+function cdnWorker(jsUrl, wasmUrl){
+  // A cross-origin script cannot be a Worker directly, so importScripts it from a
+  // same-origin blob. The blob worker's location hash carries the wasm URL, which
+  // the engine reads; the wasm itself is fetched cross-origin (jsDelivr sends CORS).
+  const shim = `importScripts(${JSON.stringify(jsUrl)});`;
+  const url = URL.createObjectURL(new Blob([shim], { type:'application/javascript' }));
   return new Worker(url + '#' + encodeURIComponent(wasmUrl));
 }
 
 function createEngine(){
-  let worker = null, ready = false;
+  let worker = null, ready = false, source = 'none';
+  let booted = false, triedCdn = false, bootResolve = null, bootReject = null, watchdog = null;
   const readyWaiters = [];
   const listeners = { best:null, info:null, boot:null };
 
@@ -316,7 +318,7 @@ function createEngine(){
     if (typeof line !== 'string') line = (line && line.data) || '';
     if (line === 'uciok'){ post('setoption name Threads value 1'); post('isready'); }
     else if (line === 'readyok'){
-      if (!ready){ ready = true; listeners.boot && listeners.boot(); }
+      if (!ready){ ready = true; booted = true; clearTimeout(watchdog); listeners.boot && listeners.boot(); if (bootResolve){ bootResolve(source); bootResolve = null; } }
       while (readyWaiters.length) readyWaiters.shift()();
     }
     else if (line.startsWith('bestmove')){
@@ -328,22 +330,57 @@ function createEngine(){
     }
   }
 
-  async function boot(){
-    let useLocal = false;
-    try { const r = await fetch(LOCAL_JS, {method:'HEAD'}); useLocal = r.ok; } catch(_){}
+  function fail(){
+    clearTimeout(watchdog);
+    document.getElementById('engine-tag').textContent = 'engine failed to load';
+    if (bootReject){ bootReject(new Error('engine failed to load')); bootReject = null; bootResolve = null; }
+  }
+
+  // If the current source stalls or errors before it is ready, fall back once
+  // from local → CDN. A CDN failure is terminal.
+  function fallbackOrFail(){
+    if (booted) return;
+    if (source === 'local' && !triedCdn){ triedCdn = true; startWorker('cdn'); return; }
+    fail();
+  }
+
+  function startWorker(kind){
+    if (worker){ try { worker.terminate(); } catch(_){} }
+    clearTimeout(watchdog);
+    source = kind;
     try {
-      worker = useLocal ? new Worker(LOCAL_JS) : makeCdnWorker(CDN_JS, CDN_WASM);
-    } catch(e){
-      if (useLocal) worker = makeCdnWorker(CDN_JS, CDN_WASM); else throw e;
-    }
+      if (kind === 'local'){
+        const wasm = new URL(LOCAL_WASM, location.href).href;
+        worker = directWorker(new URL(LOCAL_JS, location.href).href, wasm);
+      } else {
+        worker = cdnWorker(CDN_JS, CDN_WASM);
+      }
+    } catch(e){ fallbackOrFail(); return; }
     worker.onmessage = e => handle(e.data);
-    worker.onerror = () => { document.getElementById('engine-tag').textContent = 'engine failed to load'; };
+    worker.onerror = () => fallbackOrFail();
+    // Watchdog: no readyok in time → treat as a load failure and fall back.
+    watchdog = setTimeout(fallbackOrFail, kind === 'local' ? 8000 : 20000);
     post('uci');
-    return useLocal;
+  }
+
+  async function boot(){
+    let hasLocal = false;
+    try {
+      // Use GET (not HEAD) and sniff the content-type so a static host that
+      // answers unknown paths with an HTML fallback isn't mistaken for a hit.
+      const r = await fetch(LOCAL_JS, { method:'GET', cache:'no-store' });
+      const ct = (r.headers.get('content-type') || '').toLowerCase();
+      hasLocal = r.ok && !ct.includes('text/html');
+    } catch(_){}
+    return new Promise((res, rej) => {
+      bootResolve = res; bootReject = rej;
+      startWorker(hasLocal ? 'local' : 'cdn');
+    });
   }
 
   return {
     boot,
+    source(){ return source; },
     on(name, fn){ listeners[name] = fn; },
     isReady(){ return ready; },
     whenReady(){ return new Promise(res => ready ? res() : readyWaiters.push(res)); },
@@ -734,9 +771,9 @@ function newGame(){
 
 /* ------------------------------ Boot ------------------------------ */
 renderSquares(); renderAll(); updateEloLabel();
-engine.on('boot', () => {});
-engine.boot().then((useLocal) => {
-  els.engineTag.textContent = useLocal ? 'Stockfish 18 · local' : 'Stockfish 18 · CDN';
+els.engineTag.textContent = 'loading engine…';
+engine.boot().then((src) => {
+  els.engineTag.textContent = src === 'local' ? 'Stockfish 18 · local' : 'Stockfish 18 · CDN';
 }).catch(() => { els.engineTag.textContent = 'engine failed to load'; });
 
 window.addEventListener('resize', () => { renderPieces(); renderHighlights(); renderDots(); });
