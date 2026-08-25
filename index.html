@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>chesswithprince.com — play Stockfish</title>
+<meta name="description" content="Play chess against Stockfish 18, running entirely in your browser." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#0f151b;
+    --panel:#161d25;
+    --panel-2:#1c242e;
+    --line:#2a333f;
+    --ink:#e7ecf1;
+    --muted:#8c98a6;
+    --brass:#c69a52;
+    --brass-dim:#9c793d;
+    --light-sq:#b9c2cc;
+    --dark-sq:#5b6672;
+    --sel:#c69a5266;
+    --last:#c69a5233;
+    --dot:#0f151b66;
+    --check:#c0453f;
+    --shadow:0 10px 30px rgba(0,0,0,.45);
+    --radius:10px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    background:
+      radial-gradient(1200px 600px at 80% -10%, #1a2530 0, transparent 60%),
+      var(--bg);
+    background-color:var(--bg);
+    color:var(--ink);
+    font-family:Archivo, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    -webkit-font-smoothing:antialiased;
+    display:flex;flex-direction:column;min-height:100%;
+  }
+  header{
+    display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;
+    padding:20px clamp(16px,4vw,40px) 6px;
+  }
+  header h1{
+    font-size:clamp(20px,3vw,28px);font-weight:700;letter-spacing:.2px;margin:0;
+  }
+  header h1 .dot{color:var(--brass)}
+  header .tag{
+    font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--muted);
+    border:1px solid var(--line);border-radius:999px;padding:3px 10px;
+  }
+  main{
+    flex:1;display:flex;gap:clamp(16px,3vw,34px);flex-wrap:wrap;
+    align-items:flex-start;justify-content:center;
+    padding:14px clamp(16px,4vw,40px) 30px;
+  }
+  .board-wrap{display:flex;gap:12px;align-items:stretch}
+  /* Eval bar */
+  .evalbar{
+    width:16px;border-radius:6px;overflow:hidden;position:relative;
+    background:#11171d;border:1px solid var(--line);align-self:stretch;
+    min-height:0;
+  }
+  .evalbar .white{
+    position:absolute;left:0;right:0;bottom:0;background:#e7ecf1;
+    transition:height .35s ease;height:50%;
+  }
+  .evalbar .mid{position:absolute;left:-1px;right:-1px;top:50%;height:1px;background:var(--brass-dim);opacity:.7}
+  .evalbar .num{
+    position:absolute;left:50%;transform:translateX(-50%) rotate(-90deg);
+    top:8px;font-family:"IBM Plex Mono",monospace;font-size:10px;color:#0f151b;
+    font-weight:600;letter-spacing:.5px;pointer-events:none;white-space:nowrap;
+  }
+  /* Board */
+  .board{
+    --sz:min(78vmin,560px);
+    width:var(--sz);height:var(--sz);
+    position:relative;border-radius:var(--radius);overflow:hidden;
+    box-shadow:var(--shadow);border:1px solid #0a0f14;
+    touch-action:none;user-select:none;
+  }
+  .squares{position:absolute;inset:0;display:grid;grid-template-columns:repeat(8,1fr);grid-template-rows:repeat(8,1fr)}
+  .sq{position:relative}
+  .sq.light{background:var(--light-sq)}
+  .sq.dark{background:var(--dark-sq)}
+  .sq .coord{
+    position:absolute;font-family:"IBM Plex Mono",monospace;font-size:10px;
+    font-weight:500;opacity:.65;pointer-events:none;
+  }
+  .sq .coord.file{right:3px;bottom:1px}
+  .sq .coord.rank{left:3px;top:1px}
+  .sq.light .coord{color:#5b6672}
+  .sq.dark .coord{color:#cdd4dc}
+  .layer{position:absolute;inset:0;pointer-events:none}
+  .hl{position:absolute;width:12.5%;height:12.5%;pointer-events:none}
+  .hl.last{background:var(--last)}
+  .hl.sel{background:var(--sel);box-shadow:inset 0 0 0 2px var(--brass)}
+  .hl.check{background:radial-gradient(circle at center, var(--check) 0, transparent 72%)}
+  .dot{position:absolute;width:12.5%;height:12.5%;display:grid;place-items:center;pointer-events:none}
+  .dot i{width:30%;height:30%;border-radius:50%;background:var(--dot)}
+  .dot.cap i{width:86%;height:86%;background:transparent;border:5px solid var(--dot);box-sizing:border-box}
+  .piece{
+    position:absolute;width:12.5%;height:12.5%;
+    display:grid;place-items:center;
+    transition:left .18s cubic-bezier(.2,.7,.3,1), top .18s cubic-bezier(.2,.7,.3,1);
+    will-change:left,top;z-index:2;
+  }
+  .piece.drag{transition:none;z-index:5;cursor:grabbing}
+  .piece svg{width:88%;height:88%;filter:drop-shadow(0 2px 2px rgba(0,0,0,.35))}
+  .board.playable .piece.mine{cursor:grab}
+  /* Side panel */
+  .panel{
+    width:min(340px,90vw);background:var(--panel);border:1px solid var(--line);
+    border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column;
+  }
+  .status{
+    padding:14px 16px;border-bottom:1px solid var(--line);
+    display:flex;align-items:center;gap:10px;background:var(--panel-2);
+  }
+  .status .who{font-weight:600}
+  .status .sub{font-size:12px;color:var(--muted)}
+  .status .spinner{
+    width:12px;height:12px;border-radius:50%;border:2px solid var(--brass);
+    border-right-color:transparent;animation:spin .8s linear infinite;display:none;
+  }
+  .status.thinking .spinner{display:inline-block}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .controls{padding:14px 16px;display:grid;gap:14px;border-bottom:1px solid var(--line)}
+  .row{display:flex;gap:8px;flex-wrap:wrap}
+  button{
+    font-family:inherit;font-weight:600;font-size:13px;color:var(--ink);
+    background:var(--panel-2);border:1px solid var(--line);border-radius:8px;
+    padding:9px 12px;cursor:pointer;transition:border-color .15s,background .15s;flex:1;
+  }
+  button:hover{border-color:var(--brass-dim)}
+  button.primary{background:var(--brass);color:#1a130a;border-color:var(--brass)}
+  button.primary:hover{background:#d6a95d}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  .field{display:grid;gap:6px}
+  .field label{font-size:12px;color:var(--muted);display:flex;justify-content:space-between;align-items:center}
+  .field label b{color:var(--brass);font-family:"IBM Plex Mono",monospace;font-weight:500}
+  input[type=range]{
+    -webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:3px;
+    background:var(--line);outline:none;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;width:16px;height:16px;border-radius:50%;
+    background:var(--brass);cursor:pointer;border:2px solid #1a130a;
+  }
+  input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:var(--brass);cursor:pointer;border:2px solid #1a130a}
+  .seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .seg button{border:none;border-radius:0;background:var(--panel-2);flex:1}
+  .seg button.on{background:var(--brass);color:#1a130a}
+  /* Scoresheet */
+  .moves-head{padding:10px 16px 4px;font-size:12px;color:var(--muted);letter-spacing:.4px;text-transform:uppercase}
+  .moves{
+    flex:1;overflow:auto;max-height:280px;padding:0 8px 12px;
+    font-family:"IBM Plex Mono",monospace;font-size:13px;
+  }
+  .moves table{width:100%;border-collapse:collapse}
+  .moves td{padding:5px 8px;border-bottom:1px solid #212933}
+  .moves td.n{color:var(--muted);width:34px;text-align:right;padding-right:10px}
+  .moves td.mv{cursor:default}
+  .moves td.mv.w{color:var(--ink)}
+  .moves td.mv.b{color:#c6ccd4}
+  .moves .empty{color:var(--muted);padding:14px 10px;font-style:italic}
+  footer{
+    padding:14px clamp(16px,4vw,40px) 26px;color:var(--muted);font-size:11.5px;
+    border-top:1px solid var(--line);line-height:1.6;
+  }
+  footer a{color:var(--brass-dim)}
+  /* Promotion */
+  .promo-mask{position:fixed;inset:0;background:#0009;display:none;place-items:center;z-index:50}
+  .promo-mask.show{display:grid}
+  .promo{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;box-shadow:var(--shadow);text-align:center}
+  .promo h3{margin:0 0 12px;font-size:14px;color:var(--muted);font-weight:600}
+  .promo .opts{display:flex;gap:8px}
+  .promo .opt{width:64px;height:64px;background:var(--panel-2);border:1px solid var(--line);border-radius:10px;cursor:pointer;display:grid;place-items:center}
+  .promo .opt:hover{border-color:var(--brass)}
+  .promo .opt svg{width:76%;height:76%}
+  .banner{
+    margin:0 16px 12px;padding:10px 12px;border-radius:8px;background:var(--panel-2);
+    border:1px solid var(--brass-dim);color:var(--brass);font-size:13px;font-weight:600;text-align:center;display:none;
+  }
+  .banner.show{display:block}
+  @media (max-width:920px){ main{flex-direction:column;align-items:center} .panel{width:min(560px,92vw)} }
+</style>
+</head>
+<body>
+<header>
+  <h1>chesswithprince<span class="dot">.</span>com</h1>
+  <span class="tag" id="engine-tag">loading engine…</span>
+</header>
+
+<main>
+  <div class="board-wrap">
+    <div class="evalbar" id="evalbar" title="Evaluation (White's perspective)">
+      <div class="white" id="eval-white"></div>
+      <div class="mid"></div>
+      <div class="num" id="eval-num">0.0</div>
+    </div>
+    <div class="board" id="board">
+      <div class="squares" id="squares"></div>
+      <div class="layer" id="hl-layer"></div>
+      <div class="layer" id="dot-layer"></div>
+      <div class="layer" id="piece-layer" style="pointer-events:auto"></div>
+    </div>
+  </div>
+
+  <aside class="panel">
+    <div class="status" id="status">
+      <span class="spinner"></span>
+      <div>
+        <div class="who" id="status-who">Your move</div>
+        <div class="sub" id="status-sub">White to play</div>
+      </div>
+    </div>
+
+    <div class="banner" id="banner"></div>
+
+    <div class="controls">
+      <div class="row">
+        <button class="primary" id="btn-new">New game</button>
+        <button id="btn-flip">Flip</button>
+        <button id="btn-undo">Take back</button>
+      </div>
+
+      <div class="field">
+        <label>Play as</label>
+        <div class="seg" id="side-seg">
+          <button data-side="white" class="on">White</button>
+          <button data-side="black">Black</button>
+          <button data-side="random">Random</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Engine strength <b id="elo-val">1861</b></label>
+        <input type="range" id="elo" min="0" max="20" value="8" />
+      </div>
+
+      <div class="field">
+        <label>Think time <b id="tt-val">1.0 s</b></label>
+        <input type="range" id="tt" min="100" max="3000" step="100" value="1000" />
+      </div>
+    </div>
+
+    <div class="moves-head">Scoresheet</div>
+    <div class="moves" id="moves"><div class="empty">No moves yet.</div></div>
+  </aside>
+</main>
+
+<footer>
+  Engine: <b>Stockfish 18</b> (WebAssembly, single-threaded lite build) running in your browser —
+  <a href="https://github.com/nmrugg/stockfish.js" target="_blank" rel="noopener">stockfish.js</a>,
+  licensed <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noopener">GPLv3</a>.
+  Rules by <a href="https://github.com/jhlywa/chess.js" target="_blank" rel="noopener">chess.js</a>.
+  Piece artwork is original SVG for this project.
+</footer>
+
+<div class="promo-mask" id="promo-mask">
+  <div class="promo">
+    <h3>Promote to</h3>
+    <div class="opts" id="promo-opts"></div>
+  </div>
+</div>
+
+<script type="module">
+import { Chess } from 'https://esm.sh/chess.js@1.4.0';
+
+/* ---------- Original piece artwork (geometric silhouettes, viewBox 0 0 45 45) ---------- */
+const PIECE_PATHS = {
+  p: '<path d="M22.5 8.5c-3 0-5.4 2.4-5.4 5.4 0 1.9 1 3.6 2.5 4.6-2.6 1.5-4.4 4.5-4.9 8.2h15.6c-.5-3.7-2.3-6.7-4.9-8.2 1.5-1 2.5-2.7 2.5-4.6 0-3-2.4-5.4-5.4-5.4z"/><path d="M13.5 28.5h18l1.8 5.5h-21.6z"/><rect x="11" y="34.5" width="23" height="4.5" rx="1.8"/>',
+  r: '<path d="M12.5 12.5h4v3h4v-3h5v3h4v-3h4v8.5l-2.2 3v9h-16.6v-9l-2.2-3z"/><path d="M13.5 33.5h18l1.6 4h-21.2z"/><rect x="11" y="37.5" width="23" height="4" rx="1.6"/>',
+  n: '<path d="M14 39c-.4-8 1.6-14 6.6-17.8-.6-1.2-1.9-2-3.6-1.7-1.2.2-2.3 1-3.4 2.4.1-3.3 1.9-6.4 5.4-8.6-.4-1.2-.2-2.4.6-3.6 1 .8 1.8 1.7 2.3 2.9 4.7.7 8.1 4.3 9.5 9.9 1 4 1.3 9.6 1.3 16.5z"/><circle cx="17.6" cy="16.6" r="1.05" fill="#0f151b"/><path d="M13.5 38.5h18l1.4 4h-20.8z"/><rect x="11" y="38.5" width="23" height="4.4" rx="1.6"/>',
+  b: '<circle cx="22.5" cy="9.5" r="2.4"/><path d="M22.5 12c5.6 3 8 8.4 8 13.4 0 4-3.3 6.9-8 6.9s-8-2.9-8-6.9c0-5 2.4-10.4 8-13.4z"/><path d="M19.6 18.5h5.8l-2.9 4.5z" fill="#0f151b"/><path d="M14.5 33.5h16l1.6 4h-19.2z"/><rect x="12" y="37.5" width="21" height="4" rx="1.6"/>',
+  q: '<path d="M9.5 17.5l3.4 16h19.2l3.4-16-6 6.5-3-10-3 10.5-3-10.5-3 10-6-6.5z"/><circle cx="9.5" cy="16" r="2.1"/><circle cx="22.5" cy="13.5" r="2.1"/><circle cx="35.5" cy="16" r="2.1"/><path d="M12.5 33.5h20l1.6 4h-23.2z"/><rect x="10" y="37.5" width="25" height="4" rx="1.6"/>',
+  k: '<rect x="21" y="4" width="3" height="9.5" rx="1"/><rect x="18" y="7" width="9" height="3" rx="1"/><path d="M22.5 14.5c-6 0-10 3.6-10 9 0 2 .7 3.9 1.9 5.5l-.9 4.5h18l-.9-4.5c1.2-1.6 1.9-3.5 1.9-5.5 0-5.4-4-9-10-9z"/><path d="M12.5 33.5h20l1.6 4h-23.2z"/><rect x="10" y="37.5" width="25" height="4" rx="1.6"/>'
+};
+function pieceSVG(type, color){
+  const fill  = color === 'w' ? '#f4f6f8' : '#3a444f';
+  const rim   = color === 'w' ? '#9aa6b2' : '#6B7684';
+  return `<svg viewBox="0 0 45 45" aria-hidden="true"><g fill="${fill}" stroke="${rim}" stroke-width="1.4" stroke-linejoin="round">${PIECE_PATHS[type]}</g></svg>`;
+}
+
+/* ---------------------------- Engine (Stockfish 18 WASM) ---------------------------- */
+const LOCAL_JS = 'engine/stockfish-18-lite-single.js';
+const CDN_JS   = 'https://cdn.jsdelivr.net/npm/stockfish@18.0.8/bin/stockfish-18-lite-single.js';
+const CDN_WASM = 'https://cdn.jsdelivr.net/npm/stockfish@18.0.8/bin/stockfish-18-lite-single.wasm';
+
+function makeCdnWorker(jsUrl, wasmUrl){
+  // A cross-origin script cannot be a Worker directly. Load it inside a same-origin
+  // blob shim via importScripts. The Emscripten build locates its .wasm relative to
+  // the worker's own URL, which is a blob: URL here — so we pass the real .wasm URL in
+  // the worker URL's hash fragment and expose it through Module.locateFile.
+  const shim = `
+    var __wasm = decodeURIComponent((self.location.hash||'').replace(/^#/,''));
+    self.Module = self.Module || {};
+    self.Module.locateFile = function(p){ return /\\.wasm(\\?|$)/.test(p) && __wasm ? __wasm : p; };
+    importScripts(${JSON.stringify(jsUrl)});
+  `;
+  const url = URL.createObjectURL(new Blob([shim], {type:'application/javascript'}));
+  return new Worker(url + '#' + encodeURIComponent(wasmUrl));
+}
+
+function createEngine(){
+  let worker = null, ready = false;
+  const readyWaiters = [];
+  const listeners = { best:null, info:null, boot:null };
+
+  function post(cmd){ worker && worker.postMessage(cmd); }
+
+  function handle(line){
+    if (typeof line !== 'string') line = (line && line.data) || '';
+    if (line === 'uciok'){ post('setoption name Threads value 1'); post('isready'); }
+    else if (line === 'readyok'){
+      if (!ready){ ready = true; listeners.boot && listeners.boot(); }
+      while (readyWaiters.length) readyWaiters.shift()();
+    }
+    else if (line.startsWith('bestmove')){
+      const mv = line.split(/\s+/)[1];
+      listeners.best && listeners.best(mv);
+    }
+    else if (line.startsWith('info') && line.includes('score')){
+      listeners.info && listeners.info(line);
+    }
+  }
+
+  async function boot(){
+    let useLocal = false;
+    try { const r = await fetch(LOCAL_JS, {method:'HEAD'}); useLocal = r.ok; } catch(_){}
+    try {
+      worker = useLocal ? new Worker(LOCAL_JS) : makeCdnWorker(CDN_JS, CDN_WASM);
+    } catch(e){
+      if (useLocal) worker = makeCdnWorker(CDN_JS, CDN_WASM); else throw e;
+    }
+    worker.onmessage = e => handle(e.data);
+    worker.onerror = () => { document.getElementById('engine-tag').textContent = 'engine failed to load'; };
+    post('uci');
+    return useLocal;
+  }
+
+  return {
+    boot,
+    on(name, fn){ listeners[name] = fn; },
+    isReady(){ return ready; },
+    whenReady(){ return new Promise(res => ready ? res() : readyWaiters.push(res)); },
+    setStrength(elo){
+      if (elo === 'max'){ post('setoption name UCI_LimitStrength value false'); }
+      else { post('setoption name UCI_LimitStrength value true'); post('setoption name UCI_Elo value ' + elo); }
+    },
+    newGame(){ post('ucinewgame'); },
+    go(fen, movetime){ post('position fen ' + fen); post('go movetime ' + movetime); },
+    stop(){ post('stop'); }
+  };
+}
+
+/* ---------------------------------- Game state ---------------------------------- */
+const game = new Chess();
+const engine = createEngine();
+
+let orientation = 'white';   // colour shown at the bottom
+let humanColor  = 'w';       // 'w' | 'b'
+let thinking    = false;
+let selected    = null;      // square string or null
+let lastMove    = null;      // {from,to}
+let moveTime    = 1000;
+let animating   = false;
+
+const els = {
+  squares: document.getElementById('squares'),
+  hl: document.getElementById('hl-layer'),
+  dots: document.getElementById('dot-layer'),
+  pieces: document.getElementById('piece-layer'),
+  board: document.getElementById('board'),
+  moves: document.getElementById('moves'),
+  status: document.getElementById('status'),
+  who: document.getElementById('status-who'),
+  sub: document.getElementById('status-sub'),
+  banner: document.getElementById('banner'),
+  evalWhite: document.getElementById('eval-white'),
+  evalNum: document.getElementById('eval-num'),
+  engineTag: document.getElementById('engine-tag'),
+};
+
+const FILES = 'abcdefgh';
+function fileIdx(sq){ return FILES.indexOf(sq[0]); }
+function rankIdx(sq){ return parseInt(sq[1],10) - 1; }
+function squareXY(sq){
+  const f = fileIdx(sq), r = rankIdx(sq);
+  const x = orientation === 'white' ? f : 7 - f;
+  const y = orientation === 'white' ? 7 - r : r;
+  return { left: x * 12.5, top: y * 12.5 };
+}
+function xyToSquare(px, py){
+  // px,py are 0..1 relative to board
+  let x = Math.floor(px * 8), y = Math.floor(py * 8);
+  x = Math.max(0, Math.min(7, x)); y = Math.max(0, Math.min(7, y));
+  const f = orientation === 'white' ? x : 7 - x;
+  const r = orientation === 'white' ? 7 - y : y;
+  return FILES[f] + (r + 1);
+}
+
+/* --------------------------------- Rendering --------------------------------- */
+function renderSquares(){
+  els.squares.innerHTML = '';
+  for (let y = 0; y < 8; y++){
+    for (let x = 0; x < 8; x++){
+      const f = orientation === 'white' ? x : 7 - x;
+      const r = orientation === 'white' ? 7 - y : y;
+      const sq = FILES[f] + (r + 1);
+      const div = document.createElement('div');
+      div.className = 'sq ' + (((f + r) % 2 === 0) ? 'dark' : 'light');
+      div.dataset.square = sq;
+      if (y === 7){ const c = document.createElement('span'); c.className = 'coord file'; c.textContent = FILES[f]; div.appendChild(c); }
+      if (x === 0){ const c = document.createElement('span'); c.className = 'coord rank'; c.textContent = (r + 1); div.appendChild(c); }
+      els.squares.appendChild(div);
+    }
+  }
+}
+
+function renderPieces(){
+  els.pieces.innerHTML = '';
+  const board = game.board();
+  for (const row of board){
+    for (const cell of row){
+      if (!cell) continue;
+      const el = document.createElement('div');
+      el.className = 'piece';
+      el.dataset.square = cell.square;
+      el.dataset.color = cell.color;
+      const { left, top } = squareXY(cell.square);
+      el.style.left = left + '%';
+      el.style.top = top + '%';
+      el.innerHTML = pieceSVG(cell.type, cell.color);
+      if (cell.color === game.turn() && cell.color === humanColor && !thinking && !game.isGameOver()){
+        el.classList.add('mine');
+      }
+      els.pieces.appendChild(el);
+    }
+  }
+}
+
+function renderHighlights(){
+  els.hl.innerHTML = '';
+  const add = (sq, cls) => {
+    const { left, top } = squareXY(sq);
+    const d = document.createElement('div');
+    d.className = 'hl ' + cls;
+    d.style.left = left + '%'; d.style.top = top + '%';
+    els.hl.appendChild(d);
+  };
+  if (lastMove){ add(lastMove.from, 'last'); add(lastMove.to, 'last'); }
+  if (selected) add(selected, 'sel');
+  if (game.inCheck()){
+    const turn = game.turn();
+    for (const row of game.board()) for (const c of row)
+      if (c && c.type === 'k' && c.color === turn){ add(c.square, 'check'); }
+  }
+}
+
+function renderDots(){
+  els.dots.innerHTML = '';
+  if (!selected) return;
+  const moves = game.moves({ square: selected, verbose: true });
+  for (const m of moves){
+    const { left, top } = squareXY(m.to);
+    const d = document.createElement('div');
+    d.className = 'dot' + ((m.flags.includes('c') || m.flags.includes('e')) ? ' cap' : '');
+    d.style.left = left + '%'; d.style.top = top + '%';
+    d.innerHTML = '<i></i>';
+    els.dots.appendChild(d);
+  }
+}
+
+function renderMoves(){
+  const hist = game.history();
+  if (!hist.length){ els.moves.innerHTML = '<div class="empty">No moves yet.</div>'; return; }
+  let rows = '';
+  for (let i = 0; i < hist.length; i += 2){
+    const n = i / 2 + 1;
+    const w = hist[i] || '';
+    const b = hist[i + 1] || '';
+    rows += `<tr><td class="n">${n}.</td><td class="mv w">${w}</td><td class="mv b">${b}</td></tr>`;
+  }
+  els.moves.innerHTML = `<table>${rows}</table>`;
+  els.moves.scrollTop = els.moves.scrollHeight;
+}
+
+function renderStatus(){
+  const over = game.isGameOver();
+  els.status.classList.toggle('thinking', thinking);
+  if (over){
+    let msg = 'Game over';
+    if (game.isCheckmate()) msg = (game.turn() === 'w' ? 'Black' : 'White') + ' wins by checkmate';
+    else if (game.isStalemate()) msg = 'Draw — stalemate';
+    else if (game.isThreefoldRepetition()) msg = 'Draw — threefold repetition';
+    else if (game.isInsufficientMaterial()) msg = 'Draw — insufficient material';
+    else if (game.isDraw()) msg = 'Draw — fifty-move rule';
+    els.who.textContent = 'Game over';
+    els.sub.textContent = (game.turn() === 'w' ? 'White' : 'Black') + ' to move';
+    showBanner(msg);
+    return;
+  }
+  hideBanner();
+  const toMove = game.turn() === 'w' ? 'White' : 'Black';
+  if (thinking){ els.who.textContent = 'Stockfish is thinking…'; els.sub.textContent = toMove + ' to play'; }
+  else if (game.turn() === humanColor){ els.who.textContent = 'Your move'; els.sub.textContent = toMove + ' to play' + (game.inCheck() ? ' — check' : ''); }
+  else { els.who.textContent = 'Stockfish to move'; els.sub.textContent = toMove + ' to play'; }
+}
+
+function showBanner(t){ els.banner.textContent = t; els.banner.classList.add('show'); }
+function hideBanner(){ els.banner.classList.remove('show'); }
+
+function renderAll(){ renderPieces(); renderHighlights(); renderDots(); renderMoves(); renderStatus(); }
+
+/* ------------------------------ Eval bar ------------------------------ */
+function setEval(cpWhite, mate){
+  let frac, label;
+  if (mate !== null && mate !== undefined){
+    frac = mate > 0 ? 1 : 0;
+    label = '#' + Math.abs(mate);
+  } else {
+    const cp = Math.max(-1500, Math.min(1500, cpWhite));
+    frac = 1 / (1 + Math.exp(-cp / 400));
+    const v = cpWhite / 100;
+    label = (v >= 0 ? '+' : '') + v.toFixed(1);
+  }
+  els.evalWhite.style.height = (frac * 100).toFixed(1) + '%';
+  els.evalNum.textContent = label;
+}
+function parseInfo(line){
+  // score is relative to the side to move in the searched position (engine's turn)
+  const m = line.match(/score (cp|mate) (-?\d+)/);
+  if (!m) return;
+  const sideToMove = game.turn(); // engine is to move while searching
+  const sign = sideToMove === 'w' ? 1 : -1;
+  if (m[1] === 'cp') setEval(parseInt(m[2],10) * sign, null);
+  else setEval(0, parseInt(m[2],10) * sign);
+}
+
+/* ------------------------------ Move flow ------------------------------ */
+function animateThen(fromSq, toSq, cb){
+  const el = els.pieces.querySelector(`.piece[data-square="${fromSq}"]`);
+  if (!el){ cb(); return; }
+  animating = true;
+  const { left, top } = squareXY(toSq);
+  requestAnimationFrame(() => {
+    el.style.left = left + '%';
+    el.style.top = top + '%';
+  });
+  let done = false;
+  const finish = () => { if (done) return; done = true; el.removeEventListener('transitionend', finish); animating = false; cb(); };
+  el.addEventListener('transitionend', finish);
+  setTimeout(finish, 240); // fallback
+}
+
+function applyMove(moveObj){
+  lastMove = { from: moveObj.from, to: moveObj.to };
+  selected = null;
+  els.dots.innerHTML = '';
+  animateThen(moveObj.from, moveObj.to, () => {
+    renderAll();
+    afterMove();
+  });
+}
+
+function afterMove(){
+  if (game.isGameOver()){ renderStatus(); return; }
+  if (game.turn() !== humanColor) engineMove();
+}
+
+function tryHumanMove(from, to, promo){
+  const legal = game.moves({ square: from, verbose: true }).filter(m => m.to === to);
+  if (!legal.length) return false;
+  if (legal.some(m => m.promotion) && !promo){ askPromotion(from, to, game.turn()); return 'promo'; }
+  const mv = game.move({ from, to, promotion: promo || 'q' });
+  if (!mv) return false;
+  applyMove(mv);
+  return true;
+}
+
+function engineMove(){
+  if (game.isGameOver()) return;
+  thinking = true;
+  renderPieces(); renderStatus();
+  engine.whenReady().then(() => {
+    engine.setStrength(currentElo());
+    engine.go(game.fen(), moveTime);
+  });
+}
+engine.on('best', (uci) => {
+  if (!uci || uci === '(none)'){ thinking = false; renderStatus(); return; }
+  const from = uci.slice(0,2), to = uci.slice(2,4), promo = uci.length > 4 ? uci[4] : undefined;
+  const mv = game.move({ from, to, promotion: promo });
+  thinking = false;
+  if (mv) applyMove(mv); else renderAll();
+});
+engine.on('info', (line) => { if (thinking) parseInfo(line); });
+
+/* ------------------------------ Promotion picker ------------------------------ */
+const promoMask = document.getElementById('promo-mask');
+const promoOpts = document.getElementById('promo-opts');
+let pendingPromo = null;
+function askPromotion(from, to, color){
+  pendingPromo = { from, to };
+  promoOpts.innerHTML = '';
+  for (const t of ['q','r','b','n']){
+    const b = document.createElement('div');
+    b.className = 'opt'; b.innerHTML = pieceSVG(t, color);
+    b.onclick = () => { promoMask.classList.remove('show'); const p = pendingPromo; pendingPromo = null; tryHumanMove(p.from, p.to, t); };
+    promoOpts.appendChild(b);
+  }
+  promoMask.classList.add('show');
+}
+promoMask.addEventListener('click', e => { if (e.target === promoMask){ promoMask.classList.remove('show'); pendingPromo = null; renderAll(); } });
+
+/* ------------------------------ Pointer input ------------------------------ */
+let drag = null; // {el, from, offsetX, offsetY, moved}
+function boardRect(){ return els.board.getBoundingClientRect(); }
+
+function canMoveNow(){ return !thinking && !animating && !game.isGameOver() && game.turn() === humanColor; }
+
+els.pieces.addEventListener('pointerdown', (e) => {
+  const pc = e.target.closest('.piece');
+  const rect = boardRect();
+  const px = (e.clientX - rect.left) / rect.width;
+  const py = (e.clientY - rect.top) / rect.height;
+  const sq = xyToSquare(px, py);
+
+  // click-to-move: if a piece is already selected and this is a legal target
+  if (selected && (!pc || pc.dataset.color !== humanColor || game.get(sq)?.color !== humanColor)){
+    if (canMoveNow() && tryHumanMove(selected, sq)) { return; }
+  }
+
+  if (!pc || !canMoveNow()) { selected = null; renderHighlights(); renderDots(); return; }
+  if (pc.dataset.color !== humanColor) { selected = null; renderHighlights(); renderDots(); return; }
+
+  const from = pc.dataset.square;
+  if (selected === from){ selected = null; renderHighlights(); renderDots(); return; }
+  selected = from;
+  renderHighlights(); renderDots();
+
+  const pr = pc.getBoundingClientRect();
+  drag = { el: pc, from, offsetX: e.clientX - (pr.left + pr.width/2), offsetY: e.clientY - (pr.top + pr.height/2), moved: false };
+  pc.setPointerCapture(e.pointerId);
+  pc.classList.add('drag');
+});
+
+els.pieces.addEventListener('pointermove', (e) => {
+  if (!drag) return;
+  drag.moved = true;
+  const rect = boardRect();
+  const x = e.clientX - drag.offsetX - rect.left;
+  const y = e.clientY - drag.offsetY - rect.top;
+  drag.el.style.left = (x / rect.width * 100 - 6.25) + '%';
+  drag.el.style.top = (y / rect.height * 100 - 6.25) + '%';
+});
+
+els.pieces.addEventListener('pointerup', (e) => {
+  if (!drag) return;
+  const d = drag; drag = null;
+  d.el.classList.remove('drag');
+  const rect = boardRect();
+  const px = (e.clientX - rect.left) / rect.width;
+  const py = (e.clientY - rect.top) / rect.height;
+  const to = xyToSquare(px, py);
+
+  if (d.moved && to !== d.from){
+    const r = tryHumanMove(d.from, to);
+    if (r === true || r === 'promo') return;
+  }
+  // snap back / keep selection for click-to-move
+  const { left, top } = squareXY(d.from);
+  d.el.style.left = left + '%';
+  d.el.style.top = top + '%';
+});
+
+/* ------------------------------ Controls ------------------------------ */
+function currentElo(){
+  const v = parseInt(document.getElementById('elo').value, 10);
+  return v >= 20 ? 'max' : Math.round(1320 + (3000 - 1320) * v / 19);
+}
+function updateEloLabel(){
+  const v = parseInt(document.getElementById('elo').value, 10);
+  document.getElementById('elo-val').textContent = v >= 20 ? 'Max' : currentElo();
+}
+document.getElementById('elo').addEventListener('input', updateEloLabel);
+
+document.getElementById('tt').addEventListener('input', (e) => {
+  moveTime = parseInt(e.target.value, 10);
+  document.getElementById('tt-val').textContent = (moveTime / 1000).toFixed(1) + ' s';
+});
+
+document.getElementById('side-seg').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  [...e.currentTarget.children].forEach(c => c.classList.remove('on'));
+  b.classList.add('on');
+});
+
+document.getElementById('btn-flip').addEventListener('click', () => {
+  orientation = orientation === 'white' ? 'black' : 'white';
+  renderSquares(); renderAll();
+});
+
+document.getElementById('btn-undo').addEventListener('click', () => {
+  if (thinking || animating) return;
+  // undo back to the human's turn (one full move: engine + human)
+  if (game.history().length === 0) return;
+  game.undo();
+  if (game.turn() !== humanColor && game.history().length > 0) game.undo();
+  const h = game.history({ verbose: true });
+  lastMove = h.length ? { from: h[h.length-1].from, to: h[h.length-1].to } : null;
+  selected = null; thinking = false;
+  renderSquares(); renderAll();
+  if (!game.isGameOver() && game.turn() !== humanColor) engineMove();
+});
+
+document.getElementById('btn-new').addEventListener('click', newGame);
+
+function newGame(){
+  const choice = document.querySelector('#side-seg .on').dataset.side;
+  humanColor = choice === 'random' ? (Math.random() < 0.5 ? 'w' : 'b') : (choice === 'white' ? 'w' : 'b');
+  orientation = humanColor === 'w' ? 'white' : 'black';
+  game.reset();
+  engine.newGame();
+  selected = null; lastMove = null; thinking = false;
+  setEval(0, null);
+  renderSquares(); renderAll();
+  if (game.turn() !== humanColor) engineMove();
+}
+
+/* ------------------------------ Boot ------------------------------ */
+renderSquares(); renderAll(); updateEloLabel();
+engine.on('boot', () => {});
+engine.boot().then((useLocal) => {
+  els.engineTag.textContent = useLocal ? 'Stockfish 18 · local' : 'Stockfish 18 · CDN';
+}).catch(() => { els.engineTag.textContent = 'engine failed to load'; });
+
+window.addEventListener('resize', () => { renderPieces(); renderHighlights(); renderDots(); });
+</script>
+</body>
+</html>
