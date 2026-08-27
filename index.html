@@ -730,12 +730,17 @@ function tryHumanMove(from, to, promo){
   const legal = game.moves({ square: from, verbose: true }).filter(m => m.to === to);
   if (!legal.length) return false;
   if (legal.some(m => m.promotion) && !promo){ askPromotion(from, to, game.turn()); return 'promo'; }
-  const mv = game.move({ from, to, promotion: promo || 'q' });
-  if (!mv) return false;
 
   if (trainer){
+    // Compare by coordinates, not notation: a book move written with different
+    // disambiguation (e.g. "Nge7" vs "Ne7" when a knight is pinned) is the same move.
     const expected = trainer.line.moves[trainer.ply];
-    if (expected && sanEq(mv.san, expected)){
+    const exp = squaresForSan(expected);         // resolve on the PRE-move position
+    const mv = game.move({ from, to, promotion: promo || 'q' });
+    if (!mv) return false;
+    const match = exp && mv.from === exp.from && mv.to === exp.to &&
+                  (exp.promotion || '') === (mv.promotion || '');
+    if (match){
       trainer.ply++;
       hintSquares = null;
       setTrStatus('good', '✓ ' + mv.san + ' — book.');
@@ -743,13 +748,16 @@ function tryHumanMove(from, to, promo){
       return true;
     }
     // Off book: revert and coach.
+    const userSan = mv.san;
     game.undo();
-    setTrStatus('bad', '✗ ' + mv.san + ' is off book. The book move is ' + stripSan(expected) + '.');
-    hintSquares = squaresForSan(expected);
+    setTrStatus('bad', '✗ ' + userSan + ' is off book. The book move is ' + stripSan(expected) + '.');
+    hintSquares = exp ? { from: exp.from, to: exp.to } : null;
     renderHighlights();
     return false;              // piece snaps back
   }
 
+  const mv = game.move({ from, to, promotion: promo || 'q' });
+  if (!mv) return false;
   applyMove(mv);
   return true;
 }
@@ -786,7 +794,7 @@ const BOOK = [
     moves:['e4','e6','d4','d5','e5','c5','c3','Nc6','Nf3','Qb6','a3','Nh6','b4','cxd4','cxd4','Nf5','Bb2','Be7','g4','Nh4','Nxh4','Bxh4'] },
   { opening:'French Defense', variation:'Tarrasch, Open (3...c5)', you:'b',
     idea:'Black accepts an isolated d-pawn for free piece play and open lines — activity over structure.',
-    moves:['e4','e6','d4','d5','Nd2','c5','exd5','exd5','Ngf3','Nc6','Bb5','Bd6','dxc5','Bxc5','O-O','Nge7','Nb3','Bd6','Nbd4','O-O'] },
+    moves:['e4','e6','d4','d5','Nd2','c5','exd5','exd5','Ngf3','Nc6','Bb5','Bd6','dxc5','Bxc5','O-O','Ne7','Nb3','Bd6','Nbd4','O-O'] },
   { opening:'French Defense', variation:'Tarrasch, Closed (3...Nf6)', you:'b',
     idea:'Classic French pawn chain: Black plays ...c5 and ...f6 to break, aiming for the c- and e-files.',
     moves:['e4','e6','d4','d5','Nd2','Nf6','e5','Nfd7','Bd3','c5','c3','Nc6','Ne2','cxd4','cxd4','f6','exf6','Nxf6','Nf3','Bd6'] },
@@ -879,8 +887,15 @@ const BOOK = [
 const stripSan = s => (s || '').replace(/[+#]/g, '');
 const sanEq = (a, b) => stripSan(a) === stripSan(b);
 function squaresForSan(san){
-  // Find the legal move whose SAN matches, to highlight its from/to.
-  for (const m of game.moves({ verbose:true })) if (sanEq(m.san, san)) return { from:m.from, to:m.to };
+  // Resolve a book SAN to its from/to on the current position. Try an exact
+  // (canonical) match first, then a tolerant parse so book notation with extra
+  // or missing disambiguation still resolves to the right move.
+  for (const m of game.moves({ verbose:true })) if (sanEq(m.san, san)) return { from:m.from, to:m.to, promotion:m.promotion };
+  try {
+    const t = new Chess(game.fen());
+    const m = t.move(san, { strict:false });
+    if (m) return { from:m.from, to:m.to, promotion:m.promotion };
+  } catch(e){}
   return null;
 }
 function setTrStatus(kind, text){
@@ -912,7 +927,8 @@ function maybeBookMove(){
   }
   // Opponent's turn: play theory after a short beat.
   const san = trainer.line.moves[trainer.ply];
-  const mv = game.move(san);
+  const sq = squaresForSan(san);
+  const mv = sq ? game.move({ from:sq.from, to:sq.to, promotion:sq.promotion }) : game.move(san);
   if (!mv){ endOfBook(); return; }
   trainer.ply++;
   setTrStatus('info', trProgress());
@@ -1273,7 +1289,7 @@ els.trHintMove.addEventListener('click', () => {
   const san = trainer.line.moves[trainer.ply];
   const sq = squaresForSan(san);
   if (!sq) return;
-  const mv = game.move(san);
+  const mv = game.move({ from:sq.from, to:sq.to, promotion:sq.promotion });
   if (!mv) return;
   trainer.ply++; hintSquares = null;
   setTrStatus('good', '▸ ' + mv.san + ' — book.');
