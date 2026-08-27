@@ -262,6 +262,10 @@
         <button id="btn-undo">Take back</button>
       </div>
 
+      <div class="row">
+        <button id="btn-finish">▶ Watch Stockfish finish this game</button>
+      </div>
+
       <div class="field">
         <label>Play as</label>
         <div class="seg" id="side-seg">
@@ -282,7 +286,7 @@
       </div>
 
       <div class="row">
-        <button id="btn-watch">▶ Watch Stockfish vs Stockfish</button>
+        <button id="btn-watch">▶ Watch a full engine game</button>
       </div>
     </div>
 
@@ -528,6 +532,7 @@ const els = {
   trStatus: document.getElementById('tr-status'),
   trWatch: document.getElementById('tr-watch'),
   btnWatch: document.getElementById('btn-watch'),
+  btnFinish: document.getElementById('btn-finish'),
   btnAnalyze: document.getElementById('btn-analyze'),
   anBody: document.getElementById('an-body'),
   btnPgn: document.getElementById('btn-pgn'),
@@ -970,8 +975,19 @@ function exitTrainer(){
 
 /* ---- Engine self-play (Stockfish vs Stockfish) ---- */
 function updateWatchButtons(){
-  els.btnWatch.textContent = selfPlay ? '■ Stop' : '▶ Watch Stockfish vs Stockfish';
+  els.btnFinish.textContent = selfPlay ? '■ Stop' : '▶ Watch Stockfish finish this game';
+  els.btnFinish.classList.toggle('primary', selfPlay);
+  els.btnWatch.textContent = selfPlay ? '■ Stop' : '▶ Watch a full engine game';
   els.btnWatch.classList.toggle('primary', selfPlay);
+}
+function watchFullGame(){
+  // A fresh engine-vs-engine game from the starting position.
+  stopSelfPlay(); exitTrainer();
+  game.reset(); engine.newGame();
+  selected = null; lastMove = null; hintSquares = null;
+  setEval(0, null);
+  renderSquares(); renderAll();
+  startSelfPlay();
 }
 function startSelfPlay(){
   exitTrainer();
@@ -1272,9 +1288,14 @@ els.trWatch.addEventListener('click', () => {
   watchLineOut(parseInt(els.trSelect.value, 10));
 });
 
+els.btnFinish.addEventListener('click', () => {
+  if (selfPlay) stopSelfPlay();
+  else startSelfPlay();          // engine plays on from the current position
+});
+
 els.btnWatch.addEventListener('click', () => {
   if (selfPlay) stopSelfPlay();
-  else startSelfPlay();
+  else watchFullGame();          // fresh engine-vs-engine game from the start
 });
 
 els.btnAnalyze.addEventListener('click', startAnalysis);
