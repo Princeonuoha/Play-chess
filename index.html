@@ -183,6 +183,9 @@
   .tr-status .bad{color:#c0453f}
   .tr-status .info{color:var(--brass)}
   .tr-status .path{display:block;margin-top:4px;font-family:"IBM Plex Mono",monospace;font-weight:400;font-size:11.5px;color:var(--muted);word-break:break-word}
+  .tr-note{margin-top:2px;font-size:13px;line-height:1.5;color:var(--ink);border-left:3px solid var(--brass);
+    padding:6px 0 6px 11px;display:none}
+  .tr-note.show{display:block}
   .hl.hint{box-shadow:inset 0 0 0 3px var(--brass);border-radius:2px}
   /* Analysis + shared bits */
   .hdr-row{display:flex;justify-content:space-between;align-items:center;gap:10px}
@@ -309,6 +312,7 @@
           <label class="chk"><input type="checkbox" id="tr-hints" /> Show hint (highlight the book move)</label>
         </div>
         <div class="tr-status" id="tr-status"></div>
+        <div class="tr-note" id="tr-note"></div>
       </div>
     </div>
 
@@ -509,6 +513,9 @@ let engineExpected = false;  // guards a stray bestmove after stop
 let analyzing   = false;     // on-demand position analysis (MultiPV)
 let analysisData = {};       // multipv index -> {depth, cp|mate, pv:[uci]}
 let analysisFen = '';        // position being analysed
+let replaying   = false;     // auto-replaying a master game
+let replayLine  = null, replayIdx = 0, replayTimer = null;
+let epoch       = 0;         // bumped on every mode switch; stale animation callbacks bail
 
 const els = {
   squares: document.getElementById('squares'),
@@ -530,6 +537,7 @@ const els = {
   trHintMove: document.getElementById('tr-hintmove'),
   trHints: document.getElementById('tr-hints'),
   trStatus: document.getElementById('tr-status'),
+  trNote: document.getElementById('tr-note'),
   trWatch: document.getElementById('tr-watch'),
   btnWatch: document.getElementById('btn-watch'),
   btnFinish: document.getElementById('btn-finish'),
@@ -718,7 +726,9 @@ function applyMove(moveObj){
   selected = null;
   clearAnalysis();
   els.dots.innerHTML = '';
+  const myEpoch = epoch;
   animateThen(moveObj.from, moveObj.to, () => {
+    if (myEpoch !== epoch){ renderAll(); return; }  // mode switched mid-animation; don't chain
     renderAll();
     afterMove();
   });
@@ -748,7 +758,8 @@ function tryHumanMove(from, to, promo){
     if (match){
       trainer.ply++;
       hintSquares = null;
-      setTrStatus('good', '✓ ' + mv.san + ' — book.');
+      setTrStatus('good', '✓ ' + mv.san + (trainer.line.result ? '' : ' — book.'));
+      showNoteFor(trainer.ply - 1);
       applyMove(mv);          // afterMove → maybeBookMove plays the reply
       return true;
     }
@@ -887,6 +898,18 @@ const BOOK = [
   { opening:'English Opening', variation:'Reversed Sicilian', you:'w',
     idea:'White plays a Sicilian with an extra tempo: fianchetto the bishop and press on the long diagonal and c-file.',
     moves:['c4','e5','Nc3','Nf6','Nf3','Nc6','g3','d5','cxd5','Nxd5','Bg2','Nb6','O-O','Be7'] },
+
+  // ---- Master games: real historical games (moves are facts; play a legend's side) ----
+  { opening:'★ Master games', variation:'Fischer–Benko · 1963 (Pirc)', you:'w', result:'1–0',
+    white:'Fischer', black:'Benko',
+    idea:'Fischer vs Benko, US Championship 1963 — Pirc, Austrian Attack. A model kingside attack that ends with 19.Rf6!!',
+    moves:['e4','g6','d4','Bg7','Nc3','d6','f4','Nf6','Nf3','O-O','Bd3','Bg4','h3','Bxf3','Qxf3','Nc6','Be3','e5','dxe5','dxe5','f5','gxf5','Qxf5','Nd4','Qf2','Ne8','O-O','Nd6','Qg3','Kh8','Qg4','c6','Qh5','Qe8','Bxd4','exd4','Rf6','Kg8','e5','h6','Ne2'],
+    notes:{6:'The Austrian Attack: White seizes the centre and prepares f5.',36:'19.Rf6!! The rook is immune — 19…Bxf6 20.e5 shuts in the g7-bishop and Qxh6 crashes through.',38:'Slamming the door on the g7-bishop; f6 and h6 can no longer be defended.',40:'Ne2–f4 (or g3) and Qxh6 is unstoppable. Benko resigned.'} },
+  { opening:'★ Master games', variation:'Morphy “Opera Game” · 1858', you:'w', result:'1–0',
+    white:'Morphy', black:'Duke & Count',
+    idea:'Morphy vs the Duke of Brunswick & Count Isouard, Paris Opera 1858 — a textbook of rapid development and open lines.',
+    moves:['e4','e5','Nf3','d6','d4','Bg4','dxe5','Bxf3','Qxf3','dxe5','Bc4','Nf6','Qb3','Qe7','Nc3','c6','Bg5','b5','Nxb5','cxb5','Bxb5+','Nbd7','O-O-O','Rd8','Rxd7','Rxd7','Rd1','Qe6','Bxd7+','Nxd7','Qb8+','Nxb8','Rd8#'],
+    notes:{18:'10.Nxb5! A knight sacrifice to rip open the d-file against the stranded king.',30:'16.Qb8+!! The immortal queen sacrifice.',32:'17.Rd8# — checkmate. Every white piece developed; the black army but the king still asleep.'} },
 ];
 
 const stripSan = s => (s || '').replace(/[+#]/g, '');
@@ -907,6 +930,12 @@ function setTrStatus(kind, text){
   const cls = kind === 'good' ? 'good' : kind === 'bad' ? 'bad' : 'info';
   els.trStatus.innerHTML = `<span class="${cls}">${text}</span>`;
 }
+function showNoteFor(idx){
+  const line = trainer ? trainer.line : replayLine;
+  const n = line && line.notes && line.notes[idx];
+  if (n){ els.trNote.textContent = n; els.trNote.classList.add('show'); }
+}
+function clearNote(){ els.trNote.textContent = ''; els.trNote.classList.remove('show'); }
 function trLineLabel(){
   return trainer ? `${trainer.line.opening} — ${trainer.line.variation}` : '';
 }
@@ -925,44 +954,54 @@ function maybeBookMove(){
   els.trHintMove.disabled = false;
   if (trainer.ply >= trainer.line.moves.length){ endOfBook(); return; }
   if (game.turn() === humanColor){
-    setTrStatus('info', 'Your move — play the book move.' + trProgress());
+    setTrStatus('info', (trainer.line.result ? 'Your move — play the game move.' : 'Your move — play the book move.') + trProgress());
     hintSquares = trainer.hints ? squaresForSan(trainer.line.moves[trainer.ply]) : null;
     renderHighlights();
     return;
   }
-  // Opponent's turn: play theory after a short beat.
+  // Opponent's turn: play the line after a short beat.
   const san = trainer.line.moves[trainer.ply];
   const sq = squaresForSan(san);
   const mv = sq ? game.move({ from:sq.from, to:sq.to, promotion:sq.promotion }) : game.move(san);
   if (!mv){ endOfBook(); return; }
   trainer.ply++;
+  showNoteFor(trainer.ply - 1);
   setTrStatus('info', trProgress());
   applyMove(mv);
 }
 
 function endOfBook(){
-  const total = Math.ceil(trainer.line.moves.length / 2);
+  const line = trainer.line;
+  const total = Math.ceil(line.moves.length / 2);
   const label = trLineLabel();
   els.trHintMove.disabled = true;
   hintSquares = null;
   trainer = null;
+  if (line.result){
+    // A historical game is finished — don't hand off to the engine.
+    setTrStatus('good', `End of the game — ${line.white} vs ${line.black}, ${line.result}.`);
+    renderHighlights();
+    return;
+  }
   setTrStatus('good', `End of the ${label} line (${total} moves). You're on your own now — playing Stockfish from here.`);
   renderHighlights();
   if (!game.isGameOver() && game.turn() !== humanColor) engineMove();
 }
 
 function startTrainer(idx){
+  epoch++; stopReplay();
   const line = BOOK[idx];
   trainer = { line, ply:0, hints: els.trHints.checked };
   humanColor = line.you;
   orientation = humanColor === 'w' ? 'white' : 'black';
   game.reset(); engine.newGame();
   selected = null; lastMove = null; hintSquares = null; thinking = false;
-  setEval(0, null);
+  setEval(0, null); clearNote();
   renderSquares(); renderAll();
   els.trHintMove.disabled = false;
   if (line.idea) els.trMeta.innerHTML = '<b>Idea:</b> ' + line.idea;
-  setTrStatus('info', `Training <b>${trLineLabel()}</b> as ${humanColor === 'w' ? 'White' : 'Black'}.`);
+  const role = line.result ? `play <b>${line.you === 'w' ? line.white : line.black}</b>'s moves` : `train as ${humanColor === 'w' ? 'White' : 'Black'}`;
+  setTrStatus('info', `${line.result ? 'Replay: ' : 'Training '}<b>${trLineLabel()}</b> — ${role}.`);
   maybeBookMove();
 }
 
@@ -970,7 +1009,54 @@ function exitTrainer(){
   trainer = null; hintSquares = null;
   els.trHintMove.disabled = true;
   els.trStatus.innerHTML = '';
+  clearNote();
   renderHighlights();
+}
+
+/* ---- Master-game auto-replay (move-by-move, with annotations) ---- */
+function isRunning(){ return selfPlay || replaying; }
+function startReplay(idx){
+  epoch++; stopSelfPlay(); exitTrainer();
+  replayLine = BOOK[idx]; replayIdx = 0; replaying = true;
+  humanColor = replayLine.you;
+  orientation = humanColor === 'w' ? 'white' : 'black';
+  game.reset(); engine.newGame();
+  selected = null; lastMove = null; hintSquares = null; thinking = false;
+  setEval(0, null); clearNote();
+  if (replayLine.idea) els.trMeta.innerHTML = '<b>Idea:</b> ' + replayLine.idea;
+  renderSquares(); renderAll();
+  updateWatchButtons();
+  replayStep();
+}
+function replayStep(){
+  if (!replaying) return;
+  if (replayIdx >= replayLine.moves.length){ stopReplay(); return; }
+  const san = replayLine.moves[replayIdx];
+  const sq = squaresForSan(san);
+  const mv = sq ? game.move({ from:sq.from, to:sq.to, promotion:sq.promotion }) : game.move(san);
+  if (!mv){ stopReplay(); return; }
+  const i = replayIdx++;
+  const hasNote = replayLine.notes && replayLine.notes[i];
+  if (hasNote) showNoteFor(i);
+  const moveNo = Math.floor(i/2) + 1;
+  setTrStatus('info', `<span class="path">${replayLine.variation} · ${moveNo}${i%2? '…':'.'}${mv.san}</span>`);
+  lastMove = { from:mv.from, to:mv.to }; selected = null; els.dots.innerHTML = '';
+  animateThen(mv.from, mv.to, () => {
+    renderAll();
+    if (!replaying) return;
+    if (game.isGameOver() || replayIdx >= replayLine.moves.length){ stopReplay(); return; }
+    replayTimer = setTimeout(replayStep, hasNote ? 1800 : 620);
+  });
+}
+function stopReplay(){
+  if (!replaying && !replayLine) return;
+  const line = replayLine;
+  epoch++; replaying = false; clearTimeout(replayTimer); replayTimer = null;
+  updateWatchButtons();
+  if (line && line.result && (game.isGameOver() || replayIdx >= line.moves.length)){
+    setTrStatus('good', `${line.white} vs ${line.black}, ${line.result}.`);
+  }
+  renderAll();
 }
 
 /* ---- Engine self-play (Stockfish vs Stockfish) ---- */
@@ -979,8 +1065,16 @@ function updateWatchButtons(){
   els.btnFinish.classList.toggle('primary', selfPlay);
   els.btnWatch.textContent = selfPlay ? '■ Stop' : '▶ Watch a full engine game';
   els.btnWatch.classList.toggle('primary', selfPlay);
+  updateTrWatchLabel();
+}
+function updateTrWatchLabel(){
+  if (replaying){ els.trWatch.textContent = '■ Stop replay'; els.trWatch.classList.add('primary'); return; }
+  els.trWatch.classList.remove('primary');
+  const line = BOOK[parseInt(els.trSelect.value, 10)];
+  els.trWatch.textContent = (line && line.result) ? '▶ Watch this game' : '▶ Watch Stockfish play this line out';
 }
 function watchFullGame(){
+  epoch++;
   // A fresh engine-vs-engine game from the starting position.
   stopSelfPlay(); exitTrainer();
   game.reset(); engine.newGame();
@@ -990,14 +1084,14 @@ function watchFullGame(){
   startSelfPlay();
 }
 function startSelfPlay(){
-  exitTrainer();
+  epoch++; stopReplay(); exitTrainer();
   selfPlay = true;
   updateWatchButtons();
   renderPieces(); renderStatus();
   if (!game.isGameOver()) engineMove();
 }
 function stopSelfPlay(){
-  selfPlay = false;
+  epoch++; selfPlay = false;
   engineExpected = false;
   engine.stop();
   thinking = false;
@@ -1005,9 +1099,10 @@ function stopSelfPlay(){
   renderAll();
 }
 function watchLineOut(idx){
+  epoch++;
   // Seed the selected opening line, then let the engine play both sides on.
   const line = BOOK[idx];
-  stopSelfPlay(); exitTrainer();
+  stopSelfPlay(); stopReplay(); exitTrainer();
   game.reset(); engine.newGame();
   for (const san of line.moves) game.move(san);
   const h = game.history({ verbose:true });
@@ -1033,7 +1128,7 @@ function collectAnalysis(line){
   };
 }
 function startAnalysis(){
-  if (selfPlay || thinking || animating || game.isGameOver()) return;
+  if (selfPlay || replaying || thinking || animating || game.isGameOver()) return;
   analyzing = true; analysisData = {}; analysisFen = game.fen();
   els.btnAnalyze.disabled = true; els.btnAnalyze.textContent = 'Analyzing…';
   engine.whenReady().then(() => {
@@ -1133,7 +1228,7 @@ promoMask.addEventListener('click', e => { if (e.target === promoMask){ promoMas
 let drag = null; // {el, from, offsetX, offsetY, moved}
 function boardRect(){ return els.board.getBoundingClientRect(); }
 
-function canMoveNow(){ return !thinking && !animating && !selfPlay && !analyzing && !game.isGameOver() && game.turn() === humanColor; }
+function canMoveNow(){ return !thinking && !animating && !selfPlay && !replaying && !analyzing && !game.isGameOver() && game.turn() === humanColor; }
 
 els.pieces.addEventListener('pointerdown', (e) => {
   const pc = e.target.closest('.piece');
@@ -1218,7 +1313,8 @@ document.getElementById('btn-flip').addEventListener('click', () => {
 });
 
 document.getElementById('btn-undo').addEventListener('click', () => {
-  if (thinking || animating || selfPlay) return;
+  if (thinking || animating || selfPlay || replaying) return;
+  epoch++;
   if (game.history().length === 0) return;
   // undo back to the human's turn (one full move: opponent + human)
   game.undo();
@@ -1239,7 +1335,8 @@ document.getElementById('btn-undo').addEventListener('click', () => {
 document.getElementById('btn-new').addEventListener('click', newGame);
 
 function newGame(){
-  selfPlay = false; engineExpected = false; engine.stop(); updateWatchButtons();
+  epoch++; selfPlay = false; engineExpected = false; engine.stop();
+  stopReplay(); updateWatchButtons();
   exitTrainer();
   const choice = document.querySelector('#side-seg .on').dataset.side;
   humanColor = choice === 'random' ? (Math.random() < 0.5 ? 'w' : 'b') : (choice === 'white' ? 'w' : 'b');
@@ -1274,18 +1371,24 @@ function newGame(){
 function previewIdea(){
   const line = BOOK[parseInt(els.trSelect.value, 10)];
   if (line && line.idea) els.trMeta.innerHTML = '<b>Idea:</b> ' + line.idea;
+  updateTrWatchLabel();
 }
 els.trSelect.addEventListener('change', previewIdea);
 previewIdea();
 
 els.trStart.addEventListener('click', () => {
   if (selfPlay) stopSelfPlay();
+  if (replaying) stopReplay();
   if (animating) return;
   startTrainer(parseInt(els.trSelect.value, 10));
 });
 
 els.trWatch.addEventListener('click', () => {
-  watchLineOut(parseInt(els.trSelect.value, 10));
+  if (selfPlay){ stopSelfPlay(); return; }
+  if (replaying){ stopReplay(); return; }
+  const idx = parseInt(els.trSelect.value, 10);
+  if (BOOK[idx].result) startReplay(idx);      // master game → move-by-move replay
+  else watchLineOut(idx);                        // opening line → engine plays it out
 });
 
 els.btnFinish.addEventListener('click', () => {
@@ -1313,7 +1416,8 @@ els.trHintMove.addEventListener('click', () => {
   const mv = game.move({ from:sq.from, to:sq.to, promotion:sq.promotion });
   if (!mv) return;
   trainer.ply++; hintSquares = null;
-  setTrStatus('good', '▸ ' + mv.san + ' — book.');
+  setTrStatus('good', '▸ ' + mv.san + (trainer.line.result ? '' : ' — book.'));
+  showNoteFor(trainer.ply - 1);
   applyMove(mv);
 });
 
