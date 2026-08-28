@@ -164,6 +164,7 @@
   .seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
   .seg button{border:none;border-radius:0;background:var(--panel-2);flex:1}
   .seg button.on{background:var(--brass);color:#1a130a}
+  .seg.wrap4 button{padding-left:4px;padding-right:4px;font-size:12px}
   /* Scoresheet */
   .moves-head{padding:10px 16px 4px;font-size:12px;color:var(--muted);letter-spacing:.4px;text-transform:uppercase}
   .moves{
@@ -341,6 +342,15 @@
       <div class="trainer">
         <div class="tr-body">
           <div class="field">
+            <label>Browse by</label>
+            <div class="seg wrap4" id="mg-facet">
+              <button data-facet="opening" class="on">Opening</button>
+              <button data-facet="hero">Player</button>
+              <button data-facet="theme">Theme</button>
+              <button data-facet="era">Era</button>
+            </div>
+          </div>
+          <div class="field">
             <label>Master game</label>
             <select id="mg-select"></select>
           </div>
@@ -378,7 +388,7 @@
   licensed <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noopener">GPLv3</a>.
   Rules by <a href="https://github.com/jhlywa/chess.js" target="_blank" rel="noopener">chess.js</a>.
   Piece artwork is original SVG for this project.
-  <span style="opacity:.6"> · build 2026-08-28 · games-tab</span>
+  <span style="opacity:.6"> · build 2026-08-28 · games-browse</span>
 </footer>
 
 <div class="promo-mask" id="promo-mask">
@@ -594,6 +604,7 @@ const els = {
   mgStatus: document.getElementById('mg-status'),
   mgNote: document.getElementById('mg-note'),
   mgWatch: document.getElementById('mg-watch'),
+  mgFacet: document.getElementById('mg-facet'),
   btnWatch: document.getElementById('btn-watch'),
   btnFinish: document.getElementById('btn-finish'),
   btnAnalyze: document.getElementById('btn-analyze'),
@@ -959,32 +970,47 @@ const BOOK = [
     moves:['c4','e5','Nc3','Nf6','Nf3','Nc6','g3','d5','cxd5','Nxd5','Bg2','Nb6','O-O','Be7'] },
 
   // ---- Master games: real historical games (moves are facts; play a legend's side).
-  //      `style` groups them; `eco` names the opening the game showcases. ----
-  { game:true, style:'Romantic era · attack', variation:'Morphy “Opera Game” · 1858', eco:'Philidor Defense', you:'w', result:'1–0',
-    white:'Morphy', black:'Duke & Count',
+  //      Each is tagged so it can be browsed by opening / player / theme / era. ----
+  { game:true, hero:'Morphy', opening:'Philidor Defense', theme:'Attack', era:'Romantic (1800s)',
+    variation:'Morphy “Opera Game” · 1858', you:'w', result:'1–0', white:'Morphy', black:'Duke & Count',
     idea:'Morphy vs the Duke of Brunswick & Count Isouard, Paris Opera 1858 — a textbook of rapid development and open lines.',
     moves:['e4','e5','Nf3','d6','d4','Bg4','dxe5','Bxf3','Qxf3','dxe5','Bc4','Nf6','Qb3','Qe7','Nc3','c6','Bg5','b5','Nxb5','cxb5','Bxb5+','Nbd7','O-O-O','Rd8','Rxd7','Rxd7','Rd1','Qe6','Bxd7+','Nxd7','Qb8+','Nxb8','Rd8#'],
     notes:{18:'10.Nxb5! A knight sacrifice to rip open the d-file against the stranded king.',30:'16.Qb8+!! The immortal queen sacrifice.',32:'17.Rd8# — checkmate. Every white piece developed; the black army but the king still asleep.'} },
-  { game:true, style:'Romantic era · attack', variation:'The “Immortal Game” · 1851', eco:"King's Gambit", you:'w', result:'1–0',
-    white:'Anderssen', black:'Kieseritzky',
+  { game:true, hero:'Anderssen', opening:"King's Gambit", theme:'Sacrifice', era:'Romantic (1800s)',
+    variation:'The “Immortal Game” · 1851', you:'w', result:'1–0', white:'Anderssen', black:'Kieseritzky',
     idea:'Anderssen vs Kieseritzky, London 1851 — the “Immortal Game”. White gives up a bishop, both rooks and the queen to mate with three minor pieces.',
     moves:['e4','e5','f4','exf4','Bc4','Qh4+','Kf1','b5','Bxb5','Nf6','Nf3','Qh6','d3','Nh5','Nh4','Qg5','Nf5','c6','g4','Nf6','Rg1','cxb5','h4','Qg6','h5','Qg5','Qf3','Ng8','Bxf4','Qf6','Nc3','Bc5','Nd5','Qxb2','Bd6','Bxg1','e5','Qxa1+','Ke2','Na6','Nxg7+','Kd8','Qf6+','Nxf6','Be7#'],
     notes:{34:'18.Bd6!! Offering both rooks to seize the dark squares.',42:'22.Qf6+!! The final sacrifice — Black is forced to capture.',44:'23.Be7# — mate by three minor pieces while Black still has a queen and both rooks.'} },
-  { game:true, style:'Romantic era · attack', variation:'The “Evergreen Game” · 1852', eco:'Evans Gambit', you:'w', result:'1–0',
-    white:'Anderssen', black:'Dufresne',
+  { game:true, hero:'Anderssen', opening:'Evans Gambit', theme:'Sacrifice', era:'Romantic (1800s)',
+    variation:'The “Evergreen Game” · 1852', you:'w', result:'1–0', white:'Anderssen', black:'Dufresne',
     idea:'Anderssen vs Dufresne, Berlin 1852 — the “Evergreen Game”. An Evans Gambit attack crowned by a storied queen sacrifice.',
     moves:['e4','e5','Nf3','Nc6','Bc4','Bc5','b4','Bxb4','c3','Ba5','d4','exd4','O-O','d3','Qb3','Qf6','e5','Qg6','Re1','Nge7','Ba3','b5','Qxb5','Rb8','Qa4','Bb6','Nbd2','Bb7','Ne4','Qf5','Bxd3','Qh5','Nf6+','gxf6','exf6','Rg8','Rad1','Qxf3','Rxe7+','Nxe7','Qxd7+','Kxd7','Bf5+','Ke8','Bd7+','Kf8','Bxe7#'],
     notes:{36:'19.Rad1!! Ignoring the threat to his own queen to strike first.',40:'20.Rxe7+! then 21.Qxd7+!! drag the king into a mating net.',46:'24.Bxe7# — checkmate.'} },
-  { game:true, style:'Modern · attack', variation:'Fischer–Benko · 1963', eco:'Pirc · Austrian Attack', you:'w', result:'1–0',
-    white:'Fischer', black:'Benko',
+  { game:true, hero:'Rubinstein', opening:'Tarrasch Defense', theme:'Combination', era:'Classical (early 1900s)',
+    variation:'Rotlewi–Rubinstein “Rubinstein’s Immortal” · 1907', you:'b', result:'0–1', white:'Rotlewi', black:'Rubinstein',
+    idea:'Rotlewi vs Rubinstein, Łódź 1907 — “Rubinstein’s Immortal”. A quiet build-up erupts into one of history’s most beautiful combinations.',
+    moves:['d4','d5','Nf3','e6','e3','c5','c4','Nc6','Nc3','Nf6','dxc5','Bxc5','a3','a6','b4','Bd6','Bb2','O-O','Qd2','Qe7','Bd3','dxc4','Bxc4','b5','Bd3','Rd8','Qe2','Bb7','O-O','Ne5','Nxe5','Bxe5','f4','Bc7','e4','Rac8','e5','Bb6+','Kh1','Ng4','Be4','Qh4','g3','Rxc3','gxh4','Rd2','Qxd2','Bxe4+','Qg2','Rh3'],
+    notes:{43:'22…Rxc3! Black ignores his attacked queen — the combination runs far deeper.',47:'24…Bxe4+ — the quiet point behind the storm.',49:'25…Rh3! and White resigned; …Rxh2 mate cannot be met.'} },
+  { game:true, hero:'Fischer', opening:'Pirc · Austrian Attack', theme:'Attack', era:'Modern (20th c.)',
+    variation:'Fischer–Benko · 1963', you:'w', result:'1–0', white:'Fischer', black:'Benko',
     idea:'Fischer vs Benko, US Championship 1963 — Pirc, Austrian Attack. A model kingside attack that ends with 19.Rf6!!',
     moves:['e4','g6','d4','Bg7','Nc3','d6','f4','Nf6','Nf3','O-O','Bd3','Bg4','h3','Bxf3','Qxf3','Nc6','Be3','e5','dxe5','dxe5','f5','gxf5','Qxf5','Nd4','Qf2','Ne8','O-O','Nd6','Qg3','Kh8','Qg4','c6','Qh5','Qe8','Bxd4','exd4','Rf6','Kg8','e5','h6','Ne2'],
     notes:{6:'The Austrian Attack: White seizes the centre and prepares f5.',36:'19.Rf6!! The rook is immune — 19…Bxf6 20.e5 shuts in the g7-bishop and Qxh6 crashes through.',38:'Slamming the door on the g7-bishop; f6 and h6 can no longer be defended.',40:'Ne2–f4 (or g3) and Qxh6 is unstoppable. Benko resigned.'} },
-  { game:true, style:'Counterattack (Black)', variation:'Byrne–Fischer “Game of the Century” · 1956', eco:'Grünfeld Defense', you:'b', result:'0–1',
-    white:'D. Byrne', black:'Fischer',
+  { game:true, hero:'Fischer', opening:'Grünfeld Defense', theme:'Counterattack', era:'Modern (20th c.)',
+    variation:'Byrne–Fischer “Game of the Century” · 1956', you:'b', result:'0–1', white:'D. Byrne', black:'Fischer',
     idea:'Donald Byrne vs 13-year-old Bobby Fischer, New York 1956. Fischer answers with 17…Be6!! and a cascade of counterblows — one of the greatest games ever played.',
     moves:['Nf3','Nf6','c4','g6','Nc3','Bg7','d4','O-O','Bf4','d5','Qb3','dxc4','Qxc4','c6','e4','Nbd7','Rd1','Nb6','Qc5','Bg4','Bg5','Na4','Qa3','Nxc3','bxc3','Nxe4','Bxe7','Qb6','Bc4','Nxc3','Bc5','Rfe8+','Kf1','Be6','Bxb6','Bxc4+','Kg1','Ne2+','Kf1','Nxd4+','Kg1','Ne2+','Kf1','Nc3+','Kg1','axb6','Qb4','Ra4','Qxb6','Nxd1','h3','Rxa2','Kh2','Nxf2','Re1','Rxe1','Qd8+','Bf8','Nxe1','Bd5','Nf3','Ne4','Qb8','b5','h4','h5','Ne5','Kg7','Kg1','Bc5+','Kf1','Ng3+','Ke1','Bb4+','Kd1','Bb3+','Kc1','Ne2+','Kb1','Nc3+','Kc1','Rc2#'],
     notes:{33:'17…Be6!! The move of the century — the queen is offered; grabbing it walks into a windmill.',81:'41…Rc2# — checkmate. Fischer, at 13, finishes in total harmony.'} },
+  { game:true, hero:'Fischer', opening:"Queen's Gambit Declined", theme:'Positional', era:'World Championship',
+    variation:'Fischer–Spassky · WCC 1972, Game 6', you:'w', result:'1–0', white:'Fischer', black:'Spassky',
+    idea:'Fischer vs Spassky, World Championship 1972, Game 6 — a flawless positional squeeze in the QGD. Even Spassky applauded at the end.',
+    moves:['c4','e6','Nf3','d5','d4','Nf6','Nc3','Be7','Bg5','O-O','e3','h6','Bh4','b6','cxd5','Nxd5','Bxe7','Qxe7','Nxd5','exd5','Rc1','Be6','Qa4','c5','Qa3','Rc8','Bb5','a6','dxc5','bxc5','O-O','Ra7','Be2','Nd7','Nd4','Qf8','Nxe6','fxe6','e4','d4','f4','Qe7','e5','Rb8','Bc4','Kh8','Qh3','Nf8','b3','a5','f5','exf5','Rxf5','Nh7','Rcf1','Qd8','Qg3','Re7','h4','Rbb7','e6','Rbc7','Qe5','Qe8','a4','Qd8','R1f2','Qe8','R2f3','Qd8','Bd3','Qe8','Qe4','Nf6','Rxf6','gxf6','Rxf6','Kg8','Bc4','Kh8','Qf4'],
+    notes:{52:'A textbook squeeze out of the QGD Tartakower — every white piece steadily improves.',74:'38.Rxf6! The breakthrough; Spassky resigned shortly after. Fischer’s finest positional win.'} },
+  { game:true, hero:'Kasparov', opening:'Pirc Defense', theme:'Attack', era:'Modern (20th c.)',
+    variation:'Kasparov–Topalov “Kasparov’s Immortal” · 1999', you:'w', result:'1–0', white:'Kasparov', black:'Topalov',
+    idea:'Kasparov vs Topalov, Wijk aan Zee 1999 — “Kasparov’s Immortal”. A rook sacrifice launches a king hunt from a7 all the way to d1.',
+    moves:['e4','d6','d4','Nf6','Nc3','g6','Be3','Bg7','Qd2','c6','f3','b5','Nge2','Nbd7','Bh6','Bxh6','Qxh6','Bb7','a3','e5','O-O-O','Qe7','Kb1','a6','Nc1','O-O-O','Nb3','exd4','Rxd4','c5','Rd1','Nb6','g3','Kb8','Na5','Ba8','Bh3','d5','Qf4+','Ka7','Rhe1','d4','Nd5','Nbxd5','exd5','Qd6','Rxd4','cxd4','Re7+','Kb6','Qxd4+','Kxa5','b4+','Ka4','Qc3','Qxd5','Ra7','Bb7','Rxb7','Qc4','Qxf6','Kxa3','Qxa6+','Kxb4','c3+','Kxc3','Qa1+','Kd2','Qb2+','Kd1','Bf1','Rd2','Rd7','Rxd7','Bxc4','bxc4','Qxh8','Rd3','Qa8','c3','Qa4+','Ke1','f4','f5','Kc1','Rd2','Qa7'],
+    notes:{46:'24.Rxd4!! A rook sacrifice tearing open the black king — the start of a famous king hunt.',48:'25.Re7+ and the king is dragged across the entire board, a7 → d1.'} },
 ];
 
 const stripSan = s => (s || '').replace(/[+#]/g, '');
@@ -1435,29 +1461,45 @@ function newGame(){
   if (game.turn() !== humanColor) engineMove();
 }
 
-/* ---- Opening trainer controls ---- */
-(function populateTrainer(){
-  const groupInto = (sel, keyFn, filterFn, optLabel) => {
-    const groups = {};
-    BOOK.forEach((l, i) => { if (!filterFn(l)) return; const k = keyFn(l); (groups[k] = groups[k] || []).push(i); });
-    const frag = document.createDocumentFragment();
-    for (const k of Object.keys(groups)){
-      const og = document.createElement('optgroup'); og.label = k;
-      for (const i of groups[k]){ const o = document.createElement('option'); o.value = i; o.textContent = optLabel(BOOK[i]); og.appendChild(o); }
-      frag.appendChild(og);
-    }
-    sel.appendChild(frag);
-  };
-  const side = l => l.you === 'w' ? 'White' : 'Black';
-  groupInto(els.trSelect, l => l.opening, l => !l.game, l => l.variation + '  (' + side(l) + ')');
-  groupInto(els.mgSelect, l => l.style,   l =>  l.game, l => l.variation + '  (You: ' + side(l) + ')');
-})();
+/* ---- Opening trainer + Master games controls ---- */
+const side = l => l.you === 'w' ? 'White' : 'Black';
+function groupSelect(sel, indices, keyFn, labelFn){
+  sel.innerHTML = '';
+  const groups = {}, order = [];
+  for (const i of indices){ const k = keyFn(BOOK[i]) || '—'; if (!groups[k]){ groups[k] = []; order.push(k); } groups[k].push(i); }
+  const frag = document.createDocumentFragment();
+  for (const k of order){
+    const og = document.createElement('optgroup'); og.label = k;
+    for (const i of groups[k]){ const o = document.createElement('option'); o.value = i; o.textContent = labelFn(BOOK[i]); og.appendChild(o); }
+    frag.appendChild(og);
+  }
+  sel.appendChild(frag);
+}
+const OPENING_IDX = BOOK.map((_, i) => i).filter(i => !BOOK[i].game);
+const GAME_IDX    = BOOK.map((_, i) => i).filter(i =>  BOOK[i].game);
+groupSelect(els.trSelect, OPENING_IDX, l => l.opening, l => l.variation + '  (' + side(l) + ')');
+
+let gameFacet = 'opening';
+function populateGames(){ groupSelect(els.mgSelect, GAME_IDX, l => l[gameFacet], l => l.variation + '  (You: ' + side(l) + ')'); }
+populateGames();
+
+els.mgFacet.addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  [...els.mgFacet.children].forEach(c => c.classList.remove('on'));
+  b.classList.add('on');
+  gameFacet = b.dataset.facet;
+  populateGames();
+  previewFor(uiGames);
+});
 
 function previewFor(uiSet){
   const line = BOOK[parseInt(uiSet.select.value, 10)];
   if (line){
     let meta = line.idea ? '<b>Idea:</b> ' + line.idea : '';
-    if (line.game && line.eco) meta += ` <span style="opacity:.7">· Opening shown: ${line.eco}</span>`;
+    if (line.game){
+      const bits = [line.opening, line.theme, line.era].filter(Boolean);
+      if (bits.length) meta += ` <span style="opacity:.7">· ${bits.join(' · ')}</span>`;
+    }
     uiSet.meta.innerHTML = meta;
   }
   updateTrWatchLabel();

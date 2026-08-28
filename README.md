@@ -74,11 +74,14 @@ Any static host works. Cloudflare Pages is the intended target here:
 - **Idea notes** on each opening line (the middlegame plan), and **PGN export**
   (Copy PGN) for saving or studying a game elsewhere.
 - **Master games** (its own tab) — play through real historical games move by
-  move with annotations, or auto-replay them. Grouped by playing style and
-  tagged with the opening each game showcases: Morphy's Opera Game, the
-  Immortal and Evergreen games, Fischer–Benko 1963, and Byrne–Fischer's "Game
-  of the Century". Move lists are facts (public game scores); you play a
-  legend's side. Every game is verified legal against chess.js.
+  move with annotations, or auto-replay them. **Browse by opening, player,
+  theme, or era** to find games you like. The library spans Morphy's Opera
+  Game, the Immortal and Evergreen games, Rubinstein's Immortal, Fischer–Benko,
+  Fischer's "Game of the Century", Fischer–Spassky 1972, and Kasparov's
+  Immortal — tagged so you can find, say, every Fischer game, every attacking
+  game, or a model game in your opening. Move lists are facts (public game
+  scores); you play a legend's side. Every game is verified legal against
+  chess.js.
 
 ## Upgrading to the multi-threaded engine
 
