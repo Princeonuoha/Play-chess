@@ -73,10 +73,12 @@ Any static host works. Cloudflare Pages is the intended target here:
   (White's perspective), so you can go deeper than the book from any position.
 - **Idea notes** on each opening line (the middlegame plan), and **PGN export**
   (Copy PGN) for saving or studying a game elsewhere.
-- **Master games** — play through real historical games (Fischer–Benko 1963,
-  Morphy's Opera Game) move by move with annotations at the key moments, or
-  auto-replay them. Move lists are facts (public game scores); you play a
-  legend's side. Verified legal against chess.js.
+- **Master games** (its own tab) — play through real historical games move by
+  move with annotations, or auto-replay them. Grouped by playing style and
+  tagged with the opening each game showcases: Morphy's Opera Game, the
+  Immortal and Evergreen games, Fischer–Benko 1963, and Byrne–Fischer's "Game
+  of the Century". Move lists are facts (public game scores); you play a
+  legend's side. Every game is verified legal against chess.js.
 
 ## Upgrading to the multi-threaded engine
 
