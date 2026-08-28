@@ -78,10 +78,11 @@ Any static host works. Cloudflare Pages is the intended target here:
   theme, or era** to find games you like. The library spans Morphy's Opera
   Game, the Immortal and Evergreen games, Rubinstein's Immortal, Fischer–Benko,
   Fischer's "Game of the Century", Fischer–Spassky 1972, and Kasparov's
-  Immortal — tagged so you can find, say, every Fischer game, every attacking
-  game, or a model game in your opening. Move lists are facts (public game
-  scores); you play a legend's side. Every game is verified legal against
-  chess.js.
+  Immortal, Steinitz–von Bardeleben, and Réti–Bogoljubov — tagged so you can
+  find, say, every Fischer game, every attacking game, or a model game in your
+  opening. There's also a **search box** (by player, opening, etc.). Move lists
+  are facts (public game scores); you play a legend's side. Every game is
+  verified legal against chess.js.
 
 ## Upgrading to the multi-threaded engine
 
