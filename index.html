@@ -127,7 +127,18 @@
   }
   .status.thinking .spinner{display:inline-block}
   @keyframes spin{to{transform:rotate(360deg)}}
-  .controls{padding:14px 16px;display:grid;gap:14px;border-bottom:1px solid var(--line)}
+  /* Tabs */
+  .tabs{display:flex;background:var(--panel-2);border-bottom:1px solid var(--line);padding:6px 8px;gap:4px}
+  .tab{
+    flex:1;font-family:inherit;font-size:13px;font-weight:600;color:var(--muted);
+    background:transparent;border:none;border-radius:8px;padding:9px 6px;cursor:pointer;
+    transition:background .15s,color .15s;letter-spacing:.2px;
+  }
+  .tab:hover{color:var(--ink)}
+  .tab.on{background:var(--brass);color:#1a130a}
+  .tab:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+  .tabpanel[hidden]{display:none}
+  .controls{padding:14px 16px;display:grid;gap:14px}
   .row{display:flex;gap:8px;flex-wrap:wrap}
   button{
     font-family:inherit;font-weight:600;font-size:13px;color:var(--ink);
@@ -258,71 +269,81 @@
 
     <div class="banner" id="banner"></div>
 
-    <div class="controls">
-      <div class="row">
-        <button class="primary" id="btn-new">New game</button>
-        <button id="btn-flip">Flip</button>
-        <button id="btn-undo">Take back</button>
-      </div>
-
-      <div class="row">
-        <button id="btn-finish">▶ Watch Stockfish finish this game</button>
-      </div>
-
-      <div class="field">
-        <label>Play as</label>
-        <div class="seg" id="side-seg">
-          <button data-side="white" class="on">White</button>
-          <button data-side="black">Black</button>
-          <button data-side="random">Random</button>
-        </div>
-      </div>
-
-      <div class="field">
-        <label>Engine strength <b id="elo-val">1861</b></label>
-        <input type="range" id="elo" min="0" max="20" value="8" />
-      </div>
-
-      <div class="field">
-        <label>Think time <b id="tt-val">1.0 s</b></label>
-        <input type="range" id="tt" min="100" max="3000" step="100" value="1000" />
-      </div>
-
-      <div class="row">
-        <button id="btn-watch">▶ Watch a full engine game</button>
-      </div>
+    <div class="tabs" id="tabs" role="tablist">
+      <button class="tab on" data-tab="play" role="tab" aria-selected="true">♟ Play</button>
+      <button class="tab" data-tab="train" role="tab" aria-selected="false">🎓 Train</button>
+      <button class="tab" data-tab="study" role="tab" aria-selected="false">🔍 Study</button>
     </div>
 
-    <div class="trainer">
-      <div class="moves-head" style="padding-top:12px">Opening trainer</div>
-      <div class="tr-body">
+    <div class="tabpanel" data-panel="play">
+      <div class="controls">
+        <div class="row">
+          <button class="primary" id="btn-new">New game</button>
+          <button id="btn-flip">Flip</button>
+          <button id="btn-undo">Take back</button>
+        </div>
+
+        <div class="row">
+          <button id="btn-finish">▶ Watch Stockfish finish this game</button>
+        </div>
+
         <div class="field">
-          <label>Line</label>
-          <select id="tr-select"></select>
+          <label>Play as</label>
+          <div class="seg" id="side-seg">
+            <button data-side="white" class="on">White</button>
+            <button data-side="black">Black</button>
+            <button data-side="random">Random</button>
+          </div>
         </div>
-        <div class="tr-meta" id="tr-meta">Pick a line and press Start. The app plays the theory for the other side; play your moves and it checks them against the book.</div>
+
+        <div class="field">
+          <label>Engine strength <b id="elo-val">1861</b></label>
+          <input type="range" id="elo" min="0" max="20" value="8" />
+        </div>
+
+        <div class="field">
+          <label>Think time <b id="tt-val">1.0 s</b></label>
+          <input type="range" id="tt" min="100" max="3000" step="100" value="1000" />
+        </div>
+
         <div class="row">
-          <button class="primary" id="tr-start">Start line</button>
-          <button id="tr-hintmove" disabled>Play book move</button>
+          <button id="btn-watch">▶ Watch a full engine game</button>
         </div>
-        <div class="row">
-          <button id="tr-watch">▶ Watch Stockfish play this line out</button>
-        </div>
-        <div class="row" style="align-items:center">
-          <label class="chk"><input type="checkbox" id="tr-hints" /> Show hint (highlight the book move)</label>
-        </div>
-        <div class="tr-status" id="tr-status"></div>
-        <div class="tr-note" id="tr-note"></div>
       </div>
     </div>
 
-    <div class="analysis">
-      <div class="moves-head hdr-row" style="padding-top:12px"><span>Analysis</span><button id="btn-analyze" class="mini">Analyze position</button></div>
-      <div class="an-body" id="an-body"><div class="an-empty">Press “Analyze” for Stockfish’s top moves in the current position (full strength).</div></div>
+    <div class="tabpanel" data-panel="train" hidden>
+      <div class="trainer">
+        <div class="tr-body">
+          <div class="field">
+            <label>Opening line or master game</label>
+            <select id="tr-select"></select>
+          </div>
+          <div class="tr-meta" id="tr-meta">Pick a line and press Start. The app plays the theory for the other side; play your moves and it checks them against the book.</div>
+          <div class="row">
+            <button class="primary" id="tr-start">Start line</button>
+            <button id="tr-hintmove" disabled>Play book move</button>
+          </div>
+          <div class="row">
+            <button id="tr-watch">▶ Watch Stockfish play this line out</button>
+          </div>
+          <div class="row" style="align-items:center">
+            <label class="chk"><input type="checkbox" id="tr-hints" /> Show hint (highlight the book move)</label>
+          </div>
+          <div class="tr-status" id="tr-status"></div>
+          <div class="tr-note" id="tr-note"></div>
+        </div>
+      </div>
     </div>
 
-    <div class="moves-head hdr-row"><span>Scoresheet</span><button id="btn-pgn" class="mini">Copy PGN</button></div>
-    <div class="moves" id="moves"><div class="empty">No moves yet.</div></div>
+    <div class="tabpanel" data-panel="study" hidden>
+      <div class="analysis">
+        <div class="moves-head hdr-row"><span>Analysis</span><button id="btn-analyze" class="mini">Analyze position</button></div>
+        <div class="an-body" id="an-body"><div class="an-empty">Press “Analyze” for Stockfish’s top moves in the current position (full strength).</div></div>
+      </div>
+      <div class="moves-head hdr-row"><span>Scoresheet</span><button id="btn-pgn" class="mini">Copy PGN</button></div>
+      <div class="moves" id="moves"><div class="empty">No moves yet.</div></div>
+    </div>
   </aside>
 </main>
 
@@ -332,7 +353,7 @@
   licensed <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noopener">GPLv3</a>.
   Rules by <a href="https://github.com/jhlywa/chess.js" target="_blank" rel="noopener">chess.js</a>.
   Piece artwork is original SVG for this project.
-  <span style="opacity:.6"> · build 2026-08-28 · master-games</span>
+  <span style="opacity:.6"> · build 2026-08-28 · tabs</span>
 </footer>
 
 <div class="promo-mask" id="promo-mask">
@@ -1429,6 +1450,18 @@ els.trHints.addEventListener('change', () => {
     ? squaresForSan(trainer.line.moves[trainer.ply]) : null;
   renderHighlights();
 });
+
+/* ------------------------------ Tabs ------------------------------ */
+(function tabs(){
+  const bar = document.getElementById('tabs');
+  const panels = document.querySelectorAll('.tabpanel');
+  function show(name){
+    [...bar.children].forEach(t => { const on = t.dataset.tab === name; t.classList.toggle('on', on); t.setAttribute('aria-selected', on); });
+    panels.forEach(p => { p.hidden = p.dataset.panel !== name; });
+  }
+  bar.addEventListener('click', e => { const b = e.target.closest('.tab'); if (b) show(b.dataset.tab); });
+  window.showTab = show;   // let actions jump to a tab
+})();
 
 /* ------------------------------ Boot ------------------------------ */
 renderSquares(); renderAll(); updateEloLabel();
