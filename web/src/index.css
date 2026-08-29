@@ -1,0 +1,27 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #0f151b;
+  --color-panel: #161d25;
+  --color-panel-2: #1b232d;
+  --color-line: #2a333f;
+  --color-ink: #e7ecf1;
+  --color-muted: #8c98a6;
+  --color-brass: #c69a52;
+  --color-brass-2: #d9ad60;
+  --color-board-l: #eeeed2;
+  --color-board-d: #769656;
+  --font-display: "Archivo", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+html, body, #root { height: 100%; }
+body {
+  margin: 0;
+  background:
+    radial-gradient(1200px 600px at 85% -12%, color-mix(in oklab, var(--color-brass) 10%, transparent) 0, transparent 60%),
+    var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-display);
+  -webkit-font-smoothing: antialiased;
+}
