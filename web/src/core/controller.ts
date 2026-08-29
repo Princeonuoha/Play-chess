@@ -17,6 +17,35 @@ export interface AnalysisLine {
   best: boolean
 }
 
+export type MoveLabel = 'Best' | 'Good' | 'Inaccuracy' | 'Mistake' | 'Blunder'
+
+export interface ReviewItem {
+  ply: number
+  moveNo: number
+  side: 'w' | 'b'
+  san: string
+  label: MoveLabel
+  lossCp: number | null
+  betterSan: string | null
+  betterPv: string | null
+  evalWhite: string
+  isYou: boolean
+}
+
+export interface StoryLine {
+  kind: 'opening' | 'master'
+  title: string
+  text: string
+}
+
+export interface ReviewState {
+  running: boolean
+  done: boolean
+  progress: string
+  items: ReviewItem[]
+  story: StoryLine[]
+}
+
 export interface Snapshot {
   engineTag: string
   statusWho: string
@@ -33,6 +62,8 @@ export interface Snapshot {
   sessionKey: SetKey
   train: SessionSlot
   games: SessionSlot
+  review: ReviewState | null
+  reviewPly: number | null
 }
 
 const FILES = 'abcdefgh'
@@ -77,6 +108,12 @@ export class ChessController {
   private evalFrac = 0.5
   private evalLabel = '0.0'
   private analysis: AnalysisLine[] | null = null
+  private review: ReviewState | null = null
+  private reviewing = false
+  private reviewCollect: { cp: number; mate: number | null; pv: string[]; bestUci: string } | null = null
+  private reviewResolve: (() => void) | null = null
+  private reviewPly: number | null = null
+  private viewGame: Chess | null = null
   private sessionKey: SetKey = 'train'
   private slots: Record<SetKey, SessionSlot> = {
     train: { statusHtml: '', note: '', hintDisabled: true },
@@ -186,6 +223,8 @@ export class ChessController {
       sessionKey: this.sessionKey,
       train: { ...this.slots.train },
       games: { ...this.slots.games },
+      review: this.review,
+      reviewPly: this.reviewPly,
     }
   }
 
@@ -245,9 +284,14 @@ export class ChessController {
     }
   }
 
+  private pos(): Chess {
+    return this.viewGame || this.game
+  }
+
   private renderPieces() {
     this.elPieces.innerHTML = ''
-    const board = this.game.board()
+    const p = this.pos()
+    const board = p.board()
     for (const row of board) {
       for (const cell of row) {
         if (!cell) continue
@@ -260,6 +304,7 @@ export class ChessController {
         el.style.top = top + '%'
         el.innerHTML = pieceSVG(cell.type, cell.color)
         if (
+          !this.viewGame &&
           cell.color === this.game.turn() &&
           cell.color === this.humanColor &&
           !this.thinking &&
@@ -291,9 +336,10 @@ export class ChessController {
       add(this.hintSquares.to, 'hint')
     }
     if (this.selected) add(this.selected, 'sel')
-    if (this.game.inCheck()) {
-      const turn = this.game.turn()
-      for (const row of this.game.board())
+    const p = this.pos()
+    if (p.inCheck()) {
+      const turn = p.turn()
+      for (const row of p.board())
         for (const c of row) if (c && c.type === 'k' && c.color === turn) add(c.square, 'check')
     }
   }
@@ -461,6 +507,13 @@ export class ChessController {
   }
 
   private onBest(uci: string) {
+    if (this.reviewing) {
+      if (this.reviewCollect) this.reviewCollect.bestUci = uci
+      const done = this.reviewResolve
+      this.reviewResolve = null
+      done && done()
+      return
+    }
     if (this.analyzing) {
       this.finishAnalysis()
       return
@@ -486,6 +539,22 @@ export class ChessController {
   }
 
   private onInfo(line: string) {
+    if (this.reviewing) {
+      if (this.reviewCollect) {
+        const sc = line.match(/score (cp|mate) (-?\d+)/)
+        const pvm = line.match(/ pv (.+)$/)
+        if (sc) {
+          if (sc[1] === 'cp') {
+            this.reviewCollect.cp = parseInt(sc[2], 10)
+            this.reviewCollect.mate = null
+          } else {
+            this.reviewCollect.mate = parseInt(sc[2], 10)
+          }
+        }
+        if (pvm) this.reviewCollect.pv = pvm[1].trim().split(/\s+/)
+      }
+      return
+    }
     if (this.analyzing) {
       this.collectAnalysis(line)
       return
@@ -592,6 +661,7 @@ export class ChessController {
 
   startTrainer(idx: number, set: SetKey, hints: boolean) {
     this.epoch++
+    this.exitReview()
     this.stopReplay()
     this.sessionKey = set
     const line = BOOK[idx]
@@ -631,6 +701,7 @@ export class ChessController {
   /* -------------------------- replay -------------------------- */
   startReplay(idx: number, set: SetKey) {
     this.epoch++
+    this.exitReview()
     this.stopSelfPlay()
     this.exitTrainer()
     this.sessionKey = set
@@ -703,6 +774,7 @@ export class ChessController {
   }
   watchFullGame() {
     this.epoch++
+    this.exitReview()
     this.stopSelfPlay()
     this.exitTrainer()
     this.game.reset()
@@ -734,6 +806,7 @@ export class ChessController {
   }
   watchLineOut(idx: number) {
     this.epoch++
+    this.exitReview()
     const line = BOOK[idx]
     this.stopSelfPlay()
     this.stopReplay()
@@ -873,6 +946,265 @@ export class ChessController {
     this.emit()
   }
 
+  /* -------------------------- game review -------------------------- */
+  // Analyse each position once, then derive per-move accuracy and the stronger
+  // move, and narrate any known opening / master game the game followed.
+  private evalPosition(fen: string, movetime: number): Promise<void> {
+    return new Promise((resolve) => {
+      this.reviewCollect = { cp: 0, mate: null, pv: [], bestUci: '' }
+      this.reviewResolve = resolve
+      this.engine.whenReady().then(() => {
+        this.engine.setStrength('max')
+        this.engine.setMultiPV(1)
+        this.engine.go(fen, movetime)
+      })
+    })
+  }
+
+  private static scoreVal(cp: number, mate: number | null): number {
+    if (mate !== null) return mate > 0 ? 100000 - mate * 100 : -100000 - mate * 100
+    return cp
+  }
+
+  private static uciToSan(fen: string, uci: string): string | null {
+    try {
+      const t = new Chess(fen)
+      const mv = t.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci.length > 4 ? uci[4] : undefined })
+      return mv ? mv.san : null
+    } catch (e) {
+      return null
+    }
+  }
+
+  private static uciPvToSan(fen: string, pv: string[], max = 5): string {
+    const t = new Chess(fen)
+    const sans: string[] = []
+    for (const uci of pv.slice(0, max)) {
+      const mv = t.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci.length > 4 ? uci[4] : undefined })
+      if (!mv) break
+      sans.push(mv.san)
+    }
+    // number them from the pv's starting position
+    const parts = fen.split(' ')
+    let n = parseInt(parts[5], 10) || 1
+    let white = parts[1] === 'w'
+    let out = ''
+    for (let i = 0; i < sans.length; i++) {
+      if (white) out += n + '.'
+      else if (i === 0) out += n + '…'
+      out += sans[i] + ' '
+      if (!white) n++
+      white = !white
+    }
+    return out.trim()
+  }
+
+  async reviewGame(movetime = 400) {
+    if (this.selfPlay || this.replaying || this.reviewing) return
+    const sans = this.game.history()
+    if (!sans.length) return
+    // Reconstruct every position (FEN) the game passed through.
+    const walker = new Chess()
+    const fens: string[] = [walker.fen()]
+    for (const san of sans) {
+      walker.move(san)
+      fens.push(walker.fen())
+    }
+
+    this.epoch++
+    const myEpoch = this.epoch
+    this.reviewing = true
+    this.thinking = false
+    this.engine.stop()
+    const story = this.computeStory(sans)
+    this.review = { running: true, done: false, progress: `Reviewing… 0/${sans.length}`, items: [], story }
+    this.emit()
+
+    // Analyse each position once → score (side-to-move) + best move.
+    const scores: number[] = []
+    const bestUci: string[] = []
+    const bestPvSan: string[] = []
+    for (let i = 0; i < fens.length; i++) {
+      if (myEpoch !== this.epoch) {
+        this.reviewing = false
+        return
+      }
+      // Follow along on the board so the review feels alive.
+      this.viewGame = new Chess(fens[i])
+      this.reviewPly = i - 1 >= 0 ? i - 1 : null
+      const h = new Chess()
+      let last: { from: string; to: string } | null = null
+      for (let k = 0; k < i; k++) {
+        const mv = h.move(sans[k])
+        if (k === i - 1 && mv) last = { from: mv.from, to: mv.to }
+      }
+      this.lastMove = last
+      this.renderPieces()
+      this.renderHighlights()
+
+      await this.evalPosition(fens[i], movetime)
+      const c = this.reviewCollect!
+      scores[i] = ChessController.scoreVal(c.cp, c.mate)
+      bestUci[i] = c.bestUci
+      bestPvSan[i] = ChessController.uciPvToSan(fens[i], c.pv)
+      this.review = { ...this.review!, progress: `Reviewing… ${Math.min(i + 1, sans.length)}/${sans.length}` }
+      this.emit()
+    }
+
+    // Derive per-move labels.
+    const items: ReviewItem[] = []
+    for (let i = 0; i < sans.length; i++) {
+      const turn: 'w' | 'b' = fens[i].split(' ')[1] === 'w' ? 'w' : 'b'
+      const bestScore = scores[i]
+      const playedScore = -scores[i + 1]
+      const loss = Math.max(0, bestScore - playedScore)
+      const playedBest = !!bestUci[i] && this.movesEqual(fens[i], sans[i], bestUci[i])
+      let label: MoveLabel
+      if (playedBest || loss <= 15) label = 'Best'
+      else if (loss <= 90) label = 'Good'
+      else if (loss <= 175) label = 'Inaccuracy'
+      else if (loss <= 330) label = 'Mistake'
+      else label = 'Blunder'
+      // eval after the move, White's perspective
+      const afterStm = scores[i + 1]
+      const afterTurn: 'w' | 'b' = fens[i + 1].split(' ')[1] === 'w' ? 'w' : 'b'
+      const white = afterTurn === 'w' ? afterStm : -afterStm
+      const evalWhite = this.fmtScore(white)
+      const betterSan = label === 'Best' ? null : ChessController.uciToSan(fens[i], bestUci[i])
+      items.push({
+        ply: i,
+        moveNo: Math.floor(i / 2) + 1,
+        side: turn,
+        san: sans[i],
+        label,
+        lossCp: label === 'Best' ? null : Math.round(loss),
+        betterSan,
+        betterPv: label === 'Best' ? null : bestPvSan[i] || null,
+        evalWhite,
+        isYou: turn === this.humanColor,
+      })
+    }
+
+    this.reviewing = false
+    this.viewGame = null
+    this.reviewPly = null
+    this.renderPieces()
+    this.renderHighlights()
+    this.review = { running: false, done: true, progress: '', items, story }
+    this.emit()
+  }
+
+  private fmtScore(whiteCp: number): string {
+    if (Math.abs(whiteCp) >= 90000) {
+      const mate = Math.round((100000 - Math.abs(whiteCp)) / 100)
+      return (whiteCp > 0 ? '#' : '#-') + Math.max(1, mate)
+    }
+    const v = whiteCp / 100
+    return (v >= 0 ? '+' : '') + v.toFixed(1)
+  }
+
+  private movesEqual(fen: string, san: string, uci: string): boolean {
+    const s = ChessController.uciToSan(fen, uci)
+    return !!s && sanEq(s, san)
+  }
+
+  private computeStory(sans: string[]): StoryLine[] {
+    const prefixLen = (moves: string[]) => {
+      let n = 0
+      const max = Math.min(moves.length, sans.length)
+      while (n < max && sanEq(moves[n], sans[n])) n++
+      return n
+    }
+    const out: StoryLine[] = []
+
+    // Best-matching opening (non-game book line).
+    let bestOpen = -1
+    let bestOpenLen = 0
+    let bestGame = -1
+    let bestGameLen = 0
+    for (let i = 0; i < BOOK.length; i++) {
+      const len = prefixLen(BOOK[i].moves)
+      if (BOOK[i].game) {
+        if (len > bestGameLen) {
+          bestGameLen = len
+          bestGame = i
+        }
+      } else if (len > bestOpenLen) {
+        bestOpenLen = len
+        bestOpen = i
+      }
+    }
+
+    if (bestOpen >= 0 && bestOpenLen >= 4) {
+      const l = BOOK[bestOpen]
+      const moveNo = Math.ceil(bestOpenLen / 2)
+      const cont = l.moves.slice(bestOpenLen, bestOpenLen + 4).join(' ')
+      let text = `You followed the ${l.opening} — ${l.variation} for the first ${moveNo} move${moveNo > 1 ? 's' : ''}.`
+      if (l.idea) text += ` ${l.idea}`
+      if (bestOpenLen < l.moves.length && cont) text += ` The book continues ${cont}.`
+      out.push({ kind: 'opening', title: `${l.opening} — ${l.variation}`, text })
+    }
+
+    if (bestGame >= 0 && bestGameLen >= 4) {
+      const l = BOOK[bestGame]
+      const moveNo = Math.ceil(bestGameLen / 2)
+      let text = `Your game tracked ${l.variation} (${l.white} vs ${l.black}, ${l.result}) through move ${moveNo}.`
+      if (bestGameLen >= l.moves.length) {
+        text += ` You reproduced the entire game.`
+      } else {
+        const theirs = l.moves[bestGameLen]
+        const mover = bestGameLen % 2 === 0 ? l.white : l.black
+        text += ` There ${mover} played ${stripSan(theirs)}`
+        const note = l.notes && l.notes[bestGameLen]
+        if (note) text += ` — ${note}`
+        else text += `, and the game went on to finish ${l.result}.`
+      }
+      out.push({ kind: 'master', title: l.variation, text })
+    }
+
+    return out
+  }
+
+  gotoPly(ply: number) {
+    // Show the position AFTER the given ply (0-indexed) without touching the live game.
+    const sans = this.game.history()
+    const t = new Chess()
+    let last: { from: string; to: string } | null = null
+    for (let k = 0; k <= ply && k < sans.length; k++) {
+      const mv = t.move(sans[k])
+      if (k === ply && mv) last = { from: mv.from, to: mv.to }
+    }
+    this.viewGame = t
+    this.reviewPly = ply
+    this.selected = null
+    this.lastMove = last
+    this.renderPieces()
+    this.renderHighlights()
+    this.emit()
+  }
+
+  resumeGame() {
+    this.viewGame = null
+    this.reviewPly = null
+    this.selected = null
+    const h = this.game.history({ verbose: true }) as any[]
+    this.lastMove = h.length ? { from: h[h.length - 1].from, to: h[h.length - 1].to } : null
+    this.renderAll()
+  }
+
+  clearReview() {
+    this.review = null
+    this.resumeGame()
+  }
+
+  // Drop any review view/state (called when switching game modes).
+  private exitReview() {
+    this.reviewing = false
+    this.review = null
+    this.viewGame = null
+    this.reviewPly = null
+  }
+
   /* -------------------------- PGN -------------------------- */
   getPGN(): string | null {
     if (this.game.history().length === 0) return null
@@ -930,6 +1262,7 @@ export class ChessController {
   undo() {
     if (this.thinking || this.animating || this.selfPlay || this.replaying) return
     this.epoch++
+    this.exitReview()
     if (this.game.history().length === 0) return
     this.game.undo()
     if (this.game.turn() !== this.humanColor && this.game.history().length > 0) this.game.undo()
@@ -952,6 +1285,7 @@ export class ChessController {
 
   newGame(sideChoice: 'white' | 'black' | 'random') {
     this.epoch++
+    this.exitReview()
     this.selfPlay = false
     this.engineExpected = false
     this.engine.stop()
@@ -983,6 +1317,8 @@ export class ChessController {
       !this.selfPlay &&
       !this.replaying &&
       !this.analyzing &&
+      !this.reviewing &&
+      !this.viewGame &&
       !this.game.isGameOver() &&
       this.game.turn() === this.humanColor
     )

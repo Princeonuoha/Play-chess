@@ -1,7 +1,22 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ChessController, type Snapshot, type SetKey } from './core/controller'
+import { ChessController, type Snapshot, type SetKey, type MoveLabel } from './core/controller'
 import { pieceSVG } from './core/pieces'
 import { BOOK, OPENING_IDX, GAME_IDX, side, type BookLine } from './core/book'
+
+const LABEL_STYLE: Record<MoveLabel, string> = {
+  Best: 'bg-[#7ea86a]/20 text-[#9fca88] border-[#7ea86a]/40',
+  Good: 'bg-[#5f9ea0]/20 text-[#8fc7c9] border-[#5f9ea0]/40',
+  Inaccuracy: 'bg-[#d6a95d]/20 text-[#e0bd7c] border-[#d6a95d]/40',
+  Mistake: 'bg-[#d08a3e]/20 text-[#e2a869] border-[#d08a3e]/45',
+  Blunder: 'bg-[#c0453f]/20 text-[#e08078] border-[#c0453f]/45',
+}
+const LABEL_ICON: Record<MoveLabel, string> = {
+  Best: '★',
+  Good: '✓',
+  Inaccuracy: '?!',
+  Mistake: '?',
+  Blunder: '??',
+}
 
 type Tab = 'play' | 'train' | 'games' | 'study'
 type Facet = 'opening' | 'hero' | 'theme' | 'era'
@@ -220,6 +235,12 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Leaving Study while viewing a reviewed position restores the live board.
+  useEffect(() => {
+    if (tab !== 'study' && snap?.reviewPly != null) ctrl.resumeGame()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab])
+
   const openGroups = useMemo(() => openingGroups(), [])
   const gGroups = useMemo(() => gameGroups(facet, search), [facet, search])
 
@@ -262,6 +283,8 @@ export default function App() {
   const watchLabel = (set: SetKey, idle: string) =>
     replaying && sessionKey === set ? '■ Stop replay' : selfPlay ? '■ Stop' : idle
 
+  const review = snap?.review ?? null
+  const reviewPly = snap?.reviewPly ?? null
   const history = snap?.history ?? []
   const rows: { n: number; w: string; b: string }[] = []
   for (let i = 0; i < history.length; i += 2) rows.push({ n: i / 2 + 1, w: history[i] || '', b: history[i + 1] || '' })
@@ -504,10 +527,111 @@ export default function App() {
 
             {tab === 'study' && (
               <>
+                {/* Game review */}
                 <div className="flex items-center justify-between">
-                  <span className="text-xs uppercase tracking-wide text-[var(--color-muted)]">Analysis</span>
+                  <span className="text-xs uppercase tracking-wide text-[var(--color-muted)]">Game review</span>
+                  <div className="flex gap-2">
+                    {review && (
+                      <Btn onClick={() => ctrl.clearReview()} className="min-h-0 flex-none px-3 py-1.5">
+                        Clear
+                      </Btn>
+                    )}
+                    <Btn
+                      primary
+                      disabled={review?.running || !history.length}
+                      onClick={() => ctrl.reviewGame()}
+                      className="min-h-0 flex-none px-3 py-1.5"
+                    >
+                      {review?.running ? 'Reviewing…' : 'Review game'}
+                    </Btn>
+                  </div>
+                </div>
+
+                {!review && (
+                  <div className="text-xs italic leading-relaxed text-[var(--color-muted)]">
+                    Play or load a game, then “Review game”: Stockfish grades every move, shows the stronger move you
+                    missed, and — where your game followed a known line — tells you how the masters handled it.
+                  </div>
+                )}
+
+                {review?.running && (
+                  <div className="flex items-center gap-2 text-sm text-[var(--color-muted)]">
+                    <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-[var(--color-brass)] border-r-transparent" />
+                    {review.progress}
+                  </div>
+                )}
+
+                {/* Story cards from the games DB */}
+                {review?.story.map((s, i) => (
+                  <div
+                    key={i}
+                    className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-[13px] leading-relaxed"
+                  >
+                    <div className="mb-1 flex items-center gap-2">
+                      <span
+                        className={
+                          'rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ' +
+                          (s.kind === 'master'
+                            ? 'border-[var(--color-brass)]/50 text-[var(--color-brass)]'
+                            : 'border-white/15 text-[var(--color-muted)]')
+                        }
+                      >
+                        {s.kind === 'master' ? 'From the masters' : 'Opening'}
+                      </span>
+                      <span className="font-semibold">{s.title}</span>
+                    </div>
+                    <div className="text-[var(--color-muted)]">{s.text}</div>
+                  </div>
+                ))}
+
+                {/* Per-move grades */}
+                {review && review.items.length > 0 && (
+                  <>
+                    {reviewPly !== null && (
+                      <Btn onClick={() => ctrl.resumeGame()} className="min-h-0 flex-none px-3 py-1.5">
+                        ← Back to final position
+                      </Btn>
+                    )}
+                    <div className="max-h-80 divide-y divide-white/5 overflow-auto rounded-xl border border-white/10">
+                      {review.items.map((it) => (
+                        <button
+                          key={it.ply}
+                          onClick={() => ctrl.gotoPly(it.ply)}
+                          className={
+                            'flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] transition hover:bg-white/[0.04] ' +
+                            (reviewPly === it.ply ? 'bg-[var(--color-brass)]/10 ring-1 ring-inset ring-[var(--color-brass)]/40' : '')
+                          }
+                        >
+                          <span className="w-9 shrink-0 text-right font-mono text-xs text-[var(--color-muted)]">
+                            {it.moveNo}{it.side === 'w' ? '.' : '…'}
+                          </span>
+                          <span className="w-14 shrink-0 font-mono font-semibold">{it.san}</span>
+                          <span
+                            className={'shrink-0 rounded-md border px-1.5 py-0.5 text-[10px] font-bold ' + LABEL_STYLE[it.label]}
+                            title={it.lossCp != null ? `-${(it.lossCp / 100).toFixed(1)} vs best` : 'Top engine move'}
+                          >
+                            {LABEL_ICON[it.label]} {it.label}
+                          </span>
+                          <span className="ml-auto shrink-0 font-mono text-xs text-[var(--color-muted)]">{it.evalWhite}</span>
+                          {it.betterSan && (
+                            <span className="hidden shrink-0 font-mono text-[11px] text-[#9fca88] sm:inline">
+                              ▸ {it.betterSan}
+                            </span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="text-[11px] leading-relaxed text-[var(--color-muted)]">
+                      Tap a move to see it on the board. “Better” shows the engine’s top move when you missed it.
+                    </div>
+                  </>
+                )}
+
+                {/* Position analysis */}
+                <div className="flex items-center justify-between border-t border-white/10 pt-3">
+                  <span className="text-xs uppercase tracking-wide text-[var(--color-muted)]">Analyze position</span>
                   <Btn disabled={snap?.analyzing} onClick={() => ctrl.analyze()} className="min-h-0 flex-none px-3 py-1.5">
-                    {snap?.analyzing ? 'Analyzing…' : 'Analyze position'}
+                    {snap?.analyzing ? 'Analyzing…' : 'Analyze'}
                   </Btn>
                 </div>
                 <div className="grid gap-1.5">
@@ -520,10 +644,12 @@ export default function App() {
                     ))
                   ) : (
                     <div className="text-xs italic text-[var(--color-muted)]">
-                      Press “Analyze” for Stockfish’s top moves in the current position (full strength).
+                      Stockfish’s top moves in the current position (full strength).
                     </div>
                   )}
                 </div>
+
+                {/* Scoresheet */}
                 <div className="flex items-center justify-between border-t border-white/10 pt-3">
                   <span className="text-xs uppercase tracking-wide text-[var(--color-muted)]">Scoresheet</span>
                   <Btn onClick={copyPGN} className="min-h-0 flex-none px-3 py-1.5">
