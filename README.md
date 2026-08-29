@@ -7,20 +7,33 @@ Play at **play.chesswithprince.com** — test your lines against the strongest v
 of Stockfish, right in the browser.
 
 ```
-index.html        the whole app — markup, styles, logic, piece artwork
-engine/           Stockfish files (optional, see below)
+web/              the app — React + TypeScript + Tailwind (Vite)
+  src/core/       framework-agnostic engine + board + trainer + review controller
+  src/App.tsx     the UI (Play / Openings / Games / Study)
+dist/             built, deployable output (committed; wrangler serves this)
+engine/           self-hosted Stockfish files (copied into dist on build)
+index.html        the original single-file app (kept for reference; not deployed)
 ```
 
 ## Run it locally
 
-`file://` won't work — Web Workers and `fetch` require a real origin.
+```bash
+cd web
+npm install
+npm run dev        # Vite dev server, http://localhost:5173
+```
+
+Or build and serve the production bundle exactly as it deploys:
 
 ```bash
-python3 -m http.server 8000
+npm --prefix web run build   # writes dist/ (app + engine + _headers)
+cd dist && python3 -m http.server 8000
 # open http://localhost:8000
 ```
 
-Out of the box the engine loads from jsDelivr, so this works immediately.
+`file://` won't work — Web Workers and `fetch` require a real origin. The build
+copies `engine/` into `dist/`, so Stockfish is self-hosted; if the local files
+are missing it falls back to jsDelivr.
 
 ## Serve the engine yourself (recommended for production)
 
@@ -40,14 +53,20 @@ download it once.
 
 ## Deploy
 
-Any static host works. Cloudflare Pages is the intended target here:
+Deployed as a Cloudflare Worker with static assets. `wrangler.jsonc` serves the
+`dist/` directory and attaches **play.chesswithprince.com** as a custom domain.
 
-1. Push this folder to a Git repo (done — this repo).
-2. In the Cloudflare dashboard: **Workers & Pages → Create → Pages → Connect to Git**,
-   point it at this repo. No build command, output directory `/`.
-3. Add **play.chesswithprince.com** as a custom domain and follow the DNS instructions.
-   Because the apex `chesswithprince.com` already lives on Cloudflare, the `play`
-   subdomain is a CNAME that Cloudflare wires up for you. TLS is automatic.
+`dist/` is committed, so the connected Git build only needs to run
+`npx wrangler deploy` — no CI build step required. After changing anything under
+`web/`, rebuild and commit the output before pushing:
+
+```bash
+npm --prefix web run build   # regenerates dist/ (app + engine + _headers)
+git add dist && git commit -m "Rebuild" && git push
+```
+
+Because the apex `chesswithprince.com` already lives on Cloudflare, `custom_domain: true`
+provisions the `play` subdomain's DNS record and TLS certificate on deploy.
 
 ## Features
 

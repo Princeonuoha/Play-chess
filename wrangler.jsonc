@@ -7,9 +7,10 @@
   "workers_dev": true,
   "observability": { "enabled": true },
 
-  // Serve the repository root as static assets. `.assetsignore` keeps VCS and
-  // config files out of what gets published.
-  "assets": { "directory": "." },
+  // Serve the built React app (Vite output). `npm --prefix web run build`
+  // writes the app + Stockfish engine + `_headers` into dist/, which is
+  // committed so `npx wrangler deploy` publishes it with no CI build step.
+  "assets": { "directory": "dist" },
 
   // Attach the custom domain. Because chesswithprince.com is already a zone in
   // this Cloudflare account, `custom_domain: true` provisions the DNS record and
