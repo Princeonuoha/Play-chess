@@ -25,3 +25,83 @@ body {
   font-family: var(--font-display);
   -webkit-font-smoothing: antialiased;
 }
+
+/* ---- Board + eval bar + promotion + scoresheet (plain CSS, ported verbatim
+   from the tested app so the board behaves and looks identical). ---- */
+:root {
+  --light-sq: #eeeed2;
+  --dark-sq: #769656;
+  --brass: #c69a52;
+  --brass-dim: #9c793d;
+  --line: #2a333f;
+  --ink: #e7ecf1;
+  --muted: #8c98a6;
+  --panel: #161d25;
+  --panel-2: #1c242e;
+  --sel: #c69a5266;
+  --last: #c69a5233;
+  --dot: #0f151b66;
+  --check: #c0453f;
+  --shadow: 0 10px 30px rgba(0,0,0,.45);
+}
+
+.board {
+  --sz: min(78vmin, 560px);
+  width: var(--sz); height: var(--sz);
+  position: relative; border-radius: 14px; overflow: hidden;
+  box-shadow: 0 24px 60px -24px rgba(0,0,0,.75); border: 1px solid #0a0f14;
+  touch-action: none; user-select: none;
+}
+.board .squares { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(8,1fr); grid-template-rows: repeat(8,1fr); }
+.board .sq { position: relative; }
+.board .sq.light { background: var(--light-sq); }
+.board .sq.dark { background: var(--dark-sq); }
+.board .sq .coord { position: absolute; font-family: var(--font-mono); font-size: 10px; font-weight: 500; opacity: .65; pointer-events: none; }
+.board .sq .coord.file { right: 3px; bottom: 1px; }
+.board .sq .coord.rank { left: 3px; top: 1px; }
+.board .sq.light .coord { color: #769656; }
+.board .sq.dark .coord { color: #eeeed2; }
+.board .layer { position: absolute; inset: 0; pointer-events: none; }
+.board .hl { position: absolute; width: 12.5%; height: 12.5%; pointer-events: none; }
+.board .hl.last { background: var(--last); }
+.board .hl.sel { background: var(--sel); box-shadow: inset 0 0 0 2px var(--brass); }
+.board .hl.check { background: radial-gradient(circle at center, var(--check) 0, transparent 72%); }
+.board .hl.hint { box-shadow: inset 0 0 0 3px var(--brass); border-radius: 2px; }
+.board .dot { position: absolute; width: 12.5%; height: 12.5%; display: grid; place-items: center; pointer-events: none; }
+.board .dot i { width: 30%; height: 30%; border-radius: 50%; background: var(--dot); }
+.board .dot.cap i { width: 86%; height: 86%; background: transparent; border: 5px solid var(--dot); box-sizing: border-box; }
+.board .piece {
+  position: absolute; width: 12.5%; height: 12.5%; display: grid; place-items: center;
+  transition: left .18s cubic-bezier(.2,.7,.3,1), top .18s cubic-bezier(.2,.7,.3,1);
+  will-change: left, top; z-index: 2;
+}
+.board .piece.drag { transition: none; z-index: 5; cursor: grabbing; }
+.board .piece svg { width: 90%; height: 90%; filter: drop-shadow(0 2px 3px rgba(0,0,0,.5)); }
+.board .piece.mine { cursor: grab; }
+
+.evalbar {
+  width: 16px; border-radius: 8px; overflow: hidden; position: relative;
+  background: #11171d; border: 1px solid var(--line); align-self: stretch; min-height: 0;
+}
+.evalbar .white { position: absolute; left: 0; right: 0; bottom: 0; background: #e7ecf1; transition: height .35s ease; height: 50%; }
+.evalbar .mid { position: absolute; left: -1px; right: -1px; top: 50%; height: 1px; background: var(--brass-dim); opacity: .7; }
+.evalbar .num { position: absolute; left: 50%; transform: translateX(-50%) rotate(-90deg); top: 8px; font-family: var(--font-mono); font-size: 10px; color: #0f151b; font-weight: 600; letter-spacing: .5px; pointer-events: none; white-space: nowrap; }
+
+/* Trainer status colours + note + scoresheet + analysis */
+.tr-status .good { color: #7ea86a; }
+.tr-status .bad { color: #c0453f; }
+.tr-status .info { color: var(--brass); }
+.tr-status .path { display: block; margin-top: 4px; font-family: var(--font-mono); font-weight: 400; font-size: 11.5px; color: var(--muted); word-break: break-word; }
+.moves table { width: 100%; border-collapse: collapse; font-family: var(--font-mono); font-size: 13px; }
+.moves td { padding: 5px 8px; border-bottom: 1px solid #212933; }
+.moves td.n { color: var(--muted); width: 34px; text-align: right; padding-right: 10px; }
+.moves td.mv.w { color: var(--ink); }
+.moves td.mv.b { color: #c6ccd4; }
+.an-line { display: flex; gap: 10px; align-items: baseline; font-family: var(--font-mono); font-size: 12.5px; }
+.an-line .ev { flex: 0 0 auto; min-width: 50px; font-weight: 600; color: var(--brass); text-align: right; }
+.an-line.best .ev { color: #7ea86a; }
+.an-line .pv { color: var(--ink); word-break: break-word; line-height: 1.5; }
+
+@media (max-width: 900px) {
+  .board { --sz: min(560px, calc(100vw - 40px)); }
+}

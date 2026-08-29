@@ -1,23 +1,81 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { ChessController, type Snapshot, type SetKey } from './core/controller'
+import { pieceSVG } from './core/pieces'
+import { BOOK, OPENING_IDX, GAME_IDX, side, type BookLine } from './core/book'
 
-/* ---- Modern shell (step 1). Board + engine are ported next; this proves the
-   Vite + React + TS + Tailwind toolchain and the new look. ---- */
-
-type Tab = 'play' | 'openings' | 'games' | 'study'
+type Tab = 'play' | 'train' | 'games' | 'study'
+type Facet = 'opening' | 'hero' | 'theme' | 'era'
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'play', label: 'Play' },
-  { id: 'openings', label: 'Openings' },
+  { id: 'train', label: 'Openings' },
   { id: 'games', label: 'Games' },
   { id: 'study', label: 'Study' },
 ]
 
+interface Group {
+  label: string
+  options: { value: number; label: string }[]
+}
+
+function openingGroups(): Group[] {
+  const groups: Record<string, { value: number; label: string }[]> = {}
+  const order: string[] = []
+  for (const i of OPENING_IDX) {
+    const l = BOOK[i]
+    const k = l.opening || '—'
+    if (!groups[k]) {
+      groups[k] = []
+      order.push(k)
+    }
+    groups[k].push({ value: i, label: `${l.variation}  (${side(l)})` })
+  }
+  return order.map((k) => ({ label: k, options: groups[k] }))
+}
+
+function gameGroups(facet: Facet, query: string): Group[] {
+  const q = query.trim().toLowerCase()
+  const label = (l: BookLine) => `${l.variation}  (You: ${side(l)})`
+  let indices = GAME_IDX
+  if (q) {
+    indices = GAME_IDX.filter((i) => {
+      const l = BOOK[i]
+      return [l.variation, l.hero, l.opening, l.theme, l.era, l.white, l.black].join(' ').toLowerCase().includes(q)
+    })
+    if (!indices.length) return []
+    return [{ label: `${indices.length} result${indices.length > 1 ? 's' : ''}`, options: indices.map((i) => ({ value: i, label: label(BOOK[i]) })) }]
+  }
+  const groups: Record<string, { value: number; label: string }[]> = {}
+  const order: string[] = []
+  for (const i of indices) {
+    const l = BOOK[i]
+    const k = (l[facet] as string) || '—'
+    if (!groups[k]) {
+      groups[k] = []
+      order.push(k)
+    }
+    groups[k].push({ value: i, label: label(BOOK[i]) })
+  }
+  return order.map((k) => ({ label: k, options: groups[k] }))
+}
+
+function metaHtml(l: BookLine | undefined): string {
+  if (!l) return ''
+  let meta = l.idea ? '<b>Idea:</b> ' + l.idea : ''
+  if (l.game) {
+    const bits = [l.opening, l.theme, l.era].filter(Boolean)
+    if (bits.length) meta += ` <span style="opacity:.7">· ${bits.join(' · ')}</span>`
+  }
+  return meta
+}
+
+/* ---------- small styled primitives ---------- */
 function Card({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return (
     <div
       className={
         'rounded-2xl border border-white/10 bg-[var(--color-panel)]/80 backdrop-blur ' +
-        'shadow-[0_1px_0_0_rgba(255,255,255,0.04)_inset,0_18px_40px_-20px_rgba(0,0,0,0.7)] ' +
+        'shadow-[0_1px_0_0_rgba(255,255,255,0.05)_inset,0_18px_44px_-22px_rgba(0,0,0,0.75)] ' +
         className
       }
     >
@@ -28,21 +86,31 @@ function Card({ children, className = '' }: { children: React.ReactNode; classNa
 
 function Btn({
   children,
+  onClick,
   primary,
+  active,
+  disabled,
   className = '',
 }: {
   children: React.ReactNode
+  onClick?: () => void
   primary?: boolean
+  active?: boolean
+  disabled?: boolean
   className?: string
 }) {
+  const brass = primary || active
   return (
     <button
+      onClick={onClick}
+      disabled={disabled}
       className={
-        'min-h-11 rounded-xl px-4 text-sm font-semibold transition ' +
+        'min-h-11 rounded-xl px-3 text-sm font-semibold transition select-none ' +
         'active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-brass)] ' +
-        (primary
+        'disabled:opacity-40 disabled:cursor-not-allowed ' +
+        (brass
           ? 'bg-[var(--color-brass)] text-[#1a130a] hover:bg-[var(--color-brass-2)] shadow-lg shadow-black/30'
-          : 'border border-white/10 bg-white/[0.03] text-[var(--color-ink)] hover:bg-white/[0.06]') +
+          : 'border border-white/10 bg-white/[0.03] text-[var(--color-ink)] hover:bg-white/[0.07]') +
         ' ' +
         className
       }
@@ -52,68 +120,204 @@ function Btn({
   )
 }
 
-/* A static SVG board just to show the new visual language; the interactive board
-   is the ported engine module (next step). */
-function BoardPreview() {
-  const squares = []
-  for (let r = 0; r < 8; r++)
-    for (let f = 0; f < 8; f++) {
-      const dark = (r + f) % 2 === 1
-      squares.push(
-        <div
-          key={`${r}-${f}`}
-          style={{ background: dark ? 'var(--color-board-d)' : 'var(--color-board-l)' }}
-        />,
-      )
-    }
+function GroupedSelect({
+  value,
+  groups,
+  onChange,
+  emptyText,
+}: {
+  value: number | ''
+  groups: Group[]
+  onChange: (v: number) => void
+  emptyText?: string
+}) {
   return (
-    <div className="relative aspect-square w-full overflow-hidden rounded-2xl border border-black/40 shadow-2xl shadow-black/50">
-      <div className="grid h-full w-full grid-cols-8 grid-rows-8">{squares}</div>
-    </div>
+    <select
+      value={value === '' ? '' : String(value)}
+      onChange={(e) => onChange(parseInt(e.target.value, 10))}
+      className="w-full cursor-pointer rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 text-sm text-[var(--color-ink)] focus:border-[var(--color-brass)] focus:outline-none"
+    >
+      {groups.length === 0 && (
+        <option value="" disabled>
+          {emptyText || 'No results'}
+        </option>
+      )}
+      {groups.map((g) => (
+        <optgroup key={g.label} label={g.label}>
+          {g.options.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </optgroup>
+      ))}
+    </select>
+  )
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="grid gap-2">
+      <span className="text-xs uppercase tracking-wide text-[var(--color-muted)]">{label}</span>
+      {children}
+    </label>
+  )
+}
+
+function StatusNote({ slot }: { slot: { statusHtml: string; note: string } }) {
+  return (
+    <>
+      {slot.statusHtml && (
+        <div
+          className="tr-status min-h-[18px] text-[13px] font-semibold leading-snug"
+          dangerouslySetInnerHTML={{ __html: slot.statusHtml }}
+        />
+      )}
+      {slot.note && (
+        <div className="mt-0.5 border-l-[3px] border-[var(--color-brass)] py-1.5 pl-3 text-[13px] leading-relaxed text-[var(--color-ink)]">
+          {slot.note}
+        </div>
+      )}
+    </>
   )
 }
 
 export default function App() {
+  const boardRef = useRef<HTMLDivElement>(null)
+  const ctrlRef = useRef<ChessController | null>(null)
+  const [snap, setSnap] = useState<Snapshot | null>(null)
+  const [promo, setPromo] = useState<{ from: string; to: string; color: string } | null>(null)
+  const [toast, setToast] = useState('')
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   const [tab, setTab] = useState<Tab>('play')
+  const [sideChoice, setSideChoice] = useState<'white' | 'black' | 'random'>('white')
+  const [elo, setElo] = useState(8)
+  const [tt, setTt] = useState(1000)
+  const [facet, setFacet] = useState<Facet>('opening')
+  const [search, setSearch] = useState('')
+  const [openSel, setOpenSel] = useState<number>(OPENING_IDX[0])
+  const [gameSel, setGameSel] = useState<number>(GAME_IDX[0])
+  const [trHints, setTrHints] = useState(false)
+  const [mgHints, setMgHints] = useState(false)
+
+  // Build controller once.
+  if (!ctrlRef.current) {
+    ctrlRef.current = new ChessController({
+      onSnapshot: (s) => setSnap(s),
+      onPromo: (from, to, color) => setPromo({ from, to, color }),
+    })
+  }
+  const ctrl = ctrlRef.current
+
+  useEffect(() => {
+    if (!boardRef.current) return
+    ctrl.mount(boardRef.current)
+    ctrl.boot()
+    const onResize = () => ctrl.onResize()
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const openGroups = useMemo(() => openingGroups(), [])
+  const gGroups = useMemo(() => gameGroups(facet, search), [facet, search])
+
+  // Keep the game selection valid as facet/search change.
+  useEffect(() => {
+    const flat = gGroups.flatMap((g) => g.options.map((o) => o.value))
+    if (flat.length && !flat.includes(gameSel)) setGameSel(flat[0])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gGroups])
+
+  const showToast = (msg: string) => {
+    setToast(msg)
+    if (toastTimer.current) clearTimeout(toastTimer.current)
+    toastTimer.current = setTimeout(() => setToast(''), 2200)
+  }
+
+  const eloLabel = elo >= 20 ? 'Max' : String(Math.round(1320 + ((3000 - 1320) * elo) / 19))
+
+  const copyPGN = () => {
+    const pgn = ctrl.getPGN()
+    if (!pgn) {
+      showToast('No moves to export yet')
+      return
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(pgn).then(
+        () => showToast('PGN copied to clipboard'),
+        () => window.prompt('Copy the PGN:', pgn),
+      )
+    } else {
+      window.prompt('Copy the PGN:', pgn)
+    }
+  }
+
+  const selfPlay = snap?.selfPlay ?? false
+  const replaying = snap?.replaying ?? false
+  const sessionKey = snap?.sessionKey ?? 'train'
+  const finishLabel = selfPlay ? '■ Stop' : '▶ Watch Stockfish finish this game'
+  const fullLabel = selfPlay ? '■ Stop' : '▶ Watch a full engine game'
+  const watchLabel = (set: SetKey, idle: string) =>
+    replaying && sessionKey === set ? '■ Stop replay' : selfPlay ? '■ Stop' : idle
+
+  const history = snap?.history ?? []
+  const rows: { n: number; w: string; b: string }[] = []
+  for (let i = 0; i < history.length; i += 2) rows.push({ n: i / 2 + 1, w: history[i] || '', b: history[i + 1] || '' })
+
+  const openMeta = metaHtml(BOOK[openSel])
+  const gameMeta = metaHtml(BOOK[gameSel])
+  const gameSelValid = gGroups.some((g) => g.options.some((o) => o.value === gameSel))
 
   return (
     <div className="mx-auto flex min-h-full max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-10">
-      {/* Header */}
-      <header className="flex items-baseline gap-3">
+      <header className="flex flex-wrap items-baseline gap-3">
         <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
           chesswithprince<span className="text-[var(--color-brass)]">.com</span>
         </h1>
         <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 font-mono text-xs text-[var(--color-muted)]">
-          Stockfish 18 · in your browser
+          {snap?.engineTag ?? 'loading engine…'}
         </span>
       </header>
 
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
-        {/* Board */}
-        <div className="flex items-stretch gap-3">
-          <div className="w-2.5 overflow-hidden rounded-full border border-white/10 bg-black/30">
-            <div className="mt-[50%] h-1/2 w-full bg-white/80" />
+        {/* Board + eval bar */}
+        <div className="flex items-stretch justify-center gap-3">
+          <div className="evalbar" title="Evaluation (White's perspective)">
+            <div className="white" style={{ height: `${((snap?.evalFrac ?? 0.5) * 100).toFixed(1)}%` }} />
+            <div className="mid" />
+            <div className="num">{snap?.evalLabel ?? '0.0'}</div>
           </div>
-          <div className="flex-1">
-            <BoardPreview />
-          </div>
+          <div ref={boardRef} className="board" />
         </div>
 
         {/* Panel */}
         <Card className="overflow-hidden">
           <div className="border-b border-white/10 bg-white/[0.02] p-4">
-            <div className="text-lg font-bold">Your move</div>
-            <div className="text-sm text-[var(--color-muted)]">White to play</div>
+            <div className="flex items-center gap-2">
+              {snap?.thinking && (
+                <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-[var(--color-brass)] border-r-transparent" />
+              )}
+              <div className="text-lg font-bold">{snap?.statusWho ?? 'Your move'}</div>
+            </div>
+            <div className="text-sm text-[var(--color-muted)]">{snap?.statusSub ?? 'White to play'}</div>
           </div>
 
+          {snap?.banner && (
+            <div className="mx-4 mt-3 rounded-lg border border-[var(--color-brass)]/50 bg-white/[0.03] px-3 py-2.5 text-center text-sm font-semibold text-[var(--color-brass)]">
+              {snap.banner}
+            </div>
+          )}
+
           {/* Tabs */}
-          <div className="flex gap-1 border-b border-white/10 bg-black/20 p-1.5">
+          <div className="m-1.5 flex gap-1 rounded-xl bg-black/20 p-1">
             {TABS.map((t) => (
               <button
                 key={t.id}
                 onClick={() => setTab(t.id)}
                 className={
-                  'flex-1 rounded-xl px-2 py-2.5 text-sm font-semibold transition ' +
+                  'flex-1 rounded-lg px-2 py-2.5 text-sm font-semibold transition ' +
                   (tab === t.id
                     ? 'bg-[var(--color-brass)] text-[#1a130a] shadow'
                     : 'text-[var(--color-muted)] hover:text-[var(--color-ink)]')
@@ -124,27 +328,28 @@ export default function App() {
             ))}
           </div>
 
-          {/* Panel body */}
           <div className="grid gap-4 p-4">
             {tab === 'play' && (
               <>
                 <div className="grid grid-cols-3 gap-2">
-                  <Btn primary>New game</Btn>
-                  <Btn>Flip</Btn>
-                  <Btn>Take back</Btn>
+                  <Btn primary onClick={() => ctrl.newGame(sideChoice)}>
+                    New game
+                  </Btn>
+                  <Btn onClick={() => ctrl.flip()}>Flip</Btn>
+                  <Btn onClick={() => ctrl.undo()}>Take back</Btn>
                 </div>
-                <Btn>▶ Watch Stockfish finish this game</Btn>
-                <div>
-                  <div className="mb-1.5 text-xs uppercase tracking-wide text-[var(--color-muted)]">
-                    Play as
-                  </div>
+                <Btn active={selfPlay} onClick={() => ctrl.finishGame()}>
+                  {finishLabel}
+                </Btn>
+                <Field label="Play as">
                   <div className="grid grid-cols-3 gap-1 rounded-xl border border-white/10 p-1">
-                    {['White', 'Black', 'Random'].map((s, i) => (
+                    {(['white', 'black', 'random'] as const).map((s) => (
                       <button
                         key={s}
+                        onClick={() => setSideChoice(s)}
                         className={
-                          'min-h-10 rounded-lg text-sm font-semibold transition ' +
-                          (i === 0
+                          'min-h-10 rounded-lg text-sm font-semibold capitalize transition ' +
+                          (sideChoice === s
                             ? 'bg-[var(--color-brass)] text-[#1a130a]'
                             : 'text-[var(--color-ink)] hover:bg-white/[0.05]')
                         }
@@ -153,29 +358,253 @@ export default function App() {
                       </button>
                     ))}
                   </div>
-                </div>
-                <label className="grid gap-2 text-xs uppercase tracking-wide text-[var(--color-muted)]">
-                  <span className="flex justify-between">
-                    Engine strength <b className="font-mono text-[var(--color-brass)]">2027</b>
+                </Field>
+                <label className="grid gap-2">
+                  <span className="flex justify-between text-xs uppercase tracking-wide text-[var(--color-muted)]">
+                    Engine strength <b className="font-mono text-[var(--color-brass)]">{eloLabel}</b>
                   </span>
-                  <input type="range" className="accent-[var(--color-brass)]" defaultValue={60} />
+                  <input
+                    type="range"
+                    min={0}
+                    max={20}
+                    value={elo}
+                    onChange={(e) => {
+                      const v = parseInt(e.target.value, 10)
+                      setElo(v)
+                      ctrl.setEloSlider(v)
+                    }}
+                    className="accent-[var(--color-brass)]"
+                  />
                 </label>
+                <label className="grid gap-2">
+                  <span className="flex justify-between text-xs uppercase tracking-wide text-[var(--color-muted)]">
+                    Think time <b className="font-mono text-[var(--color-brass)]">{(tt / 1000).toFixed(1)} s</b>
+                  </span>
+                  <input
+                    type="range"
+                    min={100}
+                    max={3000}
+                    step={100}
+                    value={tt}
+                    onChange={(e) => {
+                      const v = parseInt(e.target.value, 10)
+                      setTt(v)
+                      ctrl.setThinkTime(v)
+                    }}
+                    className="accent-[var(--color-brass)]"
+                  />
+                </label>
+                <Btn active={selfPlay} onClick={() => ctrl.watchFullGame()}>
+                  {fullLabel}
+                </Btn>
               </>
             )}
-            {tab !== 'play' && (
-              <div className="py-8 text-center text-sm text-[var(--color-muted)]">
-                <span className="font-semibold capitalize text-[var(--color-ink)]">{tab}</span> —
-                ported from the current app next.
-              </div>
+
+            {tab === 'train' && (
+              <>
+                <Field label="Opening line">
+                  <GroupedSelect value={openSel} groups={openGroups} onChange={setOpenSel} />
+                </Field>
+                <div className="text-xs leading-relaxed text-[var(--color-muted)]" dangerouslySetInnerHTML={{ __html: openMeta }} />
+                <div className="grid grid-cols-2 gap-2">
+                  <Btn primary onClick={() => ctrl.startTrainer(openSel, 'train', trHints)}>
+                    Start line
+                  </Btn>
+                  <Btn disabled={snap?.train.hintDisabled ?? true} onClick={() => ctrl.playBookMove('train')}>
+                    Play book move
+                  </Btn>
+                </div>
+                <Btn active={replaying && sessionKey === 'train'} onClick={() => ctrl.watch(openSel, 'train')}>
+                  {watchLabel('train', '▶ Watch Stockfish play this line out')}
+                </Btn>
+                <label className="flex cursor-pointer items-center gap-2 text-xs text-[var(--color-muted)]">
+                  <input
+                    type="checkbox"
+                    checked={trHints}
+                    onChange={(e) => {
+                      setTrHints(e.target.checked)
+                      ctrl.setHints('train', e.target.checked)
+                    }}
+                    className="h-4 w-4 accent-[var(--color-brass)]"
+                  />
+                  Show hint (highlight the book move)
+                </label>
+                {snap && <StatusNote slot={snap.train} />}
+              </>
+            )}
+
+            {tab === 'games' && (
+              <>
+                <Field label="Search games">
+                  <input
+                    type="search"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="player, opening, e.g. Fischer or Berlin"
+                    autoComplete="off"
+                    className="w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 text-sm text-[var(--color-ink)] placeholder:text-[var(--color-muted)] focus:border-[var(--color-brass)] focus:outline-none"
+                  />
+                </Field>
+                <Field label="Browse by">
+                  <div className="grid grid-cols-4 gap-1 rounded-xl border border-white/10 p-1">
+                    {(['opening', 'hero', 'theme', 'era'] as const).map((f) => (
+                      <button
+                        key={f}
+                        onClick={() => {
+                          setFacet(f)
+                          setSearch('')
+                        }}
+                        className={
+                          'min-h-10 rounded-lg text-xs font-semibold transition ' +
+                          (facet === f && !search
+                            ? 'bg-[var(--color-brass)] text-[#1a130a]'
+                            : 'text-[var(--color-ink)] hover:bg-white/[0.05]')
+                        }
+                      >
+                        {f === 'hero' ? 'Player' : f[0].toUpperCase() + f.slice(1)}
+                      </button>
+                    ))}
+                  </div>
+                </Field>
+                <Field label="Master game">
+                  <GroupedSelect
+                    value={gameSelValid ? gameSel : ''}
+                    groups={gGroups}
+                    onChange={setGameSel}
+                    emptyText={search ? `No games match “${search}”` : 'No games'}
+                  />
+                </Field>
+                <div className="text-xs leading-relaxed text-[var(--color-muted)]" dangerouslySetInnerHTML={{ __html: gameMeta }} />
+                <div className="grid grid-cols-2 gap-2">
+                  <Btn primary disabled={!gameSelValid} onClick={() => ctrl.startTrainer(gameSel, 'games', mgHints)}>
+                    Play through
+                  </Btn>
+                  <Btn disabled={snap?.games.hintDisabled ?? true} onClick={() => ctrl.playBookMove('games')}>
+                    Play game move
+                  </Btn>
+                </div>
+                <Btn active={replaying && sessionKey === 'games'} disabled={!gameSelValid} onClick={() => ctrl.watch(gameSel, 'games')}>
+                  {watchLabel('games', '▶ Watch this game')}
+                </Btn>
+                <label className="flex cursor-pointer items-center gap-2 text-xs text-[var(--color-muted)]">
+                  <input
+                    type="checkbox"
+                    checked={mgHints}
+                    onChange={(e) => {
+                      setMgHints(e.target.checked)
+                      ctrl.setHints('games', e.target.checked)
+                    }}
+                    className="h-4 w-4 accent-[var(--color-brass)]"
+                  />
+                  Show hint (highlight the next move)
+                </label>
+                {snap && <StatusNote slot={snap.games} />}
+              </>
+            )}
+
+            {tab === 'study' && (
+              <>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs uppercase tracking-wide text-[var(--color-muted)]">Analysis</span>
+                  <Btn disabled={snap?.analyzing} onClick={() => ctrl.analyze()} className="min-h-0 flex-none px-3 py-1.5">
+                    {snap?.analyzing ? 'Analyzing…' : 'Analyze position'}
+                  </Btn>
+                </div>
+                <div className="grid gap-1.5">
+                  {snap?.analysis && snap.analysis.length ? (
+                    snap.analysis.map((l, i) => (
+                      <div key={i} className={'an-line' + (l.best ? ' best' : '')}>
+                        <span className="ev">{l.ev}</span>
+                        <span className="pv">{l.pv}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-xs italic text-[var(--color-muted)]">
+                      Press “Analyze” for Stockfish’s top moves in the current position (full strength).
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center justify-between border-t border-white/10 pt-3">
+                  <span className="text-xs uppercase tracking-wide text-[var(--color-muted)]">Scoresheet</span>
+                  <Btn onClick={copyPGN} className="min-h-0 flex-none px-3 py-1.5">
+                    Copy PGN
+                  </Btn>
+                </div>
+                <div className="moves max-h-72 overflow-auto">
+                  {rows.length ? (
+                    <table>
+                      <tbody>
+                        {rows.map((r) => (
+                          <tr key={r.n}>
+                            <td className="n">{r.n}.</td>
+                            <td className="mv w">{r.w}</td>
+                            <td className="mv b">{r.b}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <div className="p-3 text-sm italic text-[var(--color-muted)]">No moves yet.</div>
+                  )}
+                </div>
+              </>
             )}
           </div>
         </Card>
       </div>
 
       <footer className="border-t border-white/10 pt-4 text-xs leading-relaxed text-[var(--color-muted)]">
-        Engine: <b className="text-[var(--color-ink)]">Stockfish 18</b> (WebAssembly) running in your
-        browser · new UI preview (React + Tailwind) · build web-shell
+        Engine: <b className="text-[var(--color-ink)]">Stockfish 18</b> (WebAssembly, single-threaded lite build) running
+        in your browser —{' '}
+        <a className="text-[var(--color-brass)]/80" href="https://github.com/nmrugg/stockfish.js" target="_blank" rel="noopener">
+          stockfish.js
+        </a>
+        , licensed{' '}
+        <a className="text-[var(--color-brass)]/80" href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noopener">
+          GPLv3
+        </a>
+        . Rules by{' '}
+        <a className="text-[var(--color-brass)]/80" href="https://github.com/jhlywa/chess.js" target="_blank" rel="noopener">
+          chess.js
+        </a>
+        . Piece artwork is original SVG for this project. · React + Tailwind
       </footer>
+
+      {/* Promotion modal */}
+      {promo && (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-black/60"
+          onClick={() => {
+            ctrl.cancelPromotion()
+            setPromo(null)
+          }}
+        >
+          <div className="rounded-2xl border border-white/10 bg-[var(--color-panel)] p-4 text-center shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="mb-3 text-sm font-semibold text-[var(--color-muted)]">Promote to</h3>
+            <div className="flex gap-2">
+              {['q', 'r', 'b', 'n'].map((t) => (
+                <button
+                  key={t}
+                  onClick={() => {
+                    ctrl.finishPromotion(t)
+                    setPromo(null)
+                  }}
+                  className="grid h-16 w-16 place-items-center rounded-xl border border-white/10 bg-white/[0.03] hover:border-[var(--color-brass)]"
+                  dangerouslySetInnerHTML={{ __html: pieceSVG(t, promo.color) }}
+                  style={{ padding: 8 }}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast */}
+      {toast && (
+        <div className="fixed bottom-7 left-1/2 z-[60] -translate-x-1/2 rounded-xl border border-[var(--color-brass)]/50 bg-[var(--color-panel)] px-4 py-2.5 text-sm shadow-2xl">
+          {toast}
+        </div>
+      )}
     </div>
   )
 }

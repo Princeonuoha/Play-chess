@@ -5,3 +5,5 @@
 wrangler.jsonc
 node_modules
 README.md
+# The React app source (built output is deployed separately when we flip).
+web
