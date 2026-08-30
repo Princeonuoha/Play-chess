@@ -100,7 +100,7 @@ export class ChessController {
   private replayIdx = 0
   private replayTimer: ReturnType<typeof setTimeout> | null = null
   private epoch = 0
-  private eloSlider = 8
+  private eloSlider = 4
   private pendingPromo: { from: string; to: string } | null = null
 
   // Panel-facing state emitted in the snapshot.
@@ -1194,6 +1194,36 @@ export class ChessController {
 
   clearReview() {
     this.review = null
+    this.resumeGame()
+  }
+
+  /* -------------------------- move navigation (scrubber) -------------------------- */
+  // Step through the current game without disturbing it. reviewPly is the viewed
+  // ply (null = live, showing the latest position).
+  private canBrowse() {
+    return !this.selfPlay && !this.replaying && !this.thinking && !this.animating && this.game.history().length > 0
+  }
+  private viewedPly() {
+    const total = this.game.history().length
+    return this.reviewPly === null ? total - 1 : this.reviewPly
+  }
+  navFirst() {
+    if (!this.canBrowse()) return
+    this.gotoPly(-1)
+  }
+  navPrev() {
+    if (!this.canBrowse()) return
+    this.gotoPly(Math.max(-1, this.viewedPly() - 1))
+  }
+  navNext() {
+    if (!this.canBrowse()) return
+    const total = this.game.history().length
+    const t = this.viewedPly() + 1
+    if (t >= total - 1) this.resumeGame()
+    else this.gotoPly(t)
+  }
+  navLast() {
+    if (!this.canBrowse()) return
     this.resumeGame()
   }
 

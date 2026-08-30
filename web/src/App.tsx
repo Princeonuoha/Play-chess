@@ -18,6 +18,18 @@ const LABEL_ICON: Record<MoveLabel, string> = {
   Blunder: '??',
 }
 
+// Friendly difficulty tiers for the strength slider (0..20), named by real Elo.
+function difficulty(v: number): { name: string; elo: string } {
+  if (v >= 20) return { name: 'Maximum', elo: 'Max' }
+  const elo = Math.round(1320 + ((3000 - 1320) * v) / 19)
+  let name = 'Beginner'
+  if (elo >= 2400) name = 'Master'
+  else if (elo >= 2050) name = 'Expert'
+  else if (elo >= 1750) name = 'Intermediate'
+  else if (elo >= 1500) name = 'Casual'
+  return { name, elo: String(elo) }
+}
+
 type Tab = 'play' | 'train' | 'games' | 'study'
 type Facet = 'opening' | 'hero' | 'theme' | 'era'
 
@@ -135,6 +147,19 @@ function Btn({
   )
 }
 
+function NavBtn({ children, onClick, label }: { children: React.ReactNode; onClick: () => void; label: string }) {
+  return (
+    <button
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+      className="grid h-9 min-w-9 place-items-center rounded-lg text-sm text-[var(--color-ink)] transition hover:bg-white/[0.06] active:scale-95"
+    >
+      {children}
+    </button>
+  )
+}
+
 function GroupedSelect({
   value,
   groups,
@@ -207,7 +232,7 @@ export default function App() {
 
   const [tab, setTab] = useState<Tab>('play')
   const [sideChoice, setSideChoice] = useState<'white' | 'black' | 'random'>('white')
-  const [elo, setElo] = useState(8)
+  const [elo, setElo] = useState(4)
   const [tt, setTt] = useState(1000)
   const [facet, setFacet] = useState<Facet>('opening')
   const [search, setSearch] = useState('')
@@ -215,6 +240,19 @@ export default function App() {
   const [gameSel, setGameSel] = useState<number>(GAME_IDX[0])
   const [trHints, setTrHints] = useState(false)
   const [mgHints, setMgHints] = useState(false)
+  const [showIntro, setShowIntro] = useState(() => {
+    try {
+      return localStorage.getItem('cwp_intro_seen') !== '1'
+    } catch {
+      return true
+    }
+  })
+  const dismissIntro = () => {
+    setShowIntro(false)
+    try {
+      localStorage.setItem('cwp_intro_seen', '1')
+    } catch {}
+  }
 
   // Build controller once.
   if (!ctrlRef.current) {
@@ -231,7 +269,19 @@ export default function App() {
     ctrl.boot()
     const onResize = () => ctrl.onResize()
     window.addEventListener('resize', onResize)
-    return () => window.removeEventListener('resize', onResize)
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'TEXTAREA')) return
+      if (e.key === 'ArrowLeft') ctrl.navPrev()
+      else if (e.key === 'ArrowRight') ctrl.navNext()
+      else if (e.key === 'Home') ctrl.navFirst()
+      else if (e.key === 'End') ctrl.navLast()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('resize', onResize)
+      window.removeEventListener('keydown', onKey)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -257,7 +307,7 @@ export default function App() {
     toastTimer.current = setTimeout(() => setToast(''), 2200)
   }
 
-  const eloLabel = elo >= 20 ? 'Max' : String(Math.round(1320 + ((3000 - 1320) * elo) / 19))
+  const diff = difficulty(elo)
 
   const copyPGN = () => {
     const pgn = ctrl.getPGN()
@@ -286,6 +336,7 @@ export default function App() {
   const review = snap?.review ?? null
   const reviewPly = snap?.reviewPly ?? null
   const history = snap?.history ?? []
+  const canBrowse = history.length > 0 && !selfPlay && !replaying && !(snap?.thinking ?? false)
   const rows: { n: number; w: string; b: string }[] = []
   for (let i = 0; i < history.length; i += 2) rows.push({ n: i / 2 + 1, w: history[i] || '', b: history[i + 1] || '' })
 
@@ -302,17 +353,77 @@ export default function App() {
         <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 font-mono text-xs text-[var(--color-muted)]">
           {snap?.engineTag ?? 'loading engine…'}
         </span>
+        <button
+          onClick={() => setShowIntro(true)}
+          className="ml-auto grid h-8 w-8 place-items-center rounded-full border border-white/10 bg-white/[0.03] text-sm font-bold text-[var(--color-muted)] transition hover:text-[var(--color-ink)]"
+          aria-label="How it works"
+          title="How it works"
+        >
+          ?
+        </button>
       </header>
 
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
-        {/* Board + eval bar */}
-        <div className="flex items-stretch justify-center gap-3">
-          <div className="evalbar" title="Evaluation (White's perspective)">
-            <div className="white" style={{ height: `${((snap?.evalFrac ?? 0.5) * 100).toFixed(1)}%` }} />
-            <div className="mid" />
-            <div className="num">{snap?.evalLabel ?? '0.0'}</div>
+      {showIntro && (
+        <div className="rounded-2xl border border-[var(--color-brass)]/30 bg-[var(--color-panel)]/80 p-4 backdrop-blur sm:p-5">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h2 className="text-base font-bold sm:text-lg">Welcome — here's how it works</h2>
+            <button
+              onClick={dismissIntro}
+              className="rounded-lg border border-white/10 px-3 py-1.5 text-xs font-semibold text-[var(--color-muted)] hover:text-[var(--color-ink)]"
+            >
+              Got it
+            </button>
           </div>
-          <div ref={boardRef} className="board" />
+          <div className="grid gap-2.5 sm:grid-cols-2">
+            {[
+              ['♟ Play', 'Play against Stockfish. Pick a difficulty from Beginner to Maximum, choose your colour, and drag or tap to move.'],
+              ['📖 Openings', 'Drill a real opening line. The app plays the theory for the other side and checks your moves against the book.'],
+              ['🏆 Games', 'Play through or watch famous master games — search by player, opening, theme, or era.'],
+              ['🔎 Study', 'Review any game: Stockfish grades every move, shows the better move you missed, and tells you how the masters handled the line.'],
+            ].map(([t, d]) => (
+              <div key={t} className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                <div className="mb-0.5 text-sm font-semibold text-[var(--color-brass)]">{t}</div>
+                <div className="text-xs leading-relaxed text-[var(--color-muted)]">{d}</div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-3 text-[11px] text-[var(--color-muted)]">
+            Tip: use the ◀ ▶ buttons under the board (or your arrow keys) to step through any game.
+          </div>
+        </div>
+      )}
+
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
+        {/* Board + eval bar + move scrubber */}
+        <div className="flex flex-col items-center gap-2">
+          <div className="flex items-stretch justify-center gap-3">
+            <div className="evalbar" title="Evaluation (White's perspective)">
+              <div className="white" style={{ height: `${((snap?.evalFrac ?? 0.5) * 100).toFixed(1)}%` }} />
+              <div className="mid" />
+              <div className="num">{snap?.evalLabel ?? '0.0'}</div>
+            </div>
+            <div ref={boardRef} className="board" />
+          </div>
+          {canBrowse && (
+            <div className="flex w-full max-w-[560px] items-center gap-1 rounded-xl border border-white/10 bg-black/20 p-1">
+              <NavBtn onClick={() => ctrl.navFirst()} label="First move">⏮</NavBtn>
+              <NavBtn onClick={() => ctrl.navPrev()} label="Previous move">◀</NavBtn>
+              <div className="flex-1 text-center text-xs text-[var(--color-muted)]">
+                {reviewPly === null ? (
+                  <span>
+                    Live · move {Math.ceil(history.length / 2)} <span className="opacity-50">· use ← →</span>
+                  </span>
+                ) : (
+                  <span className="text-[var(--color-ink)]">
+                    Viewing move {Math.ceil((reviewPly + 1) / 2) || 0}
+                    {reviewPly < 0 ? ' · start' : reviewPly % 2 === 0 ? ' (White)' : ' (Black)'} / {Math.ceil(history.length / 2)}
+                  </span>
+                )}
+              </div>
+              <NavBtn onClick={() => ctrl.navNext()} label="Next move">▶</NavBtn>
+              <NavBtn onClick={() => ctrl.navLast()} label="Latest / live">⏭</NavBtn>
+            </div>
+          )}
         </div>
 
         {/* Panel */}
@@ -383,8 +494,11 @@ export default function App() {
                   </div>
                 </Field>
                 <label className="grid gap-2">
-                  <span className="flex justify-between text-xs uppercase tracking-wide text-[var(--color-muted)]">
-                    Engine strength <b className="font-mono text-[var(--color-brass)]">{eloLabel}</b>
+                  <span className="flex items-baseline justify-between text-xs uppercase tracking-wide text-[var(--color-muted)]">
+                    Difficulty
+                    <b className="font-semibold text-[var(--color-brass)]">
+                      {diff.name} <span className="font-mono text-[10px] text-[var(--color-muted)]">~{diff.elo}</span>
+                    </b>
                   </span>
                   <input
                     type="range"
@@ -398,6 +512,10 @@ export default function App() {
                     }}
                     className="accent-[var(--color-brass)]"
                   />
+                  <span className="flex justify-between text-[10px] text-[var(--color-muted)]">
+                    <span>Beginner</span>
+                    <span>Maximum</span>
+                  </span>
                 </label>
                 <label className="grid gap-2">
                   <span className="flex justify-between text-xs uppercase tracking-wide text-[var(--color-muted)]">
@@ -587,6 +705,13 @@ export default function App() {
                 {/* Per-move grades */}
                 {review && review.items.length > 0 && (
                   <>
+                    <div className="flex flex-wrap gap-1.5">
+                      {(['Best', 'Good', 'Inaccuracy', 'Mistake', 'Blunder'] as MoveLabel[]).map((l) => (
+                        <span key={l} className={'rounded-md border px-1.5 py-0.5 text-[10px] font-bold ' + LABEL_STYLE[l]}>
+                          {LABEL_ICON[l]} {l}
+                        </span>
+                      ))}
+                    </div>
                     {reviewPly !== null && (
                       <Btn onClick={() => ctrl.resumeGame()} className="min-h-0 flex-none px-3 py-1.5">
                         ← Back to final position
