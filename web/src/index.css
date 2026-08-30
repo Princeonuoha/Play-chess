@@ -46,8 +46,11 @@ body {
 }
 
 .board {
-  --sz: min(78vmin, 560px);
-  width: var(--sz); height: var(--sz);
+  /* Square, and never bigger than its column, a sensible max, or the space
+     left in the viewport once the header/scrubber are accounted for — so the
+     board always fits on screen without scrolling. */
+  width: min(100%, 600px, calc(100dvh - 200px));
+  aspect-ratio: 1 / 1;
   position: relative; border-radius: 14px; overflow: hidden;
   box-shadow: 0 24px 60px -24px rgba(0,0,0,.75); border: 1px solid #0a0f14;
   touch-action: none; user-select: none;
@@ -102,6 +105,8 @@ body {
 .an-line.best .ev { color: #7ea86a; }
 .an-line .pv { color: var(--ink); word-break: break-word; line-height: 1.5; }
 
+/* On phones the panel sits below the board, so let the board use a bit more
+   vertical room (you can scroll to the controls). */
 @media (max-width: 900px) {
-  .board { --sz: min(560px, calc(100vw - 40px)); }
+  .board { width: min(100%, calc(100dvh - 150px)); }
 }

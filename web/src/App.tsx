@@ -396,13 +396,15 @@ export default function App() {
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
         {/* Board + eval bar + move scrubber */}
         <div className="flex flex-col items-center gap-2">
-          <div className="flex items-stretch justify-center gap-3">
+          <div className="flex w-full items-stretch justify-center gap-3">
             <div className="evalbar" title="Evaluation (White's perspective)">
               <div className="white" style={{ height: `${((snap?.evalFrac ?? 0.5) * 100).toFixed(1)}%` }} />
               <div className="mid" />
               <div className="num">{snap?.evalLabel ?? '0.0'}</div>
             </div>
-            <div ref={boardRef} className="board" />
+            <div className="flex min-w-0 flex-1 justify-center">
+              <div ref={boardRef} className="board" />
+            </div>
           </div>
           {canBrowse && (
             <div className="flex w-full max-w-[560px] items-center gap-1 rounded-xl border border-white/10 bg-black/20 p-1">
