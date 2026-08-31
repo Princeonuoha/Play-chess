@@ -107,7 +107,7 @@ export class ChessController {
   private lastMove: { from: string; to: string } | null = null
   private moveTime = 1000
   private animating = false
-  private trainer: { line: BookLine; ply: number; hints: boolean } | null = null
+  private trainer: { line: BookLine; ply: number; hints: boolean; target: number; bookLen: number } | null = null
   private hintSquares: { from: string; to: string } | null = null
   private selfPlay = false
   private engineExpected = false
@@ -620,7 +620,7 @@ export class ChessController {
   }
   private trProgress() {
     if (!this.trainer) return ''
-    const total = Math.ceil(this.trainer.line.moves.length / 2)
+    const total = this.trainer.target ? this.trainer.target / 2 : Math.ceil(this.trainer.line.moves.length / 2)
     const done = Math.ceil(this.trainer.ply / 2)
     return `<span class="path">${this.trLineLabel()} · move ${done}/${total}<br>${
       this.trainer.line.moves.slice(0, this.trainer.ply).join(' ') || '—'
@@ -631,16 +631,26 @@ export class ChessController {
     if (!this.trainer) return
     this.slots[this.sessionKey].hintDisabled = false
     if (this.trainer.ply >= this.trainer.line.moves.length) {
+      // Book ran out. For opening lines, keep coaching to move 20 by pulling the
+      // engine's best move one at a time (suggested, never played out as a game).
+      if (!this.trainer.line.result && this.trainer.ply < this.trainer.target && !this.game.isGameOver()) {
+        this.extendCoach()
+        return
+      }
       this.endOfBook()
       return
     }
     if (this.game.turn() === this.humanColor) {
-      this.setTrStatus(
-        'info',
-        (this.trainer.line.result ? 'Your move — play the game move.' : 'Your move — play the book move.') +
-          this.trProgress(),
-      )
-      this.hintSquares = this.trainer.hints ? this.squaresForSan(this.trainer.line.moves[this.trainer.ply]) : null
+      const past = this.trainer.ply >= this.trainer.bookLen
+      const prompt = this.trainer.line.result
+        ? 'Your move — play the game move.'
+        : past
+          ? 'Your move — play the suggested best move.'
+          : 'Your move — play the book move.'
+      this.setTrStatus('info', prompt + this.trProgress())
+      // Past known theory the best move is a suggestion, so always highlight it.
+      this.hintSquares =
+        this.trainer.hints || past ? this.squaresForSan(this.trainer.line.moves[this.trainer.ply]) : null
       this.renderHighlights()
       this.emit()
       return
@@ -661,30 +671,41 @@ export class ChessController {
   private endOfBook() {
     const line = this.trainer!.line
     const total = Math.ceil(line.moves.length / 2)
-    const label = this.trLineLabel()
     this.slots[this.sessionKey].hintDisabled = true
     this.hintSquares = null
     this.trainer = null
     if (line.result) {
       this.setTrStatus('good', `End of the game — ${line.white} vs ${line.black}, ${line.result}.`)
-      this.renderHighlights()
-      this.emit()
-      return
+    } else {
+      // Opening line: stop at the end. The engine never takes over and plays on.
+      this.setTrStatus('good', `You reached move ${total} — nicely played. Pick another opening or replay this one.`)
     }
-    if (line.noHandoff) {
-      // A suggested best-move line — stop here; don't let the engine play on.
-      this.setTrStatus('good', `End of the suggested line (${total} moves) — nicely played. Explore another opening.`)
-      this.renderHighlights()
-      this.emit()
-      return
-    }
-    this.setTrStatus(
-      'good',
-      `End of the ${label} line (${total} moves). You're on your own now — playing Stockfish from here.`,
-    )
     this.renderHighlights()
     this.emit()
-    if (!this.game.isGameOver() && this.game.turn() !== this.humanColor) this.engineMove()
+  }
+
+  // Coaching extension: past the known book line, pull Stockfish's single best
+  // move for the current position and append it to the line, so training keeps
+  // suggesting best moves (and highlighting them as hints) to move 20 — the
+  // engine never plays a free game against the student.
+  private async extendCoach() {
+    if (!this.trainer) return
+    const myEpoch = this.epoch
+    this.setTrStatus('info', 'Finding the best move…' + this.trProgress())
+    this.emit()
+    const wasReviewing = this.reviewing
+    this.reviewing = true
+    await this.evalPosition(this.game.fen(), 350)
+    this.reviewing = wasReviewing
+    if (myEpoch !== this.epoch || !this.trainer) return // mode switched mid-think
+    const b = this.reviewCollect?.bestUci
+    const san = b && b !== '(none)' ? ChessController.uciToSan(this.game.fen(), b) : null
+    if (!san) {
+      this.endOfBook()
+      return
+    }
+    this.trainer.line.moves.push(san)
+    this.maybeBookMove()
   }
 
   startTrainer(idx: number, set: SetKey, hints: boolean) {
@@ -699,7 +720,11 @@ export class ChessController {
     this.stopReplay()
     this.stopSelfPlay()
     this.sessionKey = set
-    this.trainer = { line, ply: 0, hints }
+    // Clone the line (fresh moves array) so the to-move-20 coaching extension
+    // never mutates the shared DB/BOOK entry. Opening lines coach to move 20
+    // (40 plies); master games (result set) play only their own moves.
+    const cloned: BookLine = { ...line, moves: [...line.moves] }
+    this.trainer = { line: cloned, ply: 0, hints, target: line.result ? 0 : 40, bookLen: cloned.moves.length }
     this.humanColor = line.you
     this.orientation = this.humanColor === 'w' ? 'white' : 'black'
     this.game.reset()
