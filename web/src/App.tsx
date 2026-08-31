@@ -1,7 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ChessController, type Snapshot, type SetKey, type MoveLabel } from './core/controller'
+import { ChessController, type Snapshot, type SetKey, type MoveLabel, type SessionSlot } from './core/controller'
 import { pieceSVG } from './core/pieces'
 import { BOOK, OPENING_IDX, GAME_IDX, side, type BookLine } from './core/book'
+import {
+  loadOpenings,
+  searchOpenings,
+  POPULAR_PRIMARIES,
+  type OpeningsData,
+  type OpeningEntry,
+} from './core/openings'
+import { COACH } from './core/coach'
 
 const LABEL_STYLE: Record<MoveLabel, string> = {
   Best: 'bg-[#7ea86a]/20 text-[#9fca88] border-[#7ea86a]/40',
@@ -222,6 +230,273 @@ function StatusNote({ slot }: { slot: { statusHtml: string; note: string } }) {
   )
 }
 
+function formatMoves(sans: string[]): string {
+  let out = ''
+  for (let i = 0; i < sans.length; i++) {
+    if (i % 2 === 0) out += (i / 2 + 1) + '.'
+    out += sans[i] + ' '
+  }
+  return out.trim()
+}
+
+function OpeningsExplorer({
+  ctrl,
+  train,
+  replaying,
+  selfPlay,
+  sessionKey,
+}: {
+  ctrl: ChessController
+  train: SessionSlot
+  replaying: boolean
+  selfPlay: boolean
+  sessionKey: SetKey
+}) {
+  const [data, setData] = useState<OpeningsData | null>(null)
+  const [err, setErr] = useState('')
+  const [query, setQuery] = useState('')
+  const [sel, setSel] = useState<OpeningEntry | null>(null)
+  const [trainSide, setTrainSide] = useState<'w' | 'b'>('w')
+  const [hints, setHints] = useState(false)
+
+  useEffect(() => {
+    let alive = true
+    loadOpenings()
+      .then((d) => alive && setData(d))
+      .catch((e) => alive && setErr(String(e)))
+    return () => {
+      alive = false
+    }
+  }, [])
+
+  const results = useMemo(() => (data && query ? searchOpenings(data, query) : []), [data, query])
+  const popular = useMemo(() => {
+    if (!data) return []
+    return POPULAR_PRIMARIES.map((p) => data.byPrimary.get(p)?.[0]).filter(Boolean) as OpeningEntry[]
+  }, [data])
+  const siblings = useMemo(() => {
+    if (!data || !sel) return []
+    return (data.byPrimary.get(sel.primary) || []).filter((x) => x.name !== sel.name).slice(0, 8)
+  }, [data, sel])
+
+  const select = (e: OpeningEntry, side = trainSide) => {
+    setSel(e)
+    ctrl.previewLine(e.moves, side)
+  }
+  const flipSide = (s: 'w' | 'b') => {
+    setTrainSide(s)
+    if (sel) ctrl.previewLine(sel.moves, s)
+  }
+
+  const coach = sel ? COACH[sel.primary] : undefined
+  const watchLabel = replaying && sessionKey === 'train' ? '■ Stop' : selfPlay ? '■ Stop' : '▶ Watch this line played out'
+
+  if (err)
+    return (
+      <div className="grid gap-2 text-sm text-[var(--color-muted)]">
+        <div>Couldn’t load the opening database.</div>
+        <Btn
+          onClick={() => {
+            setErr('')
+            loadOpenings().then(setData).catch((e) => setErr(String(e)))
+          }}
+        >
+          Retry
+        </Btn>
+      </div>
+    )
+  if (!data) return <div className="py-6 text-center text-sm text-[var(--color-muted)]">Loading opening database…</div>
+
+  const startTrain = () => {
+    if (!sel) return
+    ctrl.startTrainerLine(
+      {
+        moves: sel.moves,
+        you: trainSide,
+        opening: sel.primary,
+        variation: sel.variation + (sel.subline ? ', ' + sel.subline : ''),
+        eco: sel.eco,
+      },
+      'train',
+      hints,
+    )
+  }
+
+  return (
+    <div className="grid gap-3">
+      <Field label={`Search openings · ${data.entries.length.toLocaleString()} lines`}>
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="name or ECO — e.g. Najdorf, Caro-Kann, B12"
+          autoComplete="off"
+          className="w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 text-sm text-[var(--color-ink)] placeholder:text-[var(--color-muted)] focus:border-[var(--color-brass)] focus:outline-none"
+        />
+      </Field>
+
+      {/* Results / quick picks when nothing is selected, or a Back control when one is */}
+      {!sel && (
+        <>
+          {query ? (
+            <div className="max-h-64 divide-y divide-white/5 overflow-auto rounded-xl border border-white/10">
+              {results.length ? (
+                results.map((e) => (
+                  <button
+                    key={e.name}
+                    onClick={() => select(e)}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left transition hover:bg-white/[0.05]"
+                  >
+                    <span className="w-9 shrink-0 font-mono text-[11px] text-[var(--color-brass)]">{e.eco}</span>
+                    <span className="text-[13px]">{e.name}</span>
+                  </button>
+                ))
+              ) : (
+                <div className="p-3 text-sm italic text-[var(--color-muted)]">No openings match “{query}”.</div>
+              )}
+            </div>
+          ) : (
+            <div>
+              <div className="mb-1.5 text-xs uppercase tracking-wide text-[var(--color-muted)]">Popular openings</div>
+              <div className="flex flex-wrap gap-1.5">
+                {popular.map((e) => (
+                  <button
+                    key={e.primary}
+                    onClick={() => select(e)}
+                    className="rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1.5 text-xs font-medium transition hover:border-[var(--color-brass)]/50 hover:bg-white/[0.06]"
+                  >
+                    {e.primary}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Opening profile */}
+      {sel && (
+        <div className="grid gap-3">
+          <button
+            onClick={() => {
+              setSel(null)
+            }}
+            className="justify-self-start text-xs text-[var(--color-muted)] hover:text-[var(--color-ink)]"
+          >
+            ‹ Back to list
+          </button>
+
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+            <div className="mb-1 flex items-center gap-2">
+              <span className="rounded-md border border-[var(--color-brass)]/40 px-1.5 py-0.5 font-mono text-[11px] font-bold text-[var(--color-brass)]">
+                {sel.eco}
+              </span>
+              <span className="text-sm font-bold">{sel.primary}</span>
+            </div>
+            <div className="text-xs text-[var(--color-muted)]">
+              {sel.variation}
+              {sel.subline ? ' › ' + sel.subline : ''}
+            </div>
+            <div className="mt-2 font-mono text-[12px] leading-relaxed text-[var(--color-ink)]">{formatMoves(sel.moves)}</div>
+          </div>
+
+          {/* Coach: themes + middle-game plans */}
+          {coach ? (
+            <div className="grid gap-2 rounded-xl border border-white/10 bg-white/[0.02] p-3 text-[13px]">
+              <div className="leading-relaxed text-[var(--color-muted)]">
+                <b className="text-[var(--color-ink)]">Themes: </b>
+                {coach.themes}
+              </div>
+              <div>
+                <div className="mb-1 text-xs uppercase tracking-wide text-[var(--color-muted)]">Middle-game plans</div>
+                <ul className="grid list-disc gap-1 pl-5 text-[var(--color-muted)]">
+                  {coach.plans.map((p, i) => (
+                    <li key={i} className="leading-relaxed">
+                      {p}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3 text-[13px] leading-relaxed text-[var(--color-muted)]">
+              Step through the line on the board with the ◀ ▶ controls, then train it against Stockfish. Coaching notes
+              are being written for more openings.
+            </div>
+          )}
+
+          {/* Train controls */}
+          <div>
+            <div className="mb-1.5 text-xs uppercase tracking-wide text-[var(--color-muted)]">Train as</div>
+            <div className="grid grid-cols-2 gap-1 rounded-xl border border-white/10 p-1">
+              {(['w', 'b'] as const).map((s) => (
+                <button
+                  key={s}
+                  onClick={() => flipSide(s)}
+                  className={
+                    'min-h-10 rounded-lg text-sm font-semibold transition ' +
+                    (trainSide === s ? 'bg-[var(--color-brass)] text-[#1a130a]' : 'text-[var(--color-ink)] hover:bg-white/[0.05]')
+                  }
+                >
+                  {s === 'w' ? 'White' : 'Black'}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <Btn primary onClick={startTrain}>
+              Train this line
+            </Btn>
+            <Btn disabled={train.hintDisabled} onClick={() => ctrl.playBookMove('train')}>
+              Play book move
+            </Btn>
+          </div>
+          <Btn active={replaying && sessionKey === 'train'} onClick={() => ctrl.watchMovesOut(sel.moves, trainSide)}>
+            {watchLabel}
+          </Btn>
+          <label className="flex cursor-pointer items-center gap-2 text-xs text-[var(--color-muted)]">
+            <input
+              type="checkbox"
+              checked={hints}
+              onChange={(e) => {
+                setHints(e.target.checked)
+                ctrl.setHints('train', e.target.checked)
+              }}
+              className="h-4 w-4 accent-[var(--color-brass)]"
+            />
+            Show hint (highlight the book move)
+          </label>
+          <StatusNote slot={train} />
+
+          {/* Variation index */}
+          {siblings.length > 0 && (
+            <div>
+              <div className="mb-1.5 text-xs uppercase tracking-wide text-[var(--color-muted)]">
+                Variations in this opening
+              </div>
+              <div className="max-h-48 divide-y divide-white/5 overflow-auto rounded-xl border border-white/10">
+                {siblings.map((e) => (
+                  <button
+                    key={e.name}
+                    onClick={() => select(e)}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left transition hover:bg-white/[0.05]"
+                  >
+                    <span className="w-9 shrink-0 font-mono text-[11px] text-[var(--color-brass)]">{e.eco}</span>
+                    <span className="text-[12px]">
+                      {e.variation}
+                      {e.subline ? ' › ' + e.subline : ''}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function App() {
   const boardRef = useRef<HTMLDivElement>(null)
   const ctrlRef = useRef<ChessController | null>(null)
@@ -236,9 +511,7 @@ export default function App() {
   const [tt, setTt] = useState(1000)
   const [facet, setFacet] = useState<Facet>('opening')
   const [search, setSearch] = useState('')
-  const [openSel, setOpenSel] = useState<number>(OPENING_IDX[0])
   const [gameSel, setGameSel] = useState<number>(GAME_IDX[0])
-  const [trHints, setTrHints] = useState(false)
   const [mgHints, setMgHints] = useState(false)
   const [showIntro, setShowIntro] = useState(() => {
     try {
@@ -291,7 +564,6 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab])
 
-  const openGroups = useMemo(() => openingGroups(), [])
   const gGroups = useMemo(() => gameGroups(facet, search), [facet, search])
 
   // Keep the game selection valid as facet/search change.
@@ -340,7 +612,6 @@ export default function App() {
   const rows: { n: number; w: string; b: string }[] = []
   for (let i = 0; i < history.length; i += 2) rows.push({ n: i / 2 + 1, w: history[i] || '', b: history[i + 1] || '' })
 
-  const openMeta = metaHtml(BOOK[openSel])
   const gameMeta = metaHtml(BOOK[gameSel])
   const gameSelValid = gGroups.some((g) => g.options.some((o) => o.value === gameSel))
 
@@ -556,37 +827,14 @@ export default function App() {
               </>
             )}
 
-            {tab === 'train' && (
-              <>
-                <Field label="Opening line">
-                  <GroupedSelect value={openSel} groups={openGroups} onChange={setOpenSel} />
-                </Field>
-                <div className="text-xs leading-relaxed text-[var(--color-muted)]" dangerouslySetInnerHTML={{ __html: openMeta }} />
-                <div className="grid grid-cols-2 gap-2">
-                  <Btn primary onClick={() => ctrl.startTrainer(openSel, 'train', trHints)}>
-                    Start line
-                  </Btn>
-                  <Btn disabled={snap?.train.hintDisabled ?? true} onClick={() => ctrl.playBookMove('train')}>
-                    Play book move
-                  </Btn>
-                </div>
-                <Btn active={replaying && sessionKey === 'train'} onClick={() => ctrl.watch(openSel, 'train')}>
-                  {watchLabel('train', '▶ Watch Stockfish play this line out')}
-                </Btn>
-                <label className="flex cursor-pointer items-center gap-2 text-xs text-[var(--color-muted)]">
-                  <input
-                    type="checkbox"
-                    checked={trHints}
-                    onChange={(e) => {
-                      setTrHints(e.target.checked)
-                      ctrl.setHints('train', e.target.checked)
-                    }}
-                    className="h-4 w-4 accent-[var(--color-brass)]"
-                  />
-                  Show hint (highlight the book move)
-                </label>
-                {snap && <StatusNote slot={snap.train} />}
-              </>
+            {tab === 'train' && snap && (
+              <OpeningsExplorer
+                ctrl={ctrl}
+                train={snap.train}
+                replaying={replaying}
+                selfPlay={selfPlay}
+                sessionKey={sessionKey}
+              />
             )}
 
             {tab === 'games' && (

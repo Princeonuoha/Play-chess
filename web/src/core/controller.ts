@@ -660,11 +660,17 @@ export class ChessController {
   }
 
   startTrainer(idx: number, set: SetKey, hints: boolean) {
+    this.startTrainerLine(BOOK[idx], set, hints)
+  }
+
+  // Train an arbitrary line (used by the Opening Explorer, which supplies lines
+  // from the bundled openings DB rather than a fixed BOOK index).
+  startTrainerLine(line: BookLine, set: SetKey, hints: boolean) {
     this.epoch++
     this.exitReview()
     this.stopReplay()
+    this.stopSelfPlay()
     this.sessionKey = set
-    const line = BOOK[idx]
     this.trainer = { line, ply: 0, hints }
     this.humanColor = line.you
     this.orientation = this.humanColor === 'w' ? 'white' : 'black'
@@ -805,23 +811,65 @@ export class ChessController {
     this.renderAll()
   }
   watchLineOut(idx: number) {
+    const l = BOOK[idx]
+    this.watchMovesOut(l.moves, l.you)
+  }
+
+  // Play an arbitrary move list out with the engine (Opening Explorer "Watch").
+  watchMovesOut(moves: string[], you: 'w' | 'b') {
     this.epoch++
     this.exitReview()
-    const line = BOOK[idx]
     this.stopSelfPlay()
     this.stopReplay()
     this.exitTrainer()
     this.game.reset()
     this.engine.newGame()
-    for (const san of line.moves) this.game.move(san)
+    for (const san of moves) {
+      try {
+        if (!this.game.move(san)) break
+      } catch (e) {
+        break
+      }
+    }
     const h = this.game.history({ verbose: true }) as any[]
     this.lastMove = h.length ? { from: h[h.length - 1].from, to: h[h.length - 1].to } : null
-    this.orientation = line.you === 'w' ? 'white' : 'black'
+    this.orientation = you === 'w' ? 'white' : 'black'
     this.selected = null
     this.hintSquares = null
     this.renderSquares()
     this.renderAll()
     this.startSelfPlay()
+  }
+
+  // Load a line onto the board (no engine) so it can be stepped with the
+  // scrubber. Used when a user selects an opening in the Explorer.
+  previewLine(moves: string[], you: 'w' | 'b') {
+    this.epoch++
+    this.exitReview()
+    this.stopSelfPlay()
+    this.stopReplay()
+    this.exitTrainer()
+    this.humanColor = you
+    this.orientation = you === 'w' ? 'white' : 'black'
+    this.game.reset()
+    this.engine.newGame()
+    for (const san of moves) {
+      try {
+        if (!this.game.move(san)) break
+      } catch (e) {
+        break
+      }
+    }
+    const h = this.game.history({ verbose: true }) as any[]
+    this.lastMove = h.length ? { from: h[h.length - 1].from, to: h[h.length - 1].to } : null
+    this.selected = null
+    this.hintSquares = null
+    this.thinking = false
+    this.setEval(0, null)
+    this.viewGame = null
+    this.reviewPly = null
+    this.renderSquares()
+    this.renderAll()
   }
 
   // Watch button in a trainer/games set: replay a game, or play an opening out.

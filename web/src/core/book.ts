@@ -5,6 +5,7 @@
 export interface BookLine {
   opening?: string;
   variation: string;
+  eco?: string;
   you: 'w' | 'b';
   idea?: string;
   moves: string[];
