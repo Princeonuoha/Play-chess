@@ -46,6 +46,24 @@ export interface ReviewState {
   story: StoryLine[]
 }
 
+export interface AnnItem {
+  ply: number
+  moveNo: number
+  side: 'w' | 'b'
+  san: string
+  evalWhite: string
+  isBook: boolean
+  betterSan: string | null // engine's preferred move when the book move differs
+  theoryEnd?: boolean // first move after the known line ends
+}
+
+export interface AnnotationState {
+  running: boolean
+  done: boolean
+  progress: string
+  moves: AnnItem[]
+}
+
 export interface Snapshot {
   engineTag: string
   statusWho: string
@@ -64,6 +82,7 @@ export interface Snapshot {
   games: SessionSlot
   review: ReviewState | null
   reviewPly: number | null
+  annotation: AnnotationState | null
 }
 
 const FILES = 'abcdefgh'
@@ -109,6 +128,7 @@ export class ChessController {
   private evalLabel = '0.0'
   private analysis: AnalysisLine[] | null = null
   private review: ReviewState | null = null
+  private annotation: AnnotationState | null = null
   private reviewing = false
   private reviewCollect: { cp: number; mate: number | null; pv: string[]; bestUci: string } | null = null
   private reviewResolve: (() => void) | null = null
@@ -225,6 +245,7 @@ export class ChessController {
       games: { ...this.slots.games },
       review: this.review,
       reviewPly: this.reviewPly,
+      annotation: this.annotation,
     }
   }
 
@@ -1279,8 +1300,143 @@ export class ChessController {
   private exitReview() {
     this.reviewing = false
     this.review = null
+    this.annotation = null
     this.viewGame = null
     this.reviewPly = null
+  }
+
+  /* -------------------------- opening annotation (best moves to move N) -------------------------- */
+  // Take a known opening line, extend it with the engine's best play to a target
+  // depth, and annotate every move: eval (White's view), where the book move
+  // differs from the engine's pick, and where theory ends. Reuses the one-shot
+  // eval plumbing (reviewing flag routes engine output to reviewCollect).
+  async annotateOpening(bookMoves: string[], you: 'w' | 'b', targetPlies = 40, movetime = 350) {
+    if (this.selfPlay || this.replaying || this.reviewing) return
+    this.exitTrainer()
+    this.stopSelfPlay()
+    this.stopReplay()
+    this.epoch++
+    const myEpoch = this.epoch
+    this.reviewing = true
+    this.humanColor = you
+    this.orientation = you === 'w' ? 'white' : 'black'
+    this.annotation = { running: true, done: false, progress: 'Analysing the line…', moves: [] }
+    this.emit()
+
+    const walker = new Chess()
+    const validBook: string[] = []
+    for (const m of bookMoves) {
+      try {
+        if (walker.move(m)) validBook.push(m)
+        else break
+      } catch (e) {
+        break
+      }
+    }
+    walker.reset()
+
+    const fens: string[] = [walker.fen()]
+    const sans: string[] = []
+    const scores: number[] = []
+    const bests: string[] = []
+    const isBook: boolean[] = []
+
+    let ply = 0
+    while (ply < targetPlies) {
+      if (myEpoch !== this.epoch) {
+        this.reviewing = false
+        return
+      }
+      const fen = walker.fen()
+      // Follow along on the board.
+      this.viewGame = new Chess(fen)
+      this.reviewPly = ply - 1 >= 0 ? ply - 1 : null
+      const h = walker.history({ verbose: true }) as any[]
+      this.lastMove = h.length ? { from: h[h.length - 1].from, to: h[h.length - 1].to } : null
+      this.renderPieces()
+      this.renderHighlights()
+
+      await this.evalPosition(fen, movetime)
+      const c = this.reviewCollect!
+      scores[ply] = ChessController.scoreVal(c.cp, c.mate)
+      bests[ply] = c.bestUci
+
+      let mv: any = null
+      if (ply < validBook.length) {
+        mv = walker.move(validBook[ply])
+        isBook[ply] = true
+      } else {
+        if (walker.isGameOver()) break
+        const b = c.bestUci
+        if (!b || b === '(none)') break
+        mv = walker.move({ from: b.slice(0, 2), to: b.slice(2, 4), promotion: b.length > 4 ? b[4] : undefined })
+        isBook[ply] = false
+      }
+      if (!mv) break
+      sans[ply] = mv.san
+      ply++
+      fens[ply] = walker.fen()
+      this.annotation = { ...this.annotation!, progress: `Analysing… move ${Math.ceil(ply / 2)} of ${targetPlies / 2}` }
+      this.emit()
+    }
+
+    // Score the final position so the last move's eval is available.
+    if (myEpoch === this.epoch && !walker.isGameOver()) {
+      await this.evalPosition(walker.fen(), movetime)
+      scores[ply] = ChessController.scoreVal(this.reviewCollect!.cp, this.reviewCollect!.mate)
+    }
+    if (myEpoch !== this.epoch) {
+      this.reviewing = false
+      return
+    }
+
+    const items: AnnItem[] = []
+    for (let i = 0; i < ply; i++) {
+      const turn: 'w' | 'b' = fens[i].split(' ')[1] === 'w' ? 'w' : 'b'
+      const afterTurn: 'w' | 'b' = fens[i + 1] && fens[i + 1].split(' ')[1] === 'w' ? 'w' : 'b'
+      const afterStm = scores[i + 1] ?? -scores[i]
+      const white = afterTurn === 'w' ? afterStm : -afterStm
+      let betterSan: string | null = null
+      if (isBook[i] && bests[i]) {
+        const bs = ChessController.uciToSan(fens[i], bests[i])
+        if (bs && !sanEq(bs, sans[i])) betterSan = bs
+      }
+      items.push({
+        ply: i,
+        moveNo: Math.floor(i / 2) + 1,
+        side: turn,
+        san: sans[i],
+        evalWhite: this.fmtScore(white),
+        isBook: isBook[i],
+        betterSan,
+        theoryEnd: i === validBook.length && validBook.length > 0 && validBook.length < ply,
+      })
+    }
+
+    // Load the full annotated line so the scrubber can walk it.
+    this.reviewing = false
+    this.viewGame = null
+    this.reviewPly = null
+    this.game.reset()
+    this.engine.newGame()
+    for (const s of sans) {
+      try {
+        if (!this.game.move(s)) break
+      } catch (e) {
+        break
+      }
+    }
+    const hh = this.game.history({ verbose: true }) as any[]
+    this.lastMove = hh.length ? { from: hh[hh.length - 1].from, to: hh[hh.length - 1].to } : null
+    this.setEval(0, null)
+    this.annotation = { running: false, done: true, progress: '', moves: items }
+    this.renderSquares()
+    this.renderAll()
+  }
+
+  clearAnnotation() {
+    this.annotation = null
+    this.resumeGame()
   }
 
   /* -------------------------- PGN -------------------------- */

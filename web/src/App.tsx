@@ -1,5 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ChessController, type Snapshot, type SetKey, type MoveLabel, type SessionSlot } from './core/controller'
+import {
+  ChessController,
+  type Snapshot,
+  type SetKey,
+  type MoveLabel,
+  type SessionSlot,
+  type AnnotationState,
+} from './core/controller'
 import { pieceSVG } from './core/pieces'
 import { BOOK, OPENING_IDX, GAME_IDX, side, type BookLine } from './core/book'
 import {
@@ -245,12 +252,16 @@ function OpeningsExplorer({
   replaying,
   selfPlay,
   sessionKey,
+  annotation,
+  reviewPly,
 }: {
   ctrl: ChessController
   train: SessionSlot
   replaying: boolean
   selfPlay: boolean
   sessionKey: SetKey
+  annotation: AnnotationState | null
+  reviewPly: number | null
 }) {
   const [data, setData] = useState<OpeningsData | null>(null)
   const [err, setErr] = useState('')
@@ -424,6 +435,76 @@ function OpeningsExplorer({
               are being written for more openings.
             </div>
           )}
+
+          {/* Best moves & annotations to move 20 */}
+          <div className="grid gap-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs uppercase tracking-wide text-[var(--color-muted)]">Best moves to move 20</span>
+              <div className="flex gap-2">
+                {annotation && !annotation.running && (
+                  <Btn onClick={() => ctrl.clearAnnotation()} className="min-h-0 flex-none px-3 py-1.5">
+                    Clear
+                  </Btn>
+                )}
+                <Btn
+                  onClick={() => ctrl.annotateOpening(sel.moves, trainSide)}
+                  disabled={annotation?.running}
+                  className="min-h-0 flex-none px-3 py-1.5"
+                >
+                  {annotation?.running ? 'Analysing…' : 'Show best moves'}
+                </Btn>
+              </div>
+            </div>
+            {annotation?.running && (
+              <div className="flex items-center gap-2 text-sm text-[var(--color-muted)]">
+                <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-[var(--color-brass)] border-r-transparent" />
+                {annotation.progress}
+              </div>
+            )}
+            {annotation && annotation.moves.length > 0 && (
+              <div className="max-h-80 divide-y divide-white/5 overflow-auto rounded-xl border border-white/10">
+                {annotation.moves.map((m) => (
+                  <div key={m.ply}>
+                    {m.theoryEnd && (
+                      <div className="bg-[var(--color-brass)]/10 px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-[var(--color-brass)]">
+                        Theory ends — Stockfish’s best play from here
+                      </div>
+                    )}
+                    <button
+                      onClick={() => ctrl.gotoPly(m.ply)}
+                      className={
+                        'flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] transition hover:bg-white/[0.04] ' +
+                        (reviewPly === m.ply ? 'bg-[var(--color-brass)]/10 ring-1 ring-inset ring-[var(--color-brass)]/40' : '')
+                      }
+                    >
+                      <span className="w-9 shrink-0 text-right font-mono text-xs text-[var(--color-muted)]">
+                        {m.moveNo}
+                        {m.side === 'w' ? '.' : '…'}
+                      </span>
+                      <span className="w-14 shrink-0 font-mono font-semibold">{m.san}</span>
+                      {!m.isBook && (
+                        <span className="shrink-0 rounded border border-white/10 px-1 py-0.5 text-[9px] uppercase text-[var(--color-muted)]">
+                          engine
+                        </span>
+                      )}
+                      {m.betterSan && (
+                        <span className="shrink-0 font-mono text-[11px] text-[#e0bd7c]" title="Engine's preferred move">
+                          prefers {m.betterSan}
+                        </span>
+                      )}
+                      <span className="ml-auto shrink-0 font-mono text-xs text-[var(--color-muted)]">{m.evalWhite}</span>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {annotation && annotation.moves.length > 0 && (
+              <div className="text-[11px] leading-relaxed text-[var(--color-muted)]">
+                Evals are from White’s side. “prefers” flags where the book move isn’t Stockfish’s top choice; “engine”
+                marks moves past the end of theory. Tap a move to see it on the board.
+              </div>
+            )}
+          </div>
 
           {/* Train controls */}
           <div>
@@ -834,6 +915,8 @@ export default function App() {
                 replaying={replaying}
                 selfPlay={selfPlay}
                 sessionKey={sessionKey}
+                annotation={snap.annotation}
+                reviewPly={reviewPly}
               />
             )}
 
