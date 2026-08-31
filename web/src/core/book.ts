@@ -9,6 +9,9 @@ export interface BookLine {
   you: 'w' | 'b';
   idea?: string;
   moves: string[];
+  // When set, the trainer stops at the end of the line instead of handing the
+  // position over to Stockfish to play on (used for suggested best-move lines).
+  noHandoff?: boolean;
   // Master-game-only fields:
   game?: boolean;
   hero?: string;

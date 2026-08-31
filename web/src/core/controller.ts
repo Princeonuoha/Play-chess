@@ -671,6 +671,13 @@ export class ChessController {
       this.emit()
       return
     }
+    if (line.noHandoff) {
+      // A suggested best-move line — stop here; don't let the engine play on.
+      this.setTrStatus('good', `End of the suggested line (${total} moves) — nicely played. Explore another opening.`)
+      this.renderHighlights()
+      this.emit()
+      return
+    }
     this.setTrStatus(
       'good',
       `End of the ${label} line (${total} moves). You're on your own now — playing Stockfish from here.`,

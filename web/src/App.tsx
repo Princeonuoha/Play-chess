@@ -436,10 +436,10 @@ function OpeningsExplorer({
             </div>
           )}
 
-          {/* Best moves & annotations to move 20 */}
+          {/* Best moves & annotations to move 20 (suggested, not auto-played) */}
           <div className="grid gap-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs uppercase tracking-wide text-[var(--color-muted)]">Best moves to move 20</span>
+              <span className="text-xs uppercase tracking-wide text-[var(--color-muted)]">Suggested line to move 20</span>
               <div className="flex gap-2">
                 {annotation && !annotation.running && (
                   <Btn onClick={() => ctrl.clearAnnotation()} className="min-h-0 flex-none px-3 py-1.5">
@@ -451,7 +451,7 @@ function OpeningsExplorer({
                   disabled={annotation?.running}
                   className="min-h-0 flex-none px-3 py-1.5"
                 >
-                  {annotation?.running ? 'Analysing…' : 'Show best moves'}
+                  {annotation?.running ? 'Analysing…' : 'Suggest best moves'}
                 </Btn>
               </div>
             </div>
@@ -467,7 +467,7 @@ function OpeningsExplorer({
                   <div key={m.ply}>
                     {m.theoryEnd && (
                       <div className="bg-[var(--color-brass)]/10 px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-[var(--color-brass)]">
-                        Theory ends — Stockfish’s best play from here
+                        Theory ends — Stockfish’s suggested moves from here
                       </div>
                     )}
                     <button
@@ -484,12 +484,12 @@ function OpeningsExplorer({
                       <span className="w-14 shrink-0 font-mono font-semibold">{m.san}</span>
                       {!m.isBook && (
                         <span className="shrink-0 rounded border border-white/10 px-1 py-0.5 text-[9px] uppercase text-[var(--color-muted)]">
-                          engine
+                          suggested
                         </span>
                       )}
                       {m.betterSan && (
-                        <span className="shrink-0 font-mono text-[11px] text-[#e0bd7c]" title="Engine's preferred move">
-                          prefers {m.betterSan}
+                        <span className="shrink-0 font-mono text-[11px] text-[#e0bd7c]" title="Stockfish suggests this move instead">
+                          try {m.betterSan}
                         </span>
                       )}
                       <span className="ml-auto shrink-0 font-mono text-xs text-[var(--color-muted)]">{m.evalWhite}</span>
@@ -499,10 +499,33 @@ function OpeningsExplorer({
               </div>
             )}
             {annotation && annotation.moves.length > 0 && (
-              <div className="text-[11px] leading-relaxed text-[var(--color-muted)]">
-                Evals are from White’s side. “prefers” flags where the book move isn’t Stockfish’s top choice; “engine”
-                marks moves past the end of theory. Tap a move to see it on the board.
-              </div>
+              <>
+                <Btn
+                  primary
+                  onClick={() => {
+                    setHints(true)
+                    ctrl.startTrainerLine(
+                      {
+                        moves: annotation.moves.map((m) => m.san),
+                        you: trainSide,
+                        opening: sel.primary,
+                        variation: sel.variation + ' — suggested line to move 20',
+                        eco: sel.eco,
+                        noHandoff: true,
+                      },
+                      'train',
+                      true,
+                    )
+                  }}
+                >
+                  Train this line with hints
+                </Btn>
+                <div className="text-[11px] leading-relaxed text-[var(--color-muted)]">
+                  Evals are from White’s side. “try” flags where Stockfish suggests a different move; “suggested” marks
+                  moves past the end of theory — these are recommendations, not played out by the engine. Tap a move to
+                  see it, or “Train this line with hints” to play the suggested moves yourself (each one is highlighted).
+                </div>
+              </>
             )}
           </div>
 
