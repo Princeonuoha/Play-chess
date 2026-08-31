@@ -375,20 +375,33 @@ export default function App() {
             </button>
           </div>
           <div className="grid gap-2.5 sm:grid-cols-2">
-            {[
-              ['♟ Play', 'Play against Stockfish. Pick a difficulty from Beginner to Maximum, choose your colour, and drag or tap to move.'],
-              ['📖 Openings', 'Drill a real opening line. The app plays the theory for the other side and checks your moves against the book.'],
-              ['🏆 Games', 'Play through or watch famous master games — search by player, opening, theme, or era.'],
-              ['🔎 Study', 'Review any game: Stockfish grades every move, shows the better move you missed, and tells you how the masters handled the line.'],
-            ].map(([t, d]) => (
-              <div key={t} className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                <div className="mb-0.5 text-sm font-semibold text-[var(--color-brass)]">{t}</div>
+            {([
+              ['play', '♟', 'Play', 'Play against Stockfish. Pick a difficulty from Beginner to Maximum, choose your colour, and drag or tap to move.'],
+              ['train', '📖', 'Openings', 'Drill a real opening line. The app plays the theory for the other side and checks your moves against the book.'],
+              ['games', '🏆', 'Games', 'Play through or watch famous master games — search by player, opening, theme, or era.'],
+              ['study', '🔎', 'Study', 'Review any game: Stockfish grades every move, shows the better move you missed, and tells you how the masters handled the line.'],
+            ] as [Tab, string, string, string][]).map(([id, icon, t, d]) => (
+              <button
+                key={id}
+                onClick={() => {
+                  setTab(id)
+                  dismissIntro()
+                }}
+                className="group rounded-xl border border-white/10 bg-white/[0.03] p-3 text-left transition hover:border-[var(--color-brass)]/50 hover:bg-white/[0.06] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-brass)]"
+              >
+                <div className="mb-0.5 flex items-center gap-2 text-sm font-semibold text-[var(--color-brass)]">
+                  <span>{icon}</span>
+                  <span>{t}</span>
+                  <span className="ml-auto text-[var(--color-muted)] transition group-hover:translate-x-0.5 group-hover:text-[var(--color-brass)]">
+                    →
+                  </span>
+                </div>
                 <div className="text-xs leading-relaxed text-[var(--color-muted)]">{d}</div>
-              </div>
+              </button>
             ))}
           </div>
           <div className="mt-3 text-[11px] text-[var(--color-muted)]">
-            Tip: use the ◀ ▶ buttons under the board (or your arrow keys) to step through any game.
+            Tap a card to jump straight in · use the ◀ ▶ buttons under the board (or your arrow keys) to step through any game.
           </div>
         </div>
       )}
