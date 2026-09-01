@@ -82,6 +82,20 @@ body {
 .board .piece svg { width: 90%; height: 90%; filter: drop-shadow(0 2px 3px rgba(0,0,0,.5)); }
 .board .piece.mine { cursor: grab; }
 
+/* Game-review grade badge, pinned to the corner of the moved square */
+.board .gb { position: absolute; width: 12.5%; height: 12.5%; pointer-events: none; z-index: 3; }
+.board .gb .gb-badge {
+  position: absolute; top: 6%; right: 6%; min-width: 40%; height: 40%;
+  padding: 0 3px; border-radius: 999px; display: grid; place-items: center;
+  font-family: var(--font-display); font-size: min(2.6vmin, 15px); font-weight: 800; font-style: normal;
+  color: #fff; line-height: 1; box-shadow: 0 1px 4px rgba(0,0,0,.5); border: 1.5px solid rgba(255,255,255,.85);
+}
+.board .gb .gb-best { background: #6f9f57; }
+.board .gb .gb-good { background: #5f9ea0; }
+.board .gb .gb-inaccuracy { background: #d0a63f; color: #201800; }
+.board .gb .gb-mistake { background: #d0803a; }
+.board .gb .gb-blunder { background: #c0453f; }
+
 .evalbar {
   width: 16px; border-radius: 8px; overflow: hidden; position: relative;
   background: #11171d; border: 1px solid var(--line); align-self: stretch; min-height: 0;

@@ -6,6 +6,7 @@ import {
   type MoveLabel,
   type SessionSlot,
   type AnnotationState,
+  type ReviewItem,
 } from './core/controller'
 import { pieceSVG } from './core/pieces'
 import { BOOK, OPENING_IDX, GAME_IDX, side, type BookLine } from './core/book'
@@ -31,6 +32,17 @@ const LABEL_ICON: Record<MoveLabel, string> = {
   Inaccuracy: '?!',
   Mistake: '?',
   Blunder: '??',
+}
+
+// Plain-language commentary for a reviewed move, e.g.
+// "12.c5 was a mistake. A better move was Qg5."
+function reviewComment(it: ReviewItem): string {
+  const mv = `${it.moveNo}${it.side === 'w' ? '.' : '…'}${it.san}`
+  if (it.label === 'Best') return `${mv} — the best move.`
+  if (it.label === 'Good') return `${mv} — a good move.`
+  const phrase = it.label === 'Inaccuracy' ? 'an inaccuracy' : it.label === 'Mistake' ? 'a mistake' : 'a blunder'
+  const better = it.betterSan ? ` A better move was ${it.betterSan}.` : ''
+  return `${mv} was ${phrase}.${better}`
 }
 
 // Friendly difficulty tiers for the strength slider (0..20), named by real Elo.
@@ -1086,6 +1098,19 @@ export default function App() {
                         ← Back to final position
                       </Btn>
                     )}
+                    {/* Live commentary for the move being viewed */}
+                    {(() => {
+                      const vp = reviewPly ?? history.length - 1
+                      const it = review.items.find((x) => x.ply === vp)
+                      if (!it) return null
+                      return (
+                        <div className={'flex items-start gap-2 rounded-xl border p-3 text-[13px] leading-relaxed ' + LABEL_STYLE[it.label]}>
+                          <span className="mt-0.5 shrink-0 font-bold">{LABEL_ICON[it.label]}</span>
+                          <span className="text-[var(--color-ink)]">{reviewComment(it)}</span>
+                          <span className="ml-auto shrink-0 font-mono text-xs opacity-80">{it.evalWhite}</span>
+                        </div>
+                      )
+                    })()}
                     <div className="max-h-80 divide-y divide-white/5 overflow-auto rounded-xl border border-white/10">
                       {review.items.map((it) => (
                         <button

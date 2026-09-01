@@ -24,12 +24,22 @@ export interface ReviewItem {
   moveNo: number
   side: 'w' | 'b'
   san: string
+  from: string
+  to: string
   label: MoveLabel
   lossCp: number | null
   betterSan: string | null
   betterPv: string | null
   evalWhite: string
   isYou: boolean
+}
+
+export const GRADE_GLYPH: Record<MoveLabel, string> = {
+  Best: '★',
+  Good: '✓',
+  Inaccuracy: '?!',
+  Mistake: '?',
+  Blunder: '??',
 }
 
 export interface StoryLine {
@@ -362,6 +372,24 @@ export class ChessController {
       const turn = p.turn()
       for (const row of p.board())
         for (const c of row) if (c && c.type === 'k' && c.color === turn) add(c.square, 'check')
+    }
+    // Game-review grade badge on the moved square of the ply being viewed.
+    if (this.review && this.review.done && this.review.items.length) {
+      const total = this.game.history().length
+      const vp = this.reviewPly === null ? total - 1 : this.reviewPly
+      const it = this.review.items.find((x) => x.ply === vp)
+      if (it && it.to) {
+        const { left, top } = this.squareXY(it.to)
+        const cell = document.createElement('div')
+        cell.className = 'gb'
+        cell.style.left = left + '%'
+        cell.style.top = top + '%'
+        const pill = document.createElement('i')
+        pill.className = 'gb-badge gb-' + it.label.toLowerCase()
+        pill.textContent = GRADE_GLYPH[it.label]
+        cell.appendChild(pill)
+        this.elHl.appendChild(cell)
+      }
     }
   }
 
@@ -1172,11 +1200,23 @@ export class ChessController {
       const white = afterTurn === 'w' ? afterStm : -afterStm
       const evalWhite = this.fmtScore(white)
       const betterSan = label === 'Best' ? null : ChessController.uciToSan(fens[i], bestUci[i])
+      let from = ''
+      let to = ''
+      try {
+        const seg = new Chess(fens[i])
+        const mo = seg.move(sans[i])
+        if (mo) {
+          from = mo.from
+          to = mo.to
+        }
+      } catch (e) {}
       items.push({
         ply: i,
         moveNo: Math.floor(i / 2) + 1,
         side: turn,
         san: sans[i],
+        from,
+        to,
         label,
         lossCp: label === 'Best' ? null : Math.round(loss),
         betterSan,
