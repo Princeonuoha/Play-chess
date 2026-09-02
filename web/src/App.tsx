@@ -258,6 +258,20 @@ function formatMoves(sans: string[]): string {
   return out.trim()
 }
 
+// Number a move list that starts partway through a game (startPly = plies already played).
+function formatMovesFrom(sans: string[], startPly: number): string {
+  let out = ''
+  for (let i = 0; i < sans.length; i++) {
+    const ply = startPly + i
+    const moveNo = Math.floor(ply / 2) + 1
+    const white = ply % 2 === 0
+    if (white) out += moveNo + '.'
+    else if (i === 0) out += moveNo + '…'
+    out += sans[i] + ' '
+  }
+  return out.trim()
+}
+
 function OpeningsExplorer({
   ctrl,
   train,
@@ -723,8 +737,10 @@ export default function App() {
 
   const review = snap?.review ?? null
   const reviewPly = snap?.reviewPly ?? null
+  const exploring = snap?.exploring ?? false
+  const exploreMoves = snap?.exploreMoves ?? []
   const history = snap?.history ?? []
-  const canBrowse = history.length > 0 && !selfPlay && !replaying && !(snap?.thinking ?? false)
+  const canBrowse = history.length > 0 && !selfPlay && !replaying && !exploring && !(snap?.thinking ?? false)
   const rows: { n: number; w: string; b: string }[] = []
   for (let i = 0; i < history.length; i += 2) rows.push({ n: i / 2 + 1, w: history[i] || '', b: history[i + 1] || '' })
 
@@ -1026,6 +1042,59 @@ export default function App() {
 
             {tab === 'study' && (
               <>
+                {/* Explore board — play your own moves; engine analyses the line */}
+                {exploring ? (
+                  <div className="grid gap-2 rounded-2xl border border-[var(--color-brass)]/40 bg-white/[0.03] p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-bold uppercase tracking-wide text-[var(--color-brass)]">
+                        Exploring — play any moves
+                      </span>
+                      <div className="flex gap-2">
+                        <Btn
+                          onClick={() => ctrl.exploreUndo()}
+                          disabled={!exploreMoves.length}
+                          className="min-h-0 flex-none px-3 py-1.5"
+                        >
+                          Undo
+                        </Btn>
+                        <Btn onClick={() => ctrl.exitExplore()} className="min-h-0 flex-none px-3 py-1.5">
+                          Exit
+                        </Btn>
+                      </div>
+                    </div>
+                    <div className="font-mono text-[12px] leading-relaxed">
+                      {exploreMoves.length ? (
+                        <span className="text-[var(--color-ink)]">
+                          Your line: {formatMovesFrom(exploreMoves, (snap?.exploreStartPly ?? -1) + 1)}
+                        </span>
+                      ) : (
+                        <span className="text-[var(--color-muted)]">
+                          Drag a piece to try a line for either side — Stockfish evaluates each position below.
+                        </span>
+                      )}
+                    </div>
+                    <div className="grid gap-1">
+                      {snap?.analysis && snap.analysis.length ? (
+                        snap.analysis.map((l, i) => (
+                          <div key={i} className={'an-line' + (l.best ? ' best' : '')}>
+                            <span className="ev">{l.ev}</span>
+                            <span className="pv">{l.pv}</span>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="flex items-center gap-2 text-xs text-[var(--color-muted)]">
+                          <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-[var(--color-brass)] border-r-transparent" />
+                          Stockfish is looking at the position…
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <Btn onClick={() => ctrl.startExplore()} className="justify-self-start min-h-0 flex-none px-3 py-1.5">
+                    ↔ Explore — play your own moves
+                  </Btn>
+                )}
+
                 {/* Game review */}
                 <div className="flex items-center justify-between">
                   <span className="text-xs uppercase tracking-wide text-[var(--color-muted)]">Game review</span>

@@ -93,6 +93,9 @@ export interface Snapshot {
   review: ReviewState | null
   reviewPly: number | null
   annotation: AnnotationState | null
+  exploring: boolean
+  exploreMoves: string[]
+  exploreStartPly: number
 }
 
 const FILES = 'abcdefgh'
@@ -144,6 +147,10 @@ export class ChessController {
   private reviewResolve: (() => void) | null = null
   private reviewPly: number | null = null
   private viewGame: Chess | null = null
+  private exploring = false
+  private exploreGame: Chess | null = null
+  private exploreMoves: string[] = []
+  private exploreStartPly = 0
   private sessionKey: SetKey = 'train'
   private slots: Record<SetKey, SessionSlot> = {
     train: { statusHtml: '', note: '', hintDisabled: true },
@@ -256,6 +263,9 @@ export class ChessController {
       review: this.review,
       reviewPly: this.reviewPly,
       annotation: this.annotation,
+      exploring: this.exploring,
+      exploreMoves: [...this.exploreMoves],
+      exploreStartPly: this.exploreStartPly,
     }
   }
 
@@ -316,7 +326,15 @@ export class ChessController {
   }
 
   private pos(): Chess {
+    if (this.exploring && this.exploreGame) return this.exploreGame
     return this.viewGame || this.game
+  }
+  // The game the pointer input drives, and whose pieces can be picked up.
+  private activeGame(): Chess {
+    return this.exploring && this.exploreGame ? this.exploreGame : this.game
+  }
+  private mover(): 'w' | 'b' {
+    return this.exploring && this.exploreGame ? this.exploreGame.turn() : this.humanColor
   }
 
   private renderPieces() {
@@ -334,15 +352,14 @@ export class ChessController {
         el.style.left = left + '%'
         el.style.top = top + '%'
         el.innerHTML = pieceSVG(cell.type, cell.color)
-        if (
-          !this.viewGame &&
-          cell.color === this.game.turn() &&
-          cell.color === this.humanColor &&
-          !this.thinking &&
-          !this.game.isGameOver()
-        ) {
-          el.classList.add('mine')
-        }
+        const canGrab = this.exploring
+          ? cell.color === p.turn() && !p.isGameOver()
+          : !this.viewGame &&
+            cell.color === this.game.turn() &&
+            cell.color === this.humanColor &&
+            !this.thinking &&
+            !this.game.isGameOver()
+        if (canGrab) el.classList.add('mine')
         this.elPieces.appendChild(el)
       }
     }
@@ -374,7 +391,7 @@ export class ChessController {
         for (const c of row) if (c && c.type === 'k' && c.color === turn) add(c.square, 'check')
     }
     // Game-review grade badge on the moved square of the ply being viewed.
-    if (this.review && this.review.done && this.review.items.length) {
+    if (this.review && this.review.done && this.review.items.length && !this.exploring) {
       const total = this.game.history().length
       const vp = this.reviewPly === null ? total - 1 : this.reviewPly
       const it = this.review.items.find((x) => x.ply === vp)
@@ -396,7 +413,7 @@ export class ChessController {
   private renderDots() {
     this.elDots.innerHTML = ''
     if (!this.selected) return
-    const moves = this.game.moves({ square: this.selected as any, verbose: true }) as any[]
+    const moves = this.activeGame().moves({ square: this.selected as any, verbose: true }) as any[]
     for (const m of moves) {
       const { left, top } = this.squareXY(m.to)
       const d = document.createElement('div')
@@ -506,6 +523,7 @@ export class ChessController {
   }
 
   private tryHumanMove(from: string, to: string, promo?: string): boolean | 'promo' {
+    if (this.exploring) return this.tryExploreMove(from, to, promo)
     const legal = (this.game.moves({ square: from as any, verbose: true }) as any[]).filter((m) => m.to === to)
     if (!legal.length) return false
     if (legal.some((m) => m.promotion) && !promo) {
@@ -1010,15 +1028,21 @@ export class ChessController {
     }
   }
   analyze() {
-    if (this.selfPlay || this.replaying || this.thinking || this.animating || this.game.isGameOver()) return
+    if (this.selfPlay || this.replaying || this.thinking || this.animating || this.pos().isGameOver()) return
+    this.beginAnalysis(this.pos().fen())
+  }
+  // Run a MultiPV analysis on an arbitrary position (used by Analyze and Explore).
+  private beginAnalysis(fen: string) {
+    if (this.analyzing) this.engine.stop()
     this.analyzing = true
     this.analysisData = {}
-    this.analysisFen = this.game.fen()
+    this.analysisFen = fen
     this.emit()
     this.engine.whenReady().then(() => {
+      if (!this.analyzing || this.analysisFen !== fen) return
       this.engine.setStrength('max')
       this.engine.setMultiPV(3)
-      this.engine.go(this.analysisFen, Math.max(1600, this.moveTime))
+      this.engine.go(fen, Math.max(1200, this.moveTime))
     })
   }
   private finishAnalysis() {
@@ -1338,11 +1362,105 @@ export class ChessController {
     this.resumeGame()
   }
 
+  /* -------------------------- explore (analysis board) -------------------------- */
+  // Start a free analysis board from the position currently being viewed. You can
+  // play any legal moves for either side; the engine analyses each new position.
+  startExplore() {
+    if (this.selfPlay || this.replaying || this.reviewing) return
+    const sans = this.game.history()
+    const vp = this.reviewPly === null ? sans.length - 1 : this.reviewPly
+    const g = new Chess()
+    let last: { from: string; to: string } | null = null
+    for (let k = 0; k <= vp && k < sans.length; k++) {
+      const mv = g.move(sans[k])
+      if (k === vp && mv) last = { from: mv.from, to: mv.to }
+    }
+    this.exploreStartPly = vp
+    this.exploreGame = g
+    this.exploreMoves = []
+    this.exploring = true
+    this.viewGame = null
+    this.reviewPly = null
+    this.selected = null
+    this.hintSquares = null
+    this.lastMove = last
+    this.renderSquares()
+    this.renderAll()
+    this.beginAnalysis(g.fen())
+  }
+
+  private tryExploreMove(from: string, to: string, promo?: string): boolean | 'promo' {
+    const g = this.exploreGame!
+    const legal = (g.moves({ square: from as any, verbose: true }) as any[]).filter((m) => m.to === to)
+    if (!legal.length) return false
+    if (legal.some((m) => m.promotion) && !promo) {
+      this.askPromotion(from, to, g.turn())
+      return 'promo'
+    }
+    const mv = g.move({ from, to, promotion: promo || 'q' })
+    if (!mv) return false
+    this.exploreMoves.push(mv.san)
+    this.lastMove = { from: mv.from, to: mv.to }
+    this.selected = null
+    this.elDots.innerHTML = ''
+    const myEpoch = this.epoch
+    this.animateThen(mv.from, mv.to, () => {
+      if (myEpoch !== this.epoch) {
+        this.renderAll()
+        return
+      }
+      this.renderAll()
+      if (!g.isGameOver()) this.beginAnalysis(g.fen())
+      else this.emit()
+    })
+    return true
+  }
+
+  exploreUndo() {
+    if (!this.exploring || !this.exploreGame || !this.exploreMoves.length) return
+    this.exploreGame.undo()
+    this.exploreMoves.pop()
+    const h = this.exploreGame.history({ verbose: true }) as any[]
+    this.lastMove = h.length
+      ? { from: h[h.length - 1].from, to: h[h.length - 1].to }
+      : this.startLastMove(this.exploreStartPly)
+    this.selected = null
+    this.renderAll()
+    if (!this.exploreGame.isGameOver()) this.beginAnalysis(this.exploreGame.fen())
+  }
+
+  // Last-move highlight for the reviewed position an explore session started from.
+  private startLastMove(vp: number): { from: string; to: string } | null {
+    const sans = this.game.history()
+    if (vp < 0 || !sans.length) return null
+    const t = new Chess()
+    let last: { from: string; to: string } | null = null
+    for (let k = 0; k <= vp && k < sans.length; k++) {
+      const mv = t.move(sans[k])
+      if (k === vp && mv) last = { from: mv.from, to: mv.to }
+    }
+    return last
+  }
+
+  exitExplore() {
+    if (!this.exploring) return
+    this.exploring = false
+    this.exploreGame = null
+    this.exploreMoves = []
+    this.analyzing = false
+    this.analysis = null
+    this.engine.stop()
+    if (this.game.history().length) this.gotoPly(this.exploreStartPly)
+    else this.resumeGame()
+  }
+
   /* -------------------------- move navigation (scrubber) -------------------------- */
   // Step through the current game without disturbing it. reviewPly is the viewed
   // ply (null = live, showing the latest position).
   private canBrowse() {
-    return !this.selfPlay && !this.replaying && !this.thinking && !this.animating && this.game.history().length > 0
+    return (
+      !this.selfPlay && !this.replaying && !this.thinking && !this.animating && !this.exploring && this.game.history().length > 0
+    )
   }
   private viewedPly() {
     const total = this.game.history().length
@@ -1375,6 +1493,9 @@ export class ChessController {
     this.annotation = null
     this.viewGame = null
     this.reviewPly = null
+    this.exploring = false
+    this.exploreGame = null
+    this.exploreMoves = []
   }
 
   /* -------------------------- opening annotation (best moves to move N) -------------------------- */
@@ -1617,6 +1738,7 @@ export class ChessController {
     return this.root.getBoundingClientRect()
   }
   private canMoveNow() {
+    if (this.exploring) return !this.animating && !!this.exploreGame && !this.exploreGame.isGameOver()
     return (
       !this.thinking &&
       !this.animating &&
@@ -1637,7 +1759,9 @@ export class ChessController {
       const py = (e.clientY - rect.top) / rect.height
       const sq = this.xyToSquare(px, py)
 
-      if (this.selected && (!pc || pc.dataset.color !== this.humanColor || this.game.get(sq as any)?.color !== this.humanColor)) {
+      const mover = this.mover()
+      const g = this.activeGame()
+      if (this.selected && (!pc || pc.dataset.color !== mover || g.get(sq as any)?.color !== mover)) {
         if (this.canMoveNow() && this.tryHumanMove(this.selected, sq)) return
       }
 
@@ -1647,7 +1771,7 @@ export class ChessController {
         this.renderDots()
         return
       }
-      if (pc.dataset.color !== this.humanColor) {
+      if (pc.dataset.color !== mover) {
         this.selected = null
         this.renderHighlights()
         this.renderDots()
