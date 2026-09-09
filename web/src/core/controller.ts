@@ -1,3 +1,5 @@
+/// <reference types="vite/client" />
+
 import { Chess } from 'chess.js'
 import type { Move, Square } from 'chess.js'
 import { createEngine, type Engine } from './engine'
@@ -735,6 +737,7 @@ export class ChessController {
     this.slots[this.sessionKey].hintDisabled = true
     this.hintSquares = null
     this.trainer = null
+    this.activeMode = { kind: 'idle' }
     if (line.result) {
       this.setTrStatus('good', `End of the game — ${line.white} vs ${line.black}, ${line.result}.`)
     } else {
@@ -743,6 +746,7 @@ export class ChessController {
     }
     this.renderHighlights()
     this.emit()
+    this.assertModeMirror()
   }
 
   // Coaching extension: past the known book line, pull Stockfish's single best
@@ -771,6 +775,7 @@ export class ChessController {
 
   startTrainer(idx: number, set: SetKey, hints: boolean) {
     this.startTrainerLine(BOOK[idx], set, hints)
+    this.assertModeMirror()
   }
 
   // Train an arbitrary line (used by the Opening Explorer, which supplies lines
@@ -786,6 +791,7 @@ export class ChessController {
     // (40 plies); master games (result set) play only their own moves.
     const cloned: BookLine = { ...line, moves: [...line.moves] }
     this.trainer = { line: cloned, ply: 0, hints, target: line.result ? 0 : 40, bookLen: cloned.moves.length }
+    this.activeMode = { kind: 'trainer', line: cloned, ply: 0, hints, target: line.result ? 0 : 40, bookLen: cloned.moves.length }
     this.humanColor = line.you
     this.orientation = this.humanColor === 'w' ? 'white' : 'black'
     this.game.reset()
@@ -804,10 +810,12 @@ export class ChessController {
       : `train as ${this.humanColor === 'w' ? 'White' : 'Black'}`
     this.setTrStatus('info', `${line.result ? 'Play through: ' : 'Training '}<b>${this.trLineLabel()}</b> — ${role}.`)
     this.maybeBookMove()
+    this.assertModeMirror()
   }
 
   private exitTrainer() {
     this.trainer = null
+    this.activeMode = { kind: 'idle' }
     this.hintSquares = null
     this.slots.train.hintDisabled = true
     this.slots.games.hintDisabled = true
@@ -816,6 +824,7 @@ export class ChessController {
     this.clearNote()
     this.renderHighlights()
     this.emit()
+    this.assertModeMirror()
   }
 
   /* -------------------------- replay -------------------------- */
@@ -891,6 +900,7 @@ export class ChessController {
   finishGame() {
     if (this.selfPlay) this.stopSelfPlay()
     else this.startSelfPlay()
+    this.assertModeMirror()
   }
   watchFullGame() {
     this.epoch++
@@ -1733,6 +1743,15 @@ export class ChessController {
     this.renderSquares()
     this.renderAll()
     if (this.game.turn() !== this.humanColor) this.engineMove()
+    this.assertModeMirror()
+  }
+
+  private assertModeMirror() {
+    if (import.meta.env.DEV) {
+      const legacyTrainer = !!this.trainer
+      const unionTrainer = this.activeMode.kind === 'trainer'
+      if (legacyTrainer !== unionTrainer) console.error('P3 mode drift: trainer', { legacyTrainer, unionTrainer })
+    }
   }
 
   /* -------------------------- pointer input -------------------------- */
