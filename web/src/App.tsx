@@ -18,6 +18,8 @@ import {
   type OpeningEntry,
 } from './core/openings'
 import { COACH } from './core/coach'
+import { Btn, Field } from './ui/primitives'
+import { PlayPanel } from './panels/PlayPanel'
 
 const LABEL_STYLE: Record<MoveLabel, string> = {
   Best: 'bg-[#7ea86a]/20 text-[#9fca88] border-[#7ea86a]/40',
@@ -138,42 +140,6 @@ function Card({ children, className = '' }: { children: React.ReactNode; classNa
   )
 }
 
-function Btn({
-  children,
-  onClick,
-  primary,
-  active,
-  disabled,
-  className = '',
-}: {
-  children: React.ReactNode
-  onClick?: () => void
-  primary?: boolean
-  active?: boolean
-  disabled?: boolean
-  className?: string
-}) {
-  const brass = primary || active
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      className={
-        'min-h-11 rounded-xl px-3 text-sm font-semibold transition select-none ' +
-        'active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-brass)] ' +
-        'disabled:opacity-40 disabled:cursor-not-allowed ' +
-        (brass
-          ? 'bg-[var(--color-brass)] text-[#1a130a] hover:bg-[var(--color-brass-2)] shadow-lg shadow-black/30'
-          : 'border border-white/10 bg-white/[0.03] text-[var(--color-ink)] hover:bg-white/[0.07]') +
-        ' ' +
-        className
-      }
-    >
-      {children}
-    </button>
-  )
-}
-
 function NavBtn({ children, onClick, label }: { children: React.ReactNode; onClick: () => void; label: string }) {
   return (
     <button
@@ -219,15 +185,6 @@ function GroupedSelect({
         </optgroup>
       ))}
     </select>
-  )
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="grid gap-2">
-      <span className="text-xs uppercase tracking-wide text-[var(--color-muted)]">{label}</span>
-      {children}
-    </label>
   )
 }
 
@@ -882,81 +839,28 @@ export default function App() {
 
           <div className="grid gap-4 p-4">
             {tab === 'play' && (
-              <>
-                <div className="grid grid-cols-3 gap-2">
-                  <Btn primary onClick={() => ctrl.newGame(sideChoice)}>
-                    New game
-                  </Btn>
-                  <Btn onClick={() => ctrl.flip()}>Flip</Btn>
-                  <Btn onClick={() => ctrl.undo()}>Take back</Btn>
-                </div>
-                <Btn active={selfPlay} onClick={() => ctrl.finishGame()}>
-                  {finishLabel}
-                </Btn>
-                <Field label="Play as">
-                  <div className="grid grid-cols-3 gap-1 rounded-xl border border-white/10 p-1">
-                    {(['white', 'black', 'random'] as const).map((s) => (
-                      <button
-                        key={s}
-                        onClick={() => setSideChoice(s)}
-                        className={
-                          'min-h-10 rounded-lg text-sm font-semibold capitalize transition ' +
-                          (sideChoice === s
-                            ? 'bg-[var(--color-brass)] text-[#1a130a]'
-                            : 'text-[var(--color-ink)] hover:bg-white/[0.05]')
-                        }
-                      >
-                        {s}
-                      </button>
-                    ))}
-                  </div>
-                </Field>
-                <label className="grid gap-2">
-                  <span className="flex items-baseline justify-between text-xs uppercase tracking-wide text-[var(--color-muted)]">
-                    Difficulty
-                    <b className="font-semibold text-[var(--color-brass)]">
-                      {diff.name} <span className="font-mono text-[10px] text-[var(--color-muted)]">~{diff.elo}</span>
-                    </b>
-                  </span>
-                  <input
-                    type="range"
-                    min={0}
-                    max={20}
-                    value={elo}
-                    onChange={(e) => {
-                      const v = parseInt(e.target.value, 10)
-                      setElo(v)
-                      ctrl.setEloSlider(v)
-                    }}
-                    className="accent-[var(--color-brass)]"
-                  />
-                  <span className="flex justify-between text-[10px] text-[var(--color-muted)]">
-                    <span>Beginner</span>
-                    <span>Maximum</span>
-                  </span>
-                </label>
-                <label className="grid gap-2">
-                  <span className="flex justify-between text-xs uppercase tracking-wide text-[var(--color-muted)]">
-                    Think time <b className="font-mono text-[var(--color-brass)]">{(tt / 1000).toFixed(1)} s</b>
-                  </span>
-                  <input
-                    type="range"
-                    min={100}
-                    max={3000}
-                    step={100}
-                    value={tt}
-                    onChange={(e) => {
-                      const v = parseInt(e.target.value, 10)
-                      setTt(v)
-                      ctrl.setThinkTime(v)
-                    }}
-                    className="accent-[var(--color-brass)]"
-                  />
-                </label>
-                <Btn active={selfPlay} onClick={() => ctrl.watchFullGame()}>
-                  {fullLabel}
-                </Btn>
-              </>
+              <PlayPanel
+                snap={snap}
+                elo={elo}
+                tt={tt}
+                sideChoice={sideChoice}
+                setSideChoice={setSideChoice}
+                diff={diff}
+                finishLabel={finishLabel}
+                fullLabel={fullLabel}
+                onNewGame={() => ctrl.newGame(sideChoice)}
+                onFlip={() => ctrl.flip()}
+                onUndo={() => ctrl.undo()}
+                onSetElo={(v) => {
+                  setElo(v)
+                  ctrl.setEloSlider(v)
+                }}
+                onSetTt={(v) => {
+                  setTt(v)
+                  ctrl.setThinkTime(v)
+                }}
+                controller={ctrl}
+              />
             )}
 
             {tab === 'train' && snap && (

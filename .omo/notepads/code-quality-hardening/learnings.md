@@ -1,5 +1,18 @@
 # Code Quality Hardening — Learnings
 
+## Todo 26: Extract PlayPanel
+
+- The Play block consumes two of App's local styled primitives (`Btn`, `Field`). Importing them
+  from `App.tsx` into a panel would create a circular import, so both moved verbatim into a new
+  shared `web/src/ui/primitives.tsx`. Todos 27–29 should pull from that module too, and can move
+  `Card` / `NavBtn` there as their panels need them. ClassNames and tokens were not touched.
+- Play-tagged computed values (`diff`, `finishLabel`, `fullLabel` per the P4 audit) are passed as
+  props rather than recomputed, so `App` stays the single owner of `elo`/`tt`/`sideChoice` state.
+- `snap` is passed whole (per the plan's prop list) and `selfPlay` is derived inside the panel,
+  matching how `App` derives it — no behavioral difference.
+- Normalized diff of the old block vs the new panel body shows handler-wiring substitutions only:
+  zero className, copy, or structural changes.
+
 ## Todo 7: Type UCI engine listener contract
 
 - Replaced `Engine.on`'s broad `any` callback with event-specific overloads for `best`, `info`, and `boot`.
