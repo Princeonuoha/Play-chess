@@ -19,6 +19,8 @@ jobs:
         with:
           node-version-file: '.nvmrc'
       - run: npm --prefix web ci
+      - name: Typecheck
+        run: npm --prefix web run typecheck
       - run: npm --prefix web run build
       - name: Drift check
         run: |
