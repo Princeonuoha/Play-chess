@@ -20,3 +20,9 @@ jobs:
           node-version-file: '.nvmrc'
       - run: npm --prefix web ci
       - run: npm --prefix web run build
+      - name: Drift check
+        run: |
+          if ! git diff --exit-code -- dist/; then
+            echo "::error::dist/ is stale. Run 'npm --prefix web run build' and commit the result before pushing."
+            exit 1
+          fi
