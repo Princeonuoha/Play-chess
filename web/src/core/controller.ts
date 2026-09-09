@@ -1441,6 +1441,7 @@ export class ChessController {
     this.exploreStartPly = vp
     this.exploreGame = g
     this.exploreMoves = []
+    this.activeMode = { kind: 'explore', game: g, moves: [], startPly: vp }
     this.exploring = true
     this.viewGame = null
     this.reviewPly = null
@@ -1463,6 +1464,9 @@ export class ChessController {
     const mv = g.move({ from, to, promotion: promo || 'q' })
     if (!mv) return false
     this.exploreMoves.push(mv.san)
+    if (this.activeMode.kind === 'explore') {
+      this.activeMode = { ...this.activeMode, moves: [...this.exploreMoves] }
+    }
     this.lastMove = { from: mv.from, to: mv.to }
     this.selected = null
     this.elDots.innerHTML = ''
@@ -1483,6 +1487,9 @@ export class ChessController {
     if (!this.exploring || !this.exploreGame || !this.exploreMoves.length) return
     this.exploreGame.undo()
     this.exploreMoves.pop()
+    if (this.activeMode.kind === 'explore') {
+      this.activeMode = { ...this.activeMode, moves: [...this.exploreMoves] }
+    }
     const h = this.exploreGame.history({ verbose: true }) as Move[]
     this.lastMove = h.length
       ? { from: h[h.length - 1].from, to: h[h.length - 1].to }
@@ -1508,6 +1515,7 @@ export class ChessController {
   exitExplore() {
     if (!this.exploring) return
     this.exploring = false
+    this.activeMode = { kind: 'idle' }
     this.exploreGame = null
     this.exploreMoves = []
     this.analyzing = false
@@ -1843,6 +1851,21 @@ export class ChessController {
         (this.analysisOverlay.data !== this.analysisData || this.analysisOverlay.fen !== this.analysisFen)
       ) {
         console.error('P3 mode drift: analysisOverlay data')
+      }
+      const legacyExplore = this.exploring
+      const unionExplore = this.activeMode.kind === 'explore'
+      if (legacyExplore !== unionExplore) console.error('P3 mode drift: explore', { legacyExplore, unionExplore })
+      if (
+        this.activeMode.kind === 'explore' &&
+        (this.activeMode.game !== this.exploreGame ||
+          this.activeMode.startPly !== this.exploreStartPly ||
+          this.activeMode.moves.length !== this.exploreMoves.length ||
+          this.activeMode.moves.some((move, index) => move !== this.exploreMoves[index]))
+      ) {
+        console.error('P3 mode drift: explore data')
+      }
+      if (this.activeMode.kind === 'explore' && this.analysisOverlay === null) {
+        console.error('P3 mode drift: explore analysisOverlay')
       }
     }
   }
