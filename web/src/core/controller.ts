@@ -1,5 +1,5 @@
 import { Chess } from 'chess.js'
-import type { Move } from 'chess.js'
+import type { Move, Square } from 'chess.js'
 import { createEngine, type Engine } from './engine'
 import { pieceSVG } from './pieces'
 import { BOOK, type BookLine } from './book'
@@ -414,7 +414,7 @@ export class ChessController {
   private renderDots() {
     this.elDots.innerHTML = ''
     if (!this.selected) return
-    const moves = this.activeGame().moves({ square: this.selected as any, verbose: true }) as Move[]
+    const moves = this.activeGame().moves({ square: this.selected as Square, verbose: true }) as Move[]
     for (const m of moves) {
       const { left, top } = this.squareXY(m.to)
       const d = document.createElement('div')
@@ -525,7 +525,7 @@ export class ChessController {
 
   private tryHumanMove(from: string, to: string, promo?: string): boolean | 'promo' {
     if (this.exploring) return this.tryExploreMove(from, to, promo)
-    const legal = (this.game.moves({ square: from as any, verbose: true }) as Move[]).filter((m) => m.to === to)
+    const legal = (this.game.moves({ square: from as Square, verbose: true }) as Move[]).filter((m) => m.to === to)
     if (!legal.length) return false
     if (legal.some((m) => m.promotion) && !promo) {
       this.askPromotion(from, to, this.game.turn())
@@ -1392,7 +1392,7 @@ export class ChessController {
 
   private tryExploreMove(from: string, to: string, promo?: string): boolean | 'promo' {
     const g = this.exploreGame!
-    const legal = (g.moves({ square: from as any, verbose: true }) as Move[]).filter((m) => m.to === to)
+    const legal = (g.moves({ square: from as Square, verbose: true }) as Move[]).filter((m) => m.to === to)
     if (!legal.length) return false
     if (legal.some((m) => m.promotion) && !promo) {
       this.askPromotion(from, to, g.turn())
@@ -1555,7 +1555,7 @@ export class ChessController {
       scores[ply] = ChessController.scoreVal(c.cp, c.mate)
       bests[ply] = c.bestUci
 
-      let mv: any = null
+      let mv: Move | null = null
       if (ply < validBook.length) {
         mv = walker.move(validBook[ply])
         isBook[ply] = true
@@ -1762,7 +1762,7 @@ export class ChessController {
 
       const mover = this.mover()
       const g = this.activeGame()
-      if (this.selected && (!pc || pc.dataset.color !== mover || g.get(sq as any)?.color !== mover)) {
+      if (this.selected && (!pc || pc.dataset.color !== mover || g.get(sq as Square)?.color !== mover)) {
         if (this.canMoveNow() && this.tryHumanMove(this.selected, sq)) return
       }
 
