@@ -6,6 +6,16 @@ import { BOOK, type BookLine } from './book'
 import { classify, type MoveLabel } from './grade'
 import { buildPGN } from './pgn'
 
+export type ActiveMode =
+  | { kind: 'idle' }
+  | { kind: 'trainer'; line: BookLine; ply: number; hints: boolean; target: number; bookLen: number }
+  | { kind: 'selfPlay' }
+  | { kind: 'replay'; line: BookLine; idx: number; timer: ReturnType<typeof setTimeout> | null }
+  | { kind: 'review'; ply: number | null; collect: { cp: number; mate: number | null; pv: string[]; bestUci: string } | null; resolve: (() => void) | null; viewGame: Chess | null }
+  | { kind: 'explore'; game: Chess; moves: string[]; startPly: number };
+
+export type AnalysisOverlay = { data: Record<number, { depth: number; kind: string; val: number; pv: string[] }>; fen: string };
+
 export type SetKey = 'train' | 'games'
 
 export interface SessionSlot {
@@ -116,6 +126,8 @@ export class ChessController {
   private onSnapshot: (s: Snapshot) => void
   private onPromo: (from: string, to: string, color: string) => void
 
+  private activeMode: ActiveMode = { kind: 'idle' }
+  private analysisOverlay: AnalysisOverlay | null = null
   private orientation: 'white' | 'black' = 'white'
   private humanColor: 'w' | 'b' = 'w'
   private thinking = false
