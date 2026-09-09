@@ -21,6 +21,8 @@ jobs:
       - run: npm --prefix web ci
       - name: Typecheck
         run: npm --prefix web run typecheck
+      - name: Test
+        run: npm --prefix web test
       - run: npm --prefix web run build
       - name: Drift check
         run: |
