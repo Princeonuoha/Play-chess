@@ -69,6 +69,12 @@ CI rebuilds the app and fails when the committed `dist/` output differs from the
 fresh build. Before pushing changes under `web/`, run `npm --prefix web run build`
 and commit the resulting `dist/` files. CI also enforces `tsc --noEmit` as a separate typecheck step.
 
+## Verification
+
+CI runs the Node-side Playwright smoke suite against local `vite preview` after
+the Vitest core tests. Playwright is explicitly permitted for browser E2E; the
+test guardrail remains no jsdom and no `@testing-library/react` component harness.
+
 Because the apex `chesswithprince.com` already lives on Cloudflare, `custom_domain: true`
 provisions the `play` subdomain's DNS record and TLS certificate on deploy.
 

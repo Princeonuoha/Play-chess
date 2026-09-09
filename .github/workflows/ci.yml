@@ -23,6 +23,8 @@ jobs:
         run: npm --prefix web run typecheck
       - name: Test
         run: npm --prefix web test
+      - name: Playwright smoke test
+        run: npx playwright install --with-deps chromium && npm --prefix web run test:e2e
       - run: npm --prefix web run build
       - name: Drift check
         run: |
