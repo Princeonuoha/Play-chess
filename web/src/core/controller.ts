@@ -519,6 +519,8 @@ export class ChessController {
   private afterMove() {
     if (this.game.isGameOver()) {
       this.selfPlay = false
+      if (this.activeMode.kind === 'selfPlay') this.activeMode = { kind: 'idle' }
+      this.assertModeMirror()
       if (this.trainer && this.trainer.line.result) {
         this.endOfBook()
         return
@@ -611,7 +613,9 @@ export class ChessController {
     this.thinking = false
     if (!uci || uci === '(none)') {
       this.selfPlay = false
+      if (this.activeMode.kind === 'selfPlay') this.activeMode = { kind: 'idle' }
       this.emit()
+      this.assertModeMirror()
       return
     }
     const from = uci.slice(0, 2)
@@ -837,6 +841,7 @@ export class ChessController {
     this.replayLine = BOOK[idx]
     this.replayIdx = 0
     this.replaying = true
+    this.activeMode = { kind: 'replay', line: this.replayLine, idx: this.replayIdx, timer: this.replayTimer }
     this.humanColor = this.replayLine.you
     this.orientation = this.humanColor === 'w' ? 'white' : 'black'
     this.game.reset()
@@ -850,6 +855,7 @@ export class ChessController {
     this.renderSquares()
     this.renderAll()
     this.replayStep()
+    this.assertModeMirror()
   }
   private replayStep() {
     if (!this.replaying) return
@@ -890,10 +896,12 @@ export class ChessController {
     this.replaying = false
     if (this.replayTimer) clearTimeout(this.replayTimer)
     this.replayTimer = null
+    this.activeMode = { kind: 'idle' }
     if (line && line.result && (this.game.isGameOver() || this.replayIdx >= line.moves.length)) {
       this.setTrStatus('good', `${line.white} vs ${line.black}, ${line.result}.`)
     }
     this.renderAll()
+    this.assertModeMirror()
   }
 
   /* -------------------------- self-play -------------------------- */
@@ -922,17 +930,21 @@ export class ChessController {
     this.stopReplay()
     this.exitTrainer()
     this.selfPlay = true
+    this.activeMode = { kind: 'selfPlay' }
     this.renderPieces()
     this.emit()
     if (!this.game.isGameOver()) this.engineMove()
+    this.assertModeMirror()
   }
   private stopSelfPlay() {
     this.epoch++
     this.selfPlay = false
+    if (this.activeMode.kind === 'selfPlay') this.activeMode = { kind: 'idle' }
     this.engineExpected = false
     this.engine.stop()
     this.thinking = false
     this.renderAll()
+    this.assertModeMirror()
   }
   watchLineOut(idx: number) {
     const l = BOOK[idx]
@@ -1726,6 +1738,7 @@ export class ChessController {
     this.epoch++
     this.exitReview()
     this.selfPlay = false
+    if (this.activeMode.kind === 'selfPlay') this.activeMode = { kind: 'idle' }
     this.engineExpected = false
     this.engine.stop()
     this.stopReplay()
@@ -1751,6 +1764,12 @@ export class ChessController {
       const legacyTrainer = !!this.trainer
       const unionTrainer = this.activeMode.kind === 'trainer'
       if (legacyTrainer !== unionTrainer) console.error('P3 mode drift: trainer', { legacyTrainer, unionTrainer })
+      const legacyReplay = this.replaying
+      const unionReplay = this.activeMode.kind === 'replay'
+      if (legacyReplay !== unionReplay) console.error('P3 mode drift: replay', { legacyReplay, unionReplay })
+      const legacySelfPlay = this.selfPlay
+      const unionSelfPlay = this.activeMode.kind === 'selfPlay'
+      if (legacySelfPlay !== unionSelfPlay) console.error('P3 mode drift: selfPlay', { legacySelfPlay, unionSelfPlay })
     }
   }
 
