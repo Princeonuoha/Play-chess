@@ -3,6 +3,7 @@ import type { Move, Square } from 'chess.js'
 import { createEngine, type Engine } from './engine'
 import { pieceSVG } from './pieces'
 import { BOOK, type BookLine } from './book'
+import { classify, type MoveLabel } from './grade'
 
 export type SetKey = 'train' | 'games'
 
@@ -18,7 +19,7 @@ export interface AnalysisLine {
   best: boolean
 }
 
-export type MoveLabel = 'Best' | 'Good' | 'Inaccuracy' | 'Mistake' | 'Blunder'
+export type { MoveLabel } from './grade'
 
 export interface ReviewItem {
   ply: number
@@ -1213,12 +1214,7 @@ export class ChessController {
       const playedScore = -scores[i + 1]
       const loss = Math.max(0, bestScore - playedScore)
       const playedBest = !!bestUci[i] && this.movesEqual(fens[i], sans[i], bestUci[i])
-      let label: MoveLabel
-      if (playedBest || loss <= 15) label = 'Best'
-      else if (loss <= 90) label = 'Good'
-      else if (loss <= 175) label = 'Inaccuracy'
-      else if (loss <= 330) label = 'Mistake'
-      else label = 'Blunder'
+      const label = playedBest ? 'Best' : classify(loss)
       // eval after the move, White's perspective
       const afterStm = scores[i + 1]
       const afterTurn: 'w' | 'b' = fens[i + 1].split(' ')[1] === 'w' ? 'w' : 'b'
