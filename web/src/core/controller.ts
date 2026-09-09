@@ -137,17 +137,8 @@ export class ChessController {
   private lastMove: { from: string; to: string } | null = null
   private moveTime = 1000
   private animating = false
-  private trainer: { line: BookLine; ply: number; hints: boolean; target: number; bookLen: number } | null = null
   private hintSquares: { from: string; to: string } | null = null
-  private selfPlay = false
   private engineExpected = false
-  private analyzing = false
-  private analysisData: Record<number, { depth: number; kind: string; val: number; pv: string[] }> = {}
-  private analysisFen = ''
-  private replaying = false
-  private replayLine: BookLine | null = null
-  private replayIdx = 0
-  private replayTimer: ReturnType<typeof setTimeout> | null = null
   private epoch = 0
   private eloSlider = 4
   private pendingPromo: { from: string; to: string } | null = null
@@ -159,15 +150,6 @@ export class ChessController {
   private analysis: AnalysisLine[] | null = null
   private review: ReviewState | null = null
   private annotation: AnnotationState | null = null
-  private reviewing = false
-  private reviewCollect: { cp: number; mate: number | null; pv: string[]; bestUci: string } | null = null
-  private reviewResolve: (() => void) | null = null
-  private reviewPly: number | null = null
-  private viewGame: Chess | null = null
-  private exploring = false
-  private exploreGame: Chess | null = null
-  private exploreMoves: string[] = []
-  private exploreStartPly = 0
   private sessionKey: SetKey = 'train'
   private slots: Record<SetKey, SessionSlot> = {
     train: { statusHtml: '', note: '', hintDisabled: true },
@@ -248,7 +230,7 @@ export class ChessController {
       who = 'Game over'
       sub = toMove + ' to move'
       banner = msg
-    } else if (this.selfPlay) {
+    } else if (this.activeMode.kind === 'selfPlay') {
       who = 'Stockfish vs Stockfish'
       sub = toMove + (this.thinking ? ' is thinking…' : ' to play')
     } else if (this.thinking) {
@@ -271,18 +253,18 @@ export class ChessController {
       evalLabel: this.evalLabel,
       history: this.game.history(),
       analysis: this.analysis,
-      analyzing: this.analyzing,
-      selfPlay: this.selfPlay,
-      replaying: this.replaying,
+      analyzing: this.analysisOverlay !== null,
+      selfPlay: this.activeMode.kind === 'selfPlay',
+      replaying: this.activeMode.kind === 'replay',
       sessionKey: this.sessionKey,
       train: { ...this.slots.train },
       games: { ...this.slots.games },
       review: this.review,
-      reviewPly: this.reviewPly,
+      reviewPly: this.activeMode.kind === 'review' ? this.activeMode.ply : null,
       annotation: this.annotation,
-      exploring: this.exploring,
-      exploreMoves: [...this.exploreMoves],
-      exploreStartPly: this.exploreStartPly,
+      exploring: this.activeMode.kind === 'explore',
+      exploreMoves: this.activeMode.kind === 'explore' ? [...this.activeMode.moves] : [],
+      exploreStartPly: this.activeMode.kind === 'explore' ? this.activeMode.startPly : 0,
     }
   }
 
@@ -343,15 +325,16 @@ export class ChessController {
   }
 
   private pos(): Chess {
-    if (this.exploring && this.exploreGame) return this.exploreGame
-    return this.viewGame || this.game
+    if (this.activeMode.kind === 'explore') return this.activeMode.game
+    if (this.activeMode.kind === 'review' && this.activeMode.viewGame) return this.activeMode.viewGame
+    return this.game
   }
   // The game the pointer input drives, and whose pieces can be picked up.
   private activeGame(): Chess {
-    return this.exploring && this.exploreGame ? this.exploreGame : this.game
+    return this.activeMode.kind === 'explore' ? this.activeMode.game : this.game
   }
   private mover(): 'w' | 'b' {
-    return this.exploring && this.exploreGame ? this.exploreGame.turn() : this.humanColor
+    return this.activeMode.kind === 'explore' ? this.activeMode.game.turn() : this.humanColor
   }
 
   private renderPieces() {
@@ -369,9 +352,9 @@ export class ChessController {
         el.style.left = left + '%'
         el.style.top = top + '%'
         el.innerHTML = pieceSVG(cell.type, cell.color)
-        const canGrab = this.exploring
+        const canGrab = this.activeMode.kind === 'explore'
           ? cell.color === p.turn() && !p.isGameOver()
-          : !this.viewGame &&
+          : !(this.activeMode.kind === 'review' && this.activeMode.viewGame) &&
             cell.color === this.game.turn() &&
             cell.color === this.humanColor &&
             !this.thinking &&
@@ -408,9 +391,10 @@ export class ChessController {
         for (const c of row) if (c && c.type === 'k' && c.color === turn) add(c.square, 'check')
     }
     // Game-review grade badge on the moved square of the ply being viewed.
-    if (this.review && this.review.done && this.review.items.length && !this.exploring) {
+    if (this.review && this.review.done && this.review.items.length && this.activeMode.kind !== 'explore') {
       const total = this.game.history().length
-      const vp = this.reviewPly === null ? total - 1 : this.reviewPly
+      const reviewPly = this.activeMode.kind === 'review' ? this.activeMode.ply : null
+      const vp = reviewPly === null ? total - 1 : reviewPly
       const it = this.review.items.find((x) => x.ply === vp)
       if (it && it.to) {
         const { left, top } = this.squareXY(it.to)
@@ -518,23 +502,21 @@ export class ChessController {
 
   private afterMove() {
     if (this.game.isGameOver()) {
-      this.selfPlay = false
       if (this.activeMode.kind === 'selfPlay') this.activeMode = { kind: 'idle' }
-      this.assertModeMirror()
-      if (this.trainer && this.trainer.line.result) {
+      if (this.activeMode.kind === 'trainer' && this.activeMode.line.result) {
         this.endOfBook()
         return
       }
       this.emit()
       return
     }
-    if (this.selfPlay) {
+    if (this.activeMode.kind === 'selfPlay') {
       setTimeout(() => {
-        if (this.selfPlay) this.engineMove()
+        if (this.activeMode.kind === 'selfPlay') this.engineMove()
       }, 350)
       return
     }
-    if (this.trainer) {
+    if (this.activeMode.kind === 'trainer') {
       this.maybeBookMove()
       return
     }
@@ -542,7 +524,7 @@ export class ChessController {
   }
 
   private tryHumanMove(from: string, to: string, promo?: string): boolean | 'promo' {
-    if (this.exploring) return this.tryExploreMove(from, to, promo)
+    if (this.activeMode.kind === 'explore') return this.tryExploreMove(from, to, promo)
     const legal = (this.game.moves({ square: from as Square, verbose: true }) as Move[]).filter((m) => m.to === to)
     if (!legal.length) return false
     if (legal.some((m) => m.promotion) && !promo) {
@@ -550,18 +532,18 @@ export class ChessController {
       return 'promo'
     }
 
-    if (this.trainer) {
-      const expected = this.trainer.line.moves[this.trainer.ply]
+    if (this.activeMode.kind === 'trainer') {
+      const expected = this.activeMode.line.moves[this.activeMode.ply]
       const exp = this.squaresForSan(expected)
       const mv = this.game.move({ from, to, promotion: promo || 'q' })
       if (!mv) return false
       const match =
         exp && mv.from === exp.from && mv.to === exp.to && (exp.promotion || '') === (mv.promotion || '')
       if (match) {
-        this.trainer.ply++
+        this.activeMode.ply++
         this.hintSquares = null
-        this.setTrStatus('good', '✓ ' + mv.san + (this.trainer.line.result ? '' : ' — book.'))
-        this.showNoteFor(this.trainer.ply - 1)
+        this.setTrStatus('good', '✓ ' + mv.san + (this.activeMode.line.result ? '' : ' — book.'))
+        this.showNoteFor(this.activeMode.ply - 1)
         this.applyMove(mv)
         return true
       }
@@ -593,15 +575,14 @@ export class ChessController {
   }
 
   private onBest(uci: string) {
-    if (this.reviewing) {
-      if (this.reviewCollect) this.reviewCollect.bestUci = uci
-      const done = this.reviewResolve
-      this.reviewResolve = null
-      if (this.activeMode.kind === 'review') this.activeMode = { ...this.activeMode, resolve: null }
+    if (this.activeMode.kind === 'review') {
+      if (this.activeMode.collect) this.activeMode.collect.bestUci = uci
+      const done = this.activeMode.resolve
+      this.activeMode = { ...this.activeMode, resolve: null }
       done && done()
       return
     }
-    if (this.analyzing) {
+    if (this.analysisOverlay) {
       this.finishAnalysis()
       return
     }
@@ -613,10 +594,8 @@ export class ChessController {
     this.engineExpected = false
     this.thinking = false
     if (!uci || uci === '(none)') {
-      this.selfPlay = false
       if (this.activeMode.kind === 'selfPlay') this.activeMode = { kind: 'idle' }
       this.emit()
-      this.assertModeMirror()
       return
     }
     const from = uci.slice(0, 2)
@@ -628,23 +607,23 @@ export class ChessController {
   }
 
   private onInfo(line: string) {
-    if (this.reviewing) {
-      if (this.reviewCollect) {
+    if (this.activeMode.kind === 'review') {
+      if (this.activeMode.collect) {
         const sc = line.match(/score (cp|mate) (-?\d+)/)
         const pvm = line.match(/ pv (.+)$/)
         if (sc) {
           if (sc[1] === 'cp') {
-            this.reviewCollect.cp = parseInt(sc[2], 10)
-            this.reviewCollect.mate = null
+            this.activeMode.collect.cp = parseInt(sc[2], 10)
+            this.activeMode.collect.mate = null
           } else {
-            this.reviewCollect.mate = parseInt(sc[2], 10)
+            this.activeMode.collect.mate = parseInt(sc[2], 10)
           }
         }
-        if (pvm) this.reviewCollect.pv = pvm[1].trim().split(/\s+/)
+        if (pvm) this.activeMode.collect.pv = pvm[1].trim().split(/\s+/)
       }
       return
     }
-    if (this.analyzing) {
+    if (this.analysisOverlay) {
       this.collectAnalysis(line)
       return
     }
@@ -669,7 +648,7 @@ export class ChessController {
     this.emit()
   }
   private showNoteFor(idx: number) {
-    const line = this.trainer ? this.trainer.line : this.replayLine
+    const line = this.activeMode.kind === 'trainer' || this.activeMode.kind === 'replay' ? this.activeMode.line : null
     const n = line && line.notes && line.notes[idx]
     if (n) {
       this.slots[this.sessionKey].note = n
@@ -682,26 +661,26 @@ export class ChessController {
     this.emit()
   }
   private trLineLabel() {
-    if (!this.trainer) return ''
-    const l = this.trainer.line
+    if (this.activeMode.kind !== 'trainer') return ''
+    const l = this.activeMode.line
     return l.game ? l.variation : `${l.opening} — ${l.variation}`
   }
   private trProgress() {
-    if (!this.trainer) return ''
-    const total = this.trainer.target ? this.trainer.target / 2 : Math.ceil(this.trainer.line.moves.length / 2)
-    const done = Math.ceil(this.trainer.ply / 2)
+    if (this.activeMode.kind !== 'trainer') return ''
+    const total = this.activeMode.target ? this.activeMode.target / 2 : Math.ceil(this.activeMode.line.moves.length / 2)
+    const done = Math.ceil(this.activeMode.ply / 2)
     return `<span class="path">${this.trLineLabel()} · move ${done}/${total}<br>${
-      this.trainer.line.moves.slice(0, this.trainer.ply).join(' ') || '—'
+      this.activeMode.line.moves.slice(0, this.activeMode.ply).join(' ') || '—'
     }</span>`
   }
 
   private maybeBookMove() {
-    if (!this.trainer) return
+    if (this.activeMode.kind !== 'trainer') return
     this.slots[this.sessionKey].hintDisabled = false
-    if (this.trainer.ply >= this.trainer.line.moves.length) {
+    if (this.activeMode.ply >= this.activeMode.line.moves.length) {
       // Book ran out. For opening lines, keep coaching to move 20 by pulling the
       // engine's best move one at a time (suggested, never played out as a game).
-      if (!this.trainer.line.result && this.trainer.ply < this.trainer.target && !this.game.isGameOver()) {
+      if (!this.activeMode.line.result && this.activeMode.ply < this.activeMode.target && !this.game.isGameOver()) {
         this.extendCoach()
         return
       }
@@ -709,8 +688,8 @@ export class ChessController {
       return
     }
     if (this.game.turn() === this.humanColor) {
-      const past = this.trainer.ply >= this.trainer.bookLen
-      const prompt = this.trainer.line.result
+      const past = this.activeMode.ply >= this.activeMode.bookLen
+      const prompt = this.activeMode.line.result
         ? 'Your move — play the game move.'
         : past
           ? 'Your move — play the suggested best move.'
@@ -718,30 +697,30 @@ export class ChessController {
       this.setTrStatus('info', prompt + this.trProgress())
       // Past known theory the best move is a suggestion, so always highlight it.
       this.hintSquares =
-        this.trainer.hints || past ? this.squaresForSan(this.trainer.line.moves[this.trainer.ply]) : null
+        this.activeMode.hints || past ? this.squaresForSan(this.activeMode.line.moves[this.activeMode.ply]) : null
       this.renderHighlights()
       this.emit()
       return
     }
-    const san = this.trainer.line.moves[this.trainer.ply]
+    const san = this.activeMode.line.moves[this.activeMode.ply]
     const sq = this.squaresForSan(san)
     const mv = sq ? this.game.move({ from: sq.from, to: sq.to, promotion: sq.promotion }) : this.game.move(san)
     if (!mv) {
       this.endOfBook()
       return
     }
-    this.trainer.ply++
-    this.showNoteFor(this.trainer.ply - 1)
+    this.activeMode.ply++
+    this.showNoteFor(this.activeMode.ply - 1)
     this.setTrStatus('info', this.trProgress())
     this.applyMove(mv)
   }
 
   private endOfBook() {
-    const line = this.trainer!.line
+    if (this.activeMode.kind !== 'trainer') return
+    const line = this.activeMode.line
     const total = Math.ceil(line.moves.length / 2)
     this.slots[this.sessionKey].hintDisabled = true
     this.hintSquares = null
-    this.trainer = null
     this.activeMode = { kind: 'idle' }
     if (line.result) {
       this.setTrStatus('good', `End of the game — ${line.white} vs ${line.black}, ${line.result}.`)
@@ -751,7 +730,6 @@ export class ChessController {
     }
     this.renderHighlights()
     this.emit()
-    this.assertModeMirror()
   }
 
   // Coaching extension: past the known book line, pull Stockfish's single best
@@ -759,28 +737,28 @@ export class ChessController {
   // suggesting best moves (and highlighting them as hints) to move 20 — the
   // engine never plays a free game against the student.
   private async extendCoach() {
-    if (!this.trainer) return
+    if (this.activeMode.kind !== 'trainer') return
+    const trainerMode = this.activeMode
     const myEpoch = this.epoch
     this.setTrStatus('info', 'Finding the best move…' + this.trProgress())
     this.emit()
-    const wasReviewing = this.reviewing
-    this.reviewing = true
+    this.activeMode = { kind: 'review', ply: null, collect: null, resolve: null, viewGame: null }
     await this.evalPosition(this.game.fen(), 350)
-    this.reviewing = wasReviewing
-    if (myEpoch !== this.epoch || !this.trainer) return // mode switched mid-think
-    const b = this.reviewCollect?.bestUci
+    const reviewMode = this.activeMode
+    if (reviewMode.kind === 'review') this.activeMode = trainerMode
+    if (myEpoch !== this.epoch || reviewMode.kind !== 'review') return // mode switched mid-think
+    const b = reviewMode.collect?.bestUci
     const san = b && b !== '(none)' ? ChessController.uciToSan(this.game.fen(), b) : null
     if (!san) {
       this.endOfBook()
       return
     }
-    this.trainer.line.moves.push(san)
+    trainerMode.line.moves.push(san)
     this.maybeBookMove()
   }
 
   startTrainer(idx: number, set: SetKey, hints: boolean) {
     this.startTrainerLine(BOOK[idx], set, hints)
-    this.assertModeMirror()
   }
 
   // Train an arbitrary line (used by the Opening Explorer, which supplies lines
@@ -795,7 +773,6 @@ export class ChessController {
     // never mutates the shared DB/BOOK entry. Opening lines coach to move 20
     // (40 plies); master games (result set) play only their own moves.
     const cloned: BookLine = { ...line, moves: [...line.moves] }
-    this.trainer = { line: cloned, ply: 0, hints, target: line.result ? 0 : 40, bookLen: cloned.moves.length }
     this.activeMode = { kind: 'trainer', line: cloned, ply: 0, hints, target: line.result ? 0 : 40, bookLen: cloned.moves.length }
     this.humanColor = line.you
     this.orientation = this.humanColor === 'w' ? 'white' : 'black'
@@ -815,12 +792,10 @@ export class ChessController {
       : `train as ${this.humanColor === 'w' ? 'White' : 'Black'}`
     this.setTrStatus('info', `${line.result ? 'Play through: ' : 'Training '}<b>${this.trLineLabel()}</b> — ${role}.`)
     this.maybeBookMove()
-    this.assertModeMirror()
   }
 
   private exitTrainer() {
-    this.trainer = null
-    this.activeMode = { kind: 'idle' }
+    if (this.activeMode.kind === 'trainer') this.activeMode = { kind: 'idle' }
     this.hintSquares = null
     this.slots.train.hintDisabled = true
     this.slots.games.hintDisabled = true
@@ -829,7 +804,6 @@ export class ChessController {
     this.clearNote()
     this.renderHighlights()
     this.emit()
-    this.assertModeMirror()
   }
 
   /* -------------------------- replay -------------------------- */
@@ -839,11 +813,8 @@ export class ChessController {
     this.stopSelfPlay()
     this.exitTrainer()
     this.sessionKey = set
-    this.replayLine = BOOK[idx]
-    this.replayIdx = 0
-    this.replaying = true
-    this.activeMode = { kind: 'replay', line: this.replayLine, idx: this.replayIdx, timer: this.replayTimer }
-    this.humanColor = this.replayLine.you
+    this.activeMode = { kind: 'replay', line: BOOK[idx], idx: 0, timer: null }
+    this.humanColor = this.activeMode.line.you
     this.orientation = this.humanColor === 'w' ? 'white' : 'black'
     this.game.reset()
     this.engine.newGame()
@@ -856,23 +827,22 @@ export class ChessController {
     this.renderSquares()
     this.renderAll()
     this.replayStep()
-    this.assertModeMirror()
   }
   private replayStep() {
-    if (!this.replaying) return
-    const line = this.replayLine!
-    if (this.replayIdx >= line.moves.length) {
+    if (this.activeMode.kind !== 'replay') return
+    const line = this.activeMode.line
+    if (this.activeMode.idx >= line.moves.length) {
       this.stopReplay()
       return
     }
-    const san = line.moves[this.replayIdx]
+    const san = line.moves[this.activeMode.idx]
     const sq = this.squaresForSan(san)
     const mv = sq ? this.game.move({ from: sq.from, to: sq.to, promotion: sq.promotion }) : this.game.move(san)
     if (!mv) {
       this.stopReplay()
       return
     }
-    const i = this.replayIdx++
+    const i = this.activeMode.idx++
     const hasNote = line.notes && line.notes[i]
     if (hasNote) this.showNoteFor(i)
     const moveNo = Math.floor(i / 2) + 1
@@ -882,34 +852,31 @@ export class ChessController {
     this.elDots.innerHTML = ''
     this.animateThen(mv.from, mv.to, () => {
       this.renderAll()
-      if (!this.replaying) return
-      if (this.game.isGameOver() || this.replayIdx >= line.moves.length) {
+      if (this.activeMode.kind !== 'replay') return
+      if (this.game.isGameOver() || this.activeMode.idx >= line.moves.length) {
         this.stopReplay()
         return
       }
-      this.replayTimer = setTimeout(() => this.replayStep(), hasNote ? 1800 : 620)
+      this.activeMode.timer = setTimeout(() => this.replayStep(), hasNote ? 1800 : 620)
     })
   }
   private stopReplay() {
-    if (!this.replaying && !this.replayLine) return
-    const line = this.replayLine
+    if (this.activeMode.kind !== 'replay') return
+    const replayMode = this.activeMode
+    const line = replayMode.line
     this.epoch++
-    this.replaying = false
-    if (this.replayTimer) clearTimeout(this.replayTimer)
-    this.replayTimer = null
+    if (replayMode.timer) clearTimeout(replayMode.timer)
     this.activeMode = { kind: 'idle' }
-    if (line && line.result && (this.game.isGameOver() || this.replayIdx >= line.moves.length)) {
+    if (line && line.result && (this.game.isGameOver() || replayMode.idx >= line.moves.length)) {
       this.setTrStatus('good', `${line.white} vs ${line.black}, ${line.result}.`)
     }
     this.renderAll()
-    this.assertModeMirror()
   }
 
   /* -------------------------- self-play -------------------------- */
   finishGame() {
-    if (this.selfPlay) this.stopSelfPlay()
+    if (this.activeMode.kind === 'selfPlay') this.stopSelfPlay()
     else this.startSelfPlay()
-    this.assertModeMirror()
   }
   watchFullGame() {
     this.epoch++
@@ -930,22 +897,18 @@ export class ChessController {
     this.epoch++
     this.stopReplay()
     this.exitTrainer()
-    this.selfPlay = true
     this.activeMode = { kind: 'selfPlay' }
     this.renderPieces()
     this.emit()
     if (!this.game.isGameOver()) this.engineMove()
-    this.assertModeMirror()
   }
   private stopSelfPlay() {
     this.epoch++
-    this.selfPlay = false
     if (this.activeMode.kind === 'selfPlay') this.activeMode = { kind: 'idle' }
     this.engineExpected = false
     this.engine.stop()
     this.thinking = false
     this.renderAll()
-    this.assertModeMirror()
   }
   watchLineOut(idx: number) {
     const l = BOOK[idx]
@@ -1003,19 +966,17 @@ export class ChessController {
     this.hintSquares = null
     this.thinking = false
     this.setEval(0, null)
-    this.viewGame = null
-    this.reviewPly = null
     this.renderSquares()
     this.renderAll()
   }
 
   // Watch button in a trainer/games set: replay a game, or play an opening out.
   watch(idx: number, set: SetKey) {
-    if (this.selfPlay) {
+    if (this.activeMode.kind === 'selfPlay') {
       this.stopSelfPlay()
       return
     }
-    if (this.replaying) {
+    if (this.activeMode.kind === 'replay') {
       this.stopReplay()
       return
     }
@@ -1026,39 +987,40 @@ export class ChessController {
 
   // "Play book/game move" button.
   playBookMove(set: SetKey) {
-    if (!this.trainer || this.sessionKey !== set || this.thinking || this.animating) return
+    if (this.activeMode.kind !== 'trainer' || this.sessionKey !== set || this.thinking || this.animating) return
     if (this.game.turn() !== this.humanColor) return
-    const san = this.trainer.line.moves[this.trainer.ply]
+    const san = this.activeMode.line.moves[this.activeMode.ply]
     const sq = this.squaresForSan(san)
     if (!sq) return
     const mv = this.game.move({ from: sq.from, to: sq.to, promotion: sq.promotion })
     if (!mv) return
-    this.trainer.ply++
+    this.activeMode.ply++
     this.hintSquares = null
-    this.setTrStatus('good', '▸ ' + mv.san + (this.trainer.line.result ? '' : ' — book.'))
-    this.showNoteFor(this.trainer.ply - 1)
+    this.setTrStatus('good', '▸ ' + mv.san + (this.activeMode.line.result ? '' : ' — book.'))
+    this.showNoteFor(this.activeMode.ply - 1)
     this.applyMove(mv)
   }
 
   setHints(set: SetKey, checked: boolean) {
-    if (!this.trainer || this.sessionKey !== set) return
-    this.trainer.hints = checked
+    if (this.activeMode.kind !== 'trainer' || this.sessionKey !== set) return
+    this.activeMode.hints = checked
     this.hintSquares =
-      checked && this.game.turn() === this.humanColor && this.trainer.ply < this.trainer.line.moves.length
-        ? this.squaresForSan(this.trainer.line.moves[this.trainer.ply])
+      checked && this.game.turn() === this.humanColor && this.activeMode.ply < this.activeMode.line.moves.length
+        ? this.squaresForSan(this.activeMode.line.moves[this.activeMode.ply])
         : null
     this.renderHighlights()
   }
 
   /* -------------------------- analysis -------------------------- */
   private collectAnalysis(line: string) {
+    if (!this.analysisOverlay) return
     const mpv = line.match(/multipv (\d+)/)
     const sc = line.match(/score (cp|mate) (-?\d+)/)
     const dep = line.match(/ depth (\d+)/)
     const pvm = line.match(/ pv (.+)$/)
     if (!sc || !pvm) return
     const idx = mpv ? parseInt(mpv[1], 10) : 1
-    this.analysisData[idx] = {
+    this.analysisOverlay.data[idx] = {
       depth: dep ? parseInt(dep[1], 10) : 0,
       kind: sc[1],
       val: parseInt(sc[2], 10),
@@ -1066,42 +1028,44 @@ export class ChessController {
     }
   }
   analyze() {
-    if (this.selfPlay || this.replaying || this.thinking || this.animating || this.pos().isGameOver()) return
+    if (
+      this.activeMode.kind === 'selfPlay' ||
+      this.activeMode.kind === 'replay' ||
+      this.thinking ||
+      this.animating ||
+      this.pos().isGameOver()
+    ) return
     this.beginAnalysis(this.pos().fen())
   }
   // Run a MultiPV analysis on an arbitrary position (used by Analyze and Explore).
   private beginAnalysis(fen: string) {
-    if (this.analyzing) this.engine.stop()
-    this.analyzing = true
-    this.analysisData = {}
-    this.analysisFen = fen
-    this.analysisOverlay = { data: this.analysisData, fen: this.analysisFen }
+    if (this.analysisOverlay) this.engine.stop()
+    this.analysisOverlay = { data: {}, fen }
     this.emit()
-    this.assertModeMirror()
     this.engine.whenReady().then(() => {
-      if (!this.analyzing || this.analysisFen !== fen) return
+      if (!this.analysisOverlay || this.analysisOverlay.fen !== fen) return
       this.engine.setStrength('max')
       this.engine.setMultiPV(3)
       this.engine.go(fen, Math.max(1200, this.moveTime))
     })
   }
   private finishAnalysis() {
-    this.analyzing = false
+    const overlay = this.analysisOverlay
     this.analysisOverlay = null
     this.engine.setMultiPV(1)
-    this.renderAnalysis()
-    this.assertModeMirror()
+    this.renderAnalysis(overlay)
   }
-  private renderAnalysis() {
-    const keys = Object.keys(this.analysisData).map(Number).sort((a, b) => a - b)
+  private renderAnalysis(overlay: AnalysisOverlay | null) {
+    if (!overlay) return
+    const keys = Object.keys(overlay.data).map(Number).sort((a, b) => a - b)
     if (!keys.length) {
       this.clearAnalysis()
       return
     }
-    const sideW = this.analysisFen.split(' ')[1] === 'w'
+    const sideW = overlay.fen.split(' ')[1] === 'w'
     const lines: AnalysisLine[] = []
     for (const k of keys) {
-      const d = this.analysisData[k]
+      const d = overlay.data[k]
       let ev: string
       if (d.kind === 'mate') {
         const m = sideW ? d.val : -d.val
@@ -1110,14 +1074,14 @@ export class ChessController {
         const cp = (sideW ? d.val : -d.val) / 100
         ev = (cp >= 0 ? '+' : '') + cp.toFixed(2)
       }
-      const tmp = new Chess(this.analysisFen)
+      const tmp = new Chess(overlay.fen)
       const sans: string[] = []
       for (const uci of d.pv.slice(0, 6)) {
         const mv = tmp.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci.length > 4 ? uci[4] : undefined })
         if (!mv) break
         sans.push(mv.san)
       }
-      lines.push({ ev, pv: this.sanLine(this.analysisFen, sans), best: k === 1 })
+      lines.push({ ev, pv: this.sanLine(overlay.fen, sans), best: k === 1 })
     }
     this.analysis = lines
     this.emit()
@@ -1146,10 +1110,8 @@ export class ChessController {
   // move, and narrate any known opening / master game the game followed.
   private evalPosition(fen: string, movetime: number): Promise<void> {
     return new Promise((resolve) => {
-      this.reviewCollect = { cp: 0, mate: null, pv: [], bestUci: '' }
-      this.reviewResolve = resolve
       if (this.activeMode.kind === 'review') {
-        this.activeMode = { ...this.activeMode, collect: this.reviewCollect, resolve: this.reviewResolve }
+        this.activeMode = { ...this.activeMode, collect: { cp: 0, mate: null, pv: [], bestUci: '' }, resolve }
       }
       this.engine.whenReady().then(() => {
         this.engine.setStrength('max')
@@ -1198,7 +1160,11 @@ export class ChessController {
   }
 
   async reviewGame(movetime = 400) {
-    if (this.selfPlay || this.replaying || this.reviewing) return
+    if (
+      this.activeMode.kind === 'selfPlay' ||
+      this.activeMode.kind === 'replay' ||
+      (this.activeMode.kind === 'review' && this.activeMode.collect !== null)
+    ) return
     const sans = this.game.history()
     if (!sans.length) return
     // Reconstruct every position (FEN) the game passed through.
@@ -1211,20 +1177,18 @@ export class ChessController {
 
     this.epoch++
     const myEpoch = this.epoch
-    this.reviewing = true
     this.activeMode = {
       kind: 'review',
-      ply: this.reviewPly,
-      collect: this.reviewCollect,
-      resolve: this.reviewResolve,
-      viewGame: this.viewGame,
+      ply: null,
+      collect: null,
+      resolve: null,
+      viewGame: null,
     }
     this.thinking = false
     this.engine.stop()
     const story = this.computeStory(sans)
     this.review = { running: true, done: false, progress: `Reviewing… 0/${sans.length}`, items: [], story }
     this.emit()
-    this.assertModeMirror()
 
     // Analyse each position once → score (side-to-move) + best move.
     const scores: number[] = []
@@ -1232,14 +1196,11 @@ export class ChessController {
     const bestPvSan: string[] = []
     for (let i = 0; i < fens.length; i++) {
       if (myEpoch !== this.epoch) {
-        this.reviewing = false
         return
       }
       // Follow along on the board so the review feels alive.
-      this.viewGame = new Chess(fens[i])
-      this.reviewPly = i - 1 >= 0 ? i - 1 : null
       if (this.activeMode.kind === 'review') {
-        this.activeMode = { ...this.activeMode, ply: this.reviewPly, viewGame: this.viewGame }
+        this.activeMode = { ...this.activeMode, ply: i - 1 >= 0 ? i - 1 : null, viewGame: new Chess(fens[i]) }
       }
       const h = new Chess()
       let last: { from: string; to: string } | null = null
@@ -1252,7 +1213,8 @@ export class ChessController {
       this.renderHighlights()
 
       await this.evalPosition(fens[i], movetime)
-      const c = this.reviewCollect!
+      if (this.activeMode.kind !== 'review' || !this.activeMode.collect) return
+      const c = this.activeMode.collect
       scores[i] = ChessController.scoreVal(c.cp, c.mate)
       bestUci[i] = c.bestUci
       bestPvSan[i] = ChessController.uciPvToSan(fens[i], c.pv)
@@ -1301,17 +1263,11 @@ export class ChessController {
       })
     }
 
-    this.reviewing = false
-    this.viewGame = null
-    this.reviewPly = null
-    if (this.activeMode.kind === 'review') {
-      this.activeMode = { ...this.activeMode, ply: this.reviewPly, viewGame: this.viewGame }
-    }
+    if (this.activeMode.kind === 'review') this.activeMode = { kind: 'idle' }
     this.renderPieces()
     this.renderHighlights()
     this.review = { running: false, done: true, progress: '', items, story }
     this.emit()
-    this.assertModeMirror()
   }
 
   private fmtScore(whiteCp: number): string {
@@ -1394,10 +1350,10 @@ export class ChessController {
       const mv = t.move(sans[k])
       if (k === ply && mv) last = { from: mv.from, to: mv.to }
     }
-    this.viewGame = t
-    this.reviewPly = ply
     if (this.activeMode.kind === 'review') {
-      this.activeMode = { ...this.activeMode, ply: this.reviewPly, viewGame: this.viewGame }
+      this.activeMode = { ...this.activeMode, ply, viewGame: t }
+    } else {
+      this.activeMode = { kind: 'review', ply, collect: null, resolve: null, viewGame: t }
     }
     this.selected = null
     this.lastMove = last
@@ -1407,11 +1363,7 @@ export class ChessController {
   }
 
   resumeGame() {
-    this.viewGame = null
-    this.reviewPly = null
-    if (this.activeMode.kind === 'review') {
-      this.activeMode = { ...this.activeMode, ply: this.reviewPly, viewGame: this.viewGame }
-    }
+    if (this.activeMode.kind === 'review') this.activeMode = { kind: 'idle' }
     this.selected = null
     const h = this.game.history({ verbose: true }) as Move[]
     this.lastMove = h.length ? { from: h[h.length - 1].from, to: h[h.length - 1].to } : null
@@ -1420,31 +1372,28 @@ export class ChessController {
 
   clearReview() {
     this.review = null
-    this.activeMode = { kind: 'idle' }
     this.resumeGame()
-    this.assertModeMirror()
   }
 
   /* -------------------------- explore (analysis board) -------------------------- */
   // Start a free analysis board from the position currently being viewed. You can
   // play any legal moves for either side; the engine analyses each new position.
   startExplore() {
-    if (this.selfPlay || this.replaying || this.reviewing) return
+    const reviewPly = this.activeMode.kind === 'review' ? this.activeMode.ply : null
+    if (
+      this.activeMode.kind === 'selfPlay' ||
+      this.activeMode.kind === 'replay' ||
+      (this.activeMode.kind === 'review' && this.activeMode.collect !== null)
+    ) return
     const sans = this.game.history()
-    const vp = this.reviewPly === null ? sans.length - 1 : this.reviewPly
+    const vp = reviewPly === null ? sans.length - 1 : reviewPly
     const g = new Chess()
     let last: { from: string; to: string } | null = null
     for (let k = 0; k <= vp && k < sans.length; k++) {
       const mv = g.move(sans[k])
       if (k === vp && mv) last = { from: mv.from, to: mv.to }
     }
-    this.exploreStartPly = vp
-    this.exploreGame = g
-    this.exploreMoves = []
     this.activeMode = { kind: 'explore', game: g, moves: [], startPly: vp }
-    this.exploring = true
-    this.viewGame = null
-    this.reviewPly = null
     this.selected = null
     this.hintSquares = null
     this.lastMove = last
@@ -1454,7 +1403,8 @@ export class ChessController {
   }
 
   private tryExploreMove(from: string, to: string, promo?: string): boolean | 'promo' {
-    const g = this.exploreGame!
+    if (this.activeMode.kind !== 'explore') return false
+    const g = this.activeMode.game
     const legal = (g.moves({ square: from as Square, verbose: true }) as Move[]).filter((m) => m.to === to)
     if (!legal.length) return false
     if (legal.some((m) => m.promotion) && !promo) {
@@ -1463,10 +1413,7 @@ export class ChessController {
     }
     const mv = g.move({ from, to, promotion: promo || 'q' })
     if (!mv) return false
-    this.exploreMoves.push(mv.san)
-    if (this.activeMode.kind === 'explore') {
-      this.activeMode = { ...this.activeMode, moves: [...this.exploreMoves] }
-    }
+    this.activeMode.moves.push(mv.san)
     this.lastMove = { from: mv.from, to: mv.to }
     this.selected = null
     this.elDots.innerHTML = ''
@@ -1484,19 +1431,16 @@ export class ChessController {
   }
 
   exploreUndo() {
-    if (!this.exploring || !this.exploreGame || !this.exploreMoves.length) return
-    this.exploreGame.undo()
-    this.exploreMoves.pop()
-    if (this.activeMode.kind === 'explore') {
-      this.activeMode = { ...this.activeMode, moves: [...this.exploreMoves] }
-    }
-    const h = this.exploreGame.history({ verbose: true }) as Move[]
+    if (this.activeMode.kind !== 'explore' || !this.activeMode.moves.length) return
+    this.activeMode.game.undo()
+    this.activeMode.moves.pop()
+    const h = this.activeMode.game.history({ verbose: true }) as Move[]
     this.lastMove = h.length
       ? { from: h[h.length - 1].from, to: h[h.length - 1].to }
-      : this.startLastMove(this.exploreStartPly)
+      : this.startLastMove(this.activeMode.startPly)
     this.selected = null
     this.renderAll()
-    if (!this.exploreGame.isGameOver()) this.beginAnalysis(this.exploreGame.fen())
+    if (!this.activeMode.game.isGameOver()) this.beginAnalysis(this.activeMode.game.fen())
   }
 
   // Last-move highlight for the reviewed position an explore session started from.
@@ -1513,18 +1457,14 @@ export class ChessController {
   }
 
   exitExplore() {
-    if (!this.exploring) return
-    this.exploring = false
+    if (this.activeMode.kind !== 'explore') return
+    const startPly = this.activeMode.startPly
     this.activeMode = { kind: 'idle' }
-    this.exploreGame = null
-    this.exploreMoves = []
-    this.analyzing = false
     this.analysisOverlay = null
     this.analysis = null
     this.engine.stop()
-    if (this.game.history().length) this.gotoPly(this.exploreStartPly)
+    if (this.game.history().length) this.gotoPly(startPly)
     else this.resumeGame()
-    this.assertModeMirror()
   }
 
   /* -------------------------- move navigation (scrubber) -------------------------- */
@@ -1532,12 +1472,18 @@ export class ChessController {
   // ply (null = live, showing the latest position).
   private canBrowse() {
     return (
-      !this.selfPlay && !this.replaying && !this.thinking && !this.animating && !this.exploring && this.game.history().length > 0
+      this.activeMode.kind !== 'selfPlay' &&
+      this.activeMode.kind !== 'replay' &&
+      !this.thinking &&
+      !this.animating &&
+      this.activeMode.kind !== 'explore' &&
+      this.game.history().length > 0
     )
   }
   private viewedPly() {
     const total = this.game.history().length
-    return this.reviewPly === null ? total - 1 : this.reviewPly
+    const reviewPly = this.activeMode.kind === 'review' ? this.activeMode.ply : null
+    return reviewPly === null ? total - 1 : reviewPly
   }
   navFirst() {
     if (!this.canBrowse()) return
@@ -1561,15 +1507,9 @@ export class ChessController {
 
   // Drop any review view/state (called when switching game modes).
   private exitReview() {
-    this.reviewing = false
     this.review = null
     this.annotation = null
-    this.viewGame = null
-    this.reviewPly = null
-    if (this.activeMode.kind === 'review') this.activeMode = { kind: 'idle' }
-    this.exploring = false
-    this.exploreGame = null
-    this.exploreMoves = []
+    if (this.activeMode.kind === 'review' || this.activeMode.kind === 'explore') this.activeMode = { kind: 'idle' }
   }
 
   /* -------------------------- opening annotation (best moves to move N) -------------------------- */
@@ -1578,25 +1518,27 @@ export class ChessController {
   // differs from the engine's pick, and where theory ends. Reuses the one-shot
   // eval plumbing (reviewing flag routes engine output to reviewCollect).
   async annotateOpening(bookMoves: string[], you: 'w' | 'b', targetPlies = 40, movetime = 350) {
-    if (this.selfPlay || this.replaying || this.reviewing) return
+    if (
+      this.activeMode.kind === 'selfPlay' ||
+      this.activeMode.kind === 'replay' ||
+      (this.activeMode.kind === 'review' && this.activeMode.collect !== null)
+    ) return
     this.exitTrainer()
     this.stopSelfPlay()
     this.stopReplay()
     this.epoch++
     const myEpoch = this.epoch
-    this.reviewing = true
     this.activeMode = {
       kind: 'review',
-      ply: this.reviewPly,
-      collect: this.reviewCollect,
-      resolve: this.reviewResolve,
-      viewGame: this.viewGame,
+      ply: null,
+      collect: null,
+      resolve: null,
+      viewGame: null,
     }
     this.humanColor = you
     this.orientation = you === 'w' ? 'white' : 'black'
     this.annotation = { running: true, done: false, progress: 'Analysing the line…', moves: [] }
     this.emit()
-    this.assertModeMirror()
 
     const walker = new Chess()
     const validBook: string[] = []
@@ -1619,15 +1561,12 @@ export class ChessController {
     let ply = 0
     while (ply < targetPlies) {
       if (myEpoch !== this.epoch) {
-        this.reviewing = false
         return
       }
       const fen = walker.fen()
       // Follow along on the board.
-      this.viewGame = new Chess(fen)
-      this.reviewPly = ply - 1 >= 0 ? ply - 1 : null
       if (this.activeMode.kind === 'review') {
-        this.activeMode = { ...this.activeMode, ply: this.reviewPly, viewGame: this.viewGame }
+        this.activeMode = { ...this.activeMode, ply: ply - 1 >= 0 ? ply - 1 : null, viewGame: new Chess(fen) }
       }
       const h = walker.history({ verbose: true }) as Move[]
       this.lastMove = h.length ? { from: h[h.length - 1].from, to: h[h.length - 1].to } : null
@@ -1635,7 +1574,8 @@ export class ChessController {
       this.renderHighlights()
 
       await this.evalPosition(fen, movetime)
-      const c = this.reviewCollect!
+      if (this.activeMode.kind !== 'review' || !this.activeMode.collect) return
+      const c = this.activeMode.collect
       scores[ply] = ChessController.scoreVal(c.cp, c.mate)
       bests[ply] = c.bestUci
 
@@ -1661,10 +1601,10 @@ export class ChessController {
     // Score the final position so the last move's eval is available.
     if (myEpoch === this.epoch && !walker.isGameOver()) {
       await this.evalPosition(walker.fen(), movetime)
-      scores[ply] = ChessController.scoreVal(this.reviewCollect!.cp, this.reviewCollect!.mate)
+      if (this.activeMode.kind !== 'review' || !this.activeMode.collect) return
+      scores[ply] = ChessController.scoreVal(this.activeMode.collect.cp, this.activeMode.collect.mate)
     }
     if (myEpoch !== this.epoch) {
-      this.reviewing = false
       return
     }
 
@@ -1692,12 +1632,7 @@ export class ChessController {
     }
 
     // Load the full annotated line so the scrubber can walk it.
-    this.reviewing = false
-    this.viewGame = null
-    this.reviewPly = null
-    if (this.activeMode.kind === 'review') {
-      this.activeMode = { ...this.activeMode, ply: this.reviewPly, viewGame: this.viewGame }
-    }
+    if (this.activeMode.kind === 'review') this.activeMode = { kind: 'idle' }
     this.game.reset()
     this.engine.newGame()
     for (const s of sans) {
@@ -1713,14 +1648,11 @@ export class ChessController {
     this.annotation = { running: false, done: true, progress: '', moves: items }
     this.renderSquares()
     this.renderAll()
-    this.assertModeMirror()
   }
 
   clearAnnotation() {
     this.annotation = null
-    this.activeMode = { kind: 'idle' }
     this.resumeGame()
-    this.assertModeMirror()
   }
 
   /* -------------------------- PGN -------------------------- */
@@ -1770,7 +1702,12 @@ export class ChessController {
   }
 
   undo() {
-    if (this.thinking || this.animating || this.selfPlay || this.replaying) return
+    if (
+      this.thinking ||
+      this.animating ||
+      this.activeMode.kind === 'selfPlay' ||
+      this.activeMode.kind === 'replay'
+    ) return
     this.epoch++
     this.exitReview()
     if (this.game.history().length === 0) return
@@ -1781,8 +1718,8 @@ export class ChessController {
     this.selected = null
     this.hintSquares = null
     this.thinking = false
-    if (this.trainer) {
-      this.trainer.ply = h.length
+    if (this.activeMode.kind === 'trainer') {
+      this.activeMode.ply = h.length
       this.renderSquares()
       this.renderAll()
       this.maybeBookMove()
@@ -1796,7 +1733,6 @@ export class ChessController {
   newGame(sideChoice: 'white' | 'black' | 'random') {
     this.epoch++
     this.exitReview()
-    this.selfPlay = false
     if (this.activeMode.kind === 'selfPlay') this.activeMode = { kind: 'idle' }
     this.engineExpected = false
     this.engine.stop()
@@ -1815,59 +1751,6 @@ export class ChessController {
     this.renderSquares()
     this.renderAll()
     if (this.game.turn() !== this.humanColor) this.engineMove()
-    this.assertModeMirror()
-  }
-
-  private assertModeMirror() {
-    if (import.meta.env.DEV) {
-      const legacyTrainer = !!this.trainer
-      const unionTrainer = this.activeMode.kind === 'trainer'
-      if (legacyTrainer !== unionTrainer) console.error('P3 mode drift: trainer', { legacyTrainer, unionTrainer })
-      const legacyReplay = this.replaying
-      const unionReplay = this.activeMode.kind === 'replay'
-      if (legacyReplay !== unionReplay) console.error('P3 mode drift: replay', { legacyReplay, unionReplay })
-      const legacySelfPlay = this.selfPlay
-      const unionSelfPlay = this.activeMode.kind === 'selfPlay'
-      if (legacySelfPlay !== unionSelfPlay) console.error('P3 mode drift: selfPlay', { legacySelfPlay, unionSelfPlay })
-      const legacyReview = this.reviewing || this.review !== null || this.annotation !== null
-      const unionReview = this.activeMode.kind === 'review'
-      if (legacyReview !== unionReview) console.error('P3 mode drift: review', { legacyReview, unionReview })
-      if (
-        this.activeMode.kind === 'review' &&
-        (this.activeMode.ply !== this.reviewPly ||
-          this.activeMode.collect !== this.reviewCollect ||
-          this.activeMode.resolve !== this.reviewResolve ||
-          this.activeMode.viewGame !== this.viewGame)
-      ) {
-        console.error('P3 mode drift: review data')
-      }
-      const legacyAnalysis = this.analyzing
-      const overlayAnalysis = this.analysisOverlay !== null
-      if (legacyAnalysis !== overlayAnalysis) {
-        console.error('P3 mode drift: analysisOverlay', { legacyAnalysis, overlayAnalysis })
-      }
-      if (
-        this.analysisOverlay &&
-        (this.analysisOverlay.data !== this.analysisData || this.analysisOverlay.fen !== this.analysisFen)
-      ) {
-        console.error('P3 mode drift: analysisOverlay data')
-      }
-      const legacyExplore = this.exploring
-      const unionExplore = this.activeMode.kind === 'explore'
-      if (legacyExplore !== unionExplore) console.error('P3 mode drift: explore', { legacyExplore, unionExplore })
-      if (
-        this.activeMode.kind === 'explore' &&
-        (this.activeMode.game !== this.exploreGame ||
-          this.activeMode.startPly !== this.exploreStartPly ||
-          this.activeMode.moves.length !== this.exploreMoves.length ||
-          this.activeMode.moves.some((move, index) => move !== this.exploreMoves[index]))
-      ) {
-        console.error('P3 mode drift: explore data')
-      }
-      if (this.activeMode.kind === 'explore' && this.analysisOverlay === null) {
-        console.error('P3 mode drift: explore analysisOverlay')
-      }
-    }
   }
 
   /* -------------------------- pointer input -------------------------- */
@@ -1875,15 +1758,14 @@ export class ChessController {
     return this.root.getBoundingClientRect()
   }
   private canMoveNow() {
-    if (this.exploring) return !this.animating && !!this.exploreGame && !this.exploreGame.isGameOver()
+    if (this.activeMode.kind === 'explore') return !this.animating && !this.activeMode.game.isGameOver()
     return (
       !this.thinking &&
       !this.animating &&
-      !this.selfPlay &&
-      !this.replaying &&
-      !this.analyzing &&
-      !this.reviewing &&
-      !this.viewGame &&
+      this.activeMode.kind !== 'selfPlay' &&
+      this.activeMode.kind !== 'replay' &&
+      !this.analysisOverlay &&
+      this.activeMode.kind !== 'review' &&
       !this.game.isGameOver() &&
       this.game.turn() === this.humanColor
     )
