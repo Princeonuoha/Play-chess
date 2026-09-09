@@ -4,6 +4,7 @@ import { createEngine, type Engine } from './engine'
 import { pieceSVG } from './pieces'
 import { BOOK, type BookLine } from './book'
 import { classify, type MoveLabel } from './grade'
+import { buildPGN } from './pgn'
 
 export type SetKey = 'train' | 'games'
 
@@ -1632,19 +1633,11 @@ export class ChessController {
   /* -------------------------- PGN -------------------------- */
   getPGN(): string | null {
     if (this.game.history().length === 0) return null
-    this.game.header(
-      'Event',
-      'chesswithprince.com',
-      'Site',
-      'play.chesswithprince.com',
-      'Date',
-      new Date().toISOString().slice(0, 10).replace(/-/g, '.'),
-      'White',
-      this.humanColor === 'w' ? 'Player' : 'Stockfish 18',
-      'Black',
-      this.humanColor === 'w' ? 'Stockfish 18' : 'Player',
-    )
-    return this.game.pgn()
+    return buildPGN(this.game.history({ verbose: true }) as Move[], {
+      date: new Date().toISOString().slice(0, 10).replace(/-/g, '.'),
+      white: this.humanColor === 'w' ? 'Player' : 'Stockfish 18',
+      black: this.humanColor === 'w' ? 'Stockfish 18' : 'Player',
+    })
   }
 
   /* -------------------------- promotion -------------------------- */
