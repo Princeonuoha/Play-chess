@@ -1,4 +1,5 @@
 import { Chess } from 'chess.js'
+import type { Move } from 'chess.js'
 import { createEngine, type Engine } from './engine'
 import { pieceSVG } from './pieces'
 import { BOOK, type BookLine } from './book'
@@ -413,7 +414,7 @@ export class ChessController {
   private renderDots() {
     this.elDots.innerHTML = ''
     if (!this.selected) return
-    const moves = this.activeGame().moves({ square: this.selected as any, verbose: true }) as any[]
+    const moves = this.activeGame().moves({ square: this.selected as any, verbose: true }) as Move[]
     for (const m of moves) {
       const { left, top } = this.squareXY(m.to)
       const d = document.createElement('div')
@@ -524,7 +525,7 @@ export class ChessController {
 
   private tryHumanMove(from: string, to: string, promo?: string): boolean | 'promo' {
     if (this.exploring) return this.tryExploreMove(from, to, promo)
-    const legal = (this.game.moves({ square: from as any, verbose: true }) as any[]).filter((m) => m.to === to)
+    const legal = (this.game.moves({ square: from as any, verbose: true }) as Move[]).filter((m) => m.to === to)
     if (!legal.length) return false
     if (legal.some((m) => m.promotion) && !promo) {
       this.askPromotion(from, to, this.game.turn())
@@ -631,11 +632,11 @@ export class ChessController {
 
   /* -------------------------- book / trainer -------------------------- */
   private squaresForSan(san: string): { from: string; to: string; promotion?: string } | null {
-    for (const m of this.game.moves({ verbose: true }) as any[])
+    for (const m of this.game.moves({ verbose: true }) as Move[])
       if (sanEq(m.san, san)) return { from: m.from, to: m.to, promotion: m.promotion }
     try {
       const t = new Chess(this.game.fen())
-      const m = t.move(san, { strict: false } as any)
+      const m = t.move(san, { strict: false })
       if (m) return { from: m.from, to: m.to, promotion: m.promotion }
     } catch (e) {}
     return null
@@ -930,7 +931,7 @@ export class ChessController {
         break
       }
     }
-    const h = this.game.history({ verbose: true }) as any[]
+    const h = this.game.history({ verbose: true }) as Move[]
     this.lastMove = h.length ? { from: h[h.length - 1].from, to: h[h.length - 1].to } : null
     this.orientation = you === 'w' ? 'white' : 'black'
     this.selected = null
@@ -959,7 +960,7 @@ export class ChessController {
         break
       }
     }
-    const h = this.game.history({ verbose: true }) as any[]
+    const h = this.game.history({ verbose: true }) as Move[]
     this.lastMove = h.length ? { from: h[h.length - 1].from, to: h[h.length - 1].to } : null
     this.selected = null
     this.hintSquares = null
@@ -1352,7 +1353,7 @@ export class ChessController {
     this.viewGame = null
     this.reviewPly = null
     this.selected = null
-    const h = this.game.history({ verbose: true }) as any[]
+    const h = this.game.history({ verbose: true }) as Move[]
     this.lastMove = h.length ? { from: h[h.length - 1].from, to: h[h.length - 1].to } : null
     this.renderAll()
   }
@@ -1391,7 +1392,7 @@ export class ChessController {
 
   private tryExploreMove(from: string, to: string, promo?: string): boolean | 'promo' {
     const g = this.exploreGame!
-    const legal = (g.moves({ square: from as any, verbose: true }) as any[]).filter((m) => m.to === to)
+    const legal = (g.moves({ square: from as any, verbose: true }) as Move[]).filter((m) => m.to === to)
     if (!legal.length) return false
     if (legal.some((m) => m.promotion) && !promo) {
       this.askPromotion(from, to, g.turn())
@@ -1420,7 +1421,7 @@ export class ChessController {
     if (!this.exploring || !this.exploreGame || !this.exploreMoves.length) return
     this.exploreGame.undo()
     this.exploreMoves.pop()
-    const h = this.exploreGame.history({ verbose: true }) as any[]
+    const h = this.exploreGame.history({ verbose: true }) as Move[]
     this.lastMove = h.length
       ? { from: h[h.length - 1].from, to: h[h.length - 1].to }
       : this.startLastMove(this.exploreStartPly)
@@ -1544,7 +1545,7 @@ export class ChessController {
       // Follow along on the board.
       this.viewGame = new Chess(fen)
       this.reviewPly = ply - 1 >= 0 ? ply - 1 : null
-      const h = walker.history({ verbose: true }) as any[]
+      const h = walker.history({ verbose: true }) as Move[]
       this.lastMove = h.length ? { from: h[h.length - 1].from, to: h[h.length - 1].to } : null
       this.renderPieces()
       this.renderHighlights()
@@ -1619,7 +1620,7 @@ export class ChessController {
         break
       }
     }
-    const hh = this.game.history({ verbose: true }) as any[]
+    const hh = this.game.history({ verbose: true }) as Move[]
     this.lastMove = hh.length ? { from: hh[hh.length - 1].from, to: hh[hh.length - 1].to } : null
     this.setEval(0, null)
     this.annotation = { running: false, done: true, progress: '', moves: items }
@@ -1693,7 +1694,7 @@ export class ChessController {
     if (this.game.history().length === 0) return
     this.game.undo()
     if (this.game.turn() !== this.humanColor && this.game.history().length > 0) this.game.undo()
-    const h = this.game.history({ verbose: true }) as any[]
+    const h = this.game.history({ verbose: true }) as Move[]
     this.lastMove = h.length ? { from: h[h.length - 1].from, to: h[h.length - 1].to } : null
     this.selected = null
     this.hintSquares = null
