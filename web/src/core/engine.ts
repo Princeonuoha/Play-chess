@@ -7,6 +7,26 @@ const LOCAL_WASM = 'engine/stockfish-18-lite-single.wasm';
 const CDN_JS = 'https://cdn.jsdelivr.net/npm/stockfish@18.0.8/bin/stockfish-18-lite-single.js';
 const CDN_WASM = 'https://cdn.jsdelivr.net/npm/stockfish@18.0.8/bin/stockfish-18-lite-single.wasm';
 
+type EngineEvent =
+  | { readonly kind: 'best'; readonly uci: string }
+  | { readonly kind: 'info'; readonly line: string }
+  | { readonly kind: 'boot' };
+
+type BestListener = (uci: Extract<EngineEvent, { kind: 'best' }>['uci']) => void;
+type InfoListener = (line: Extract<EngineEvent, { kind: 'info' }>['line']) => void;
+type BootListener = () => void;
+
+type EngineListenerRegistration =
+  | readonly [name: 'best', fn: BestListener | null]
+  | readonly [name: 'info', fn: InfoListener | null]
+  | readonly [name: 'boot', fn: BootListener | null];
+
+type EngineListeners = {
+  best: BestListener | null;
+  info: InfoListener | null;
+  boot: BootListener | null;
+};
+
 // This Stockfish build reads the URL of its .wasm from the worker's own location
 // hash (the segment before the first comma), so we always pass the wasm URL there.
 function directWorker(jsUrl: string, wasmUrl: string): Worker {
@@ -25,7 +45,9 @@ function cdnWorker(jsUrl: string, wasmUrl: string): Worker {
 export interface Engine {
   boot(): Promise<string>;
   source(): string;
-  on(name: 'best' | 'info' | 'boot', fn: ((arg: any) => void) | null): void;
+  on(name: 'best', fn: BestListener | null): void;
+  on(name: 'info', fn: InfoListener | null): void;
+  on(name: 'boot', fn: BootListener | null): void;
   isReady(): boolean;
   whenReady(): Promise<void>;
   setStrength(elo: number | 'max'): void;
@@ -45,7 +67,7 @@ export function createEngine(onFail?: () => void): Engine {
   let bootReject: ((e: Error) => void) | null = null;
   let watchdog: ReturnType<typeof setTimeout> | undefined;
   const readyWaiters: Array<() => void> = [];
-  const listeners: { best: ((uci: string) => void) | null; info: ((line: string) => void) | null; boot: (() => void) | null } = {
+  const listeners: EngineListeners = {
     best: null,
     info: null,
     boot: null,
@@ -55,8 +77,8 @@ export function createEngine(onFail?: () => void): Engine {
     worker && worker.postMessage(cmd);
   }
 
-  function handle(line: any) {
-    if (typeof line !== 'string') line = (line && line.data) || '';
+  function handle(input: string | MessageEvent<string>) {
+    const line = typeof input === 'string' ? input : input.data || '';
     if (line === 'uciok') {
       post('setoption name Threads value 1');
       post('isready');
@@ -149,8 +171,18 @@ export function createEngine(onFail?: () => void): Engine {
     source() {
       return source;
     },
-    on(name, fn) {
-      listeners[name] = fn as any;
+    on(...[name, fn]: EngineListenerRegistration) {
+      switch (name) {
+        case 'best':
+          listeners.best = fn;
+          break;
+        case 'info':
+          listeners.info = fn;
+          break;
+        case 'boot':
+          listeners.boot = fn;
+          break;
+      }
     },
     isReady() {
       return ready;
