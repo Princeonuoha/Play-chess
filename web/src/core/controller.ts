@@ -597,6 +597,7 @@ export class ChessController {
       if (this.reviewCollect) this.reviewCollect.bestUci = uci
       const done = this.reviewResolve
       this.reviewResolve = null
+      if (this.activeMode.kind === 'review') this.activeMode = { ...this.activeMode, resolve: null }
       done && done()
       return
     }
@@ -1074,7 +1075,9 @@ export class ChessController {
     this.analyzing = true
     this.analysisData = {}
     this.analysisFen = fen
+    this.analysisOverlay = { data: this.analysisData, fen: this.analysisFen }
     this.emit()
+    this.assertModeMirror()
     this.engine.whenReady().then(() => {
       if (!this.analyzing || this.analysisFen !== fen) return
       this.engine.setStrength('max')
@@ -1084,8 +1087,10 @@ export class ChessController {
   }
   private finishAnalysis() {
     this.analyzing = false
+    this.analysisOverlay = null
     this.engine.setMultiPV(1)
     this.renderAnalysis()
+    this.assertModeMirror()
   }
   private renderAnalysis() {
     const keys = Object.keys(this.analysisData).map(Number).sort((a, b) => a - b)
@@ -1143,6 +1148,9 @@ export class ChessController {
     return new Promise((resolve) => {
       this.reviewCollect = { cp: 0, mate: null, pv: [], bestUci: '' }
       this.reviewResolve = resolve
+      if (this.activeMode.kind === 'review') {
+        this.activeMode = { ...this.activeMode, collect: this.reviewCollect, resolve: this.reviewResolve }
+      }
       this.engine.whenReady().then(() => {
         this.engine.setStrength('max')
         this.engine.setMultiPV(1)
@@ -1204,11 +1212,19 @@ export class ChessController {
     this.epoch++
     const myEpoch = this.epoch
     this.reviewing = true
+    this.activeMode = {
+      kind: 'review',
+      ply: this.reviewPly,
+      collect: this.reviewCollect,
+      resolve: this.reviewResolve,
+      viewGame: this.viewGame,
+    }
     this.thinking = false
     this.engine.stop()
     const story = this.computeStory(sans)
     this.review = { running: true, done: false, progress: `Reviewing… 0/${sans.length}`, items: [], story }
     this.emit()
+    this.assertModeMirror()
 
     // Analyse each position once → score (side-to-move) + best move.
     const scores: number[] = []
@@ -1222,6 +1238,9 @@ export class ChessController {
       // Follow along on the board so the review feels alive.
       this.viewGame = new Chess(fens[i])
       this.reviewPly = i - 1 >= 0 ? i - 1 : null
+      if (this.activeMode.kind === 'review') {
+        this.activeMode = { ...this.activeMode, ply: this.reviewPly, viewGame: this.viewGame }
+      }
       const h = new Chess()
       let last: { from: string; to: string } | null = null
       for (let k = 0; k < i; k++) {
@@ -1285,10 +1304,14 @@ export class ChessController {
     this.reviewing = false
     this.viewGame = null
     this.reviewPly = null
+    if (this.activeMode.kind === 'review') {
+      this.activeMode = { ...this.activeMode, ply: this.reviewPly, viewGame: this.viewGame }
+    }
     this.renderPieces()
     this.renderHighlights()
     this.review = { running: false, done: true, progress: '', items, story }
     this.emit()
+    this.assertModeMirror()
   }
 
   private fmtScore(whiteCp: number): string {
@@ -1373,6 +1396,9 @@ export class ChessController {
     }
     this.viewGame = t
     this.reviewPly = ply
+    if (this.activeMode.kind === 'review') {
+      this.activeMode = { ...this.activeMode, ply: this.reviewPly, viewGame: this.viewGame }
+    }
     this.selected = null
     this.lastMove = last
     this.renderPieces()
@@ -1383,6 +1409,9 @@ export class ChessController {
   resumeGame() {
     this.viewGame = null
     this.reviewPly = null
+    if (this.activeMode.kind === 'review') {
+      this.activeMode = { ...this.activeMode, ply: this.reviewPly, viewGame: this.viewGame }
+    }
     this.selected = null
     const h = this.game.history({ verbose: true }) as Move[]
     this.lastMove = h.length ? { from: h[h.length - 1].from, to: h[h.length - 1].to } : null
@@ -1391,7 +1420,9 @@ export class ChessController {
 
   clearReview() {
     this.review = null
+    this.activeMode = { kind: 'idle' }
     this.resumeGame()
+    this.assertModeMirror()
   }
 
   /* -------------------------- explore (analysis board) -------------------------- */
@@ -1480,10 +1511,12 @@ export class ChessController {
     this.exploreGame = null
     this.exploreMoves = []
     this.analyzing = false
+    this.analysisOverlay = null
     this.analysis = null
     this.engine.stop()
     if (this.game.history().length) this.gotoPly(this.exploreStartPly)
     else this.resumeGame()
+    this.assertModeMirror()
   }
 
   /* -------------------------- move navigation (scrubber) -------------------------- */
@@ -1525,6 +1558,7 @@ export class ChessController {
     this.annotation = null
     this.viewGame = null
     this.reviewPly = null
+    if (this.activeMode.kind === 'review') this.activeMode = { kind: 'idle' }
     this.exploring = false
     this.exploreGame = null
     this.exploreMoves = []
@@ -1543,10 +1577,18 @@ export class ChessController {
     this.epoch++
     const myEpoch = this.epoch
     this.reviewing = true
+    this.activeMode = {
+      kind: 'review',
+      ply: this.reviewPly,
+      collect: this.reviewCollect,
+      resolve: this.reviewResolve,
+      viewGame: this.viewGame,
+    }
     this.humanColor = you
     this.orientation = you === 'w' ? 'white' : 'black'
     this.annotation = { running: true, done: false, progress: 'Analysing the line…', moves: [] }
     this.emit()
+    this.assertModeMirror()
 
     const walker = new Chess()
     const validBook: string[] = []
@@ -1576,6 +1618,9 @@ export class ChessController {
       // Follow along on the board.
       this.viewGame = new Chess(fen)
       this.reviewPly = ply - 1 >= 0 ? ply - 1 : null
+      if (this.activeMode.kind === 'review') {
+        this.activeMode = { ...this.activeMode, ply: this.reviewPly, viewGame: this.viewGame }
+      }
       const h = walker.history({ verbose: true }) as Move[]
       this.lastMove = h.length ? { from: h[h.length - 1].from, to: h[h.length - 1].to } : null
       this.renderPieces()
@@ -1642,6 +1687,9 @@ export class ChessController {
     this.reviewing = false
     this.viewGame = null
     this.reviewPly = null
+    if (this.activeMode.kind === 'review') {
+      this.activeMode = { ...this.activeMode, ply: this.reviewPly, viewGame: this.viewGame }
+    }
     this.game.reset()
     this.engine.newGame()
     for (const s of sans) {
@@ -1657,11 +1705,14 @@ export class ChessController {
     this.annotation = { running: false, done: true, progress: '', moves: items }
     this.renderSquares()
     this.renderAll()
+    this.assertModeMirror()
   }
 
   clearAnnotation() {
     this.annotation = null
+    this.activeMode = { kind: 'idle' }
     this.resumeGame()
+    this.assertModeMirror()
   }
 
   /* -------------------------- PGN -------------------------- */
@@ -1770,6 +1821,29 @@ export class ChessController {
       const legacySelfPlay = this.selfPlay
       const unionSelfPlay = this.activeMode.kind === 'selfPlay'
       if (legacySelfPlay !== unionSelfPlay) console.error('P3 mode drift: selfPlay', { legacySelfPlay, unionSelfPlay })
+      const legacyReview = this.reviewing || this.review !== null || this.annotation !== null
+      const unionReview = this.activeMode.kind === 'review'
+      if (legacyReview !== unionReview) console.error('P3 mode drift: review', { legacyReview, unionReview })
+      if (
+        this.activeMode.kind === 'review' &&
+        (this.activeMode.ply !== this.reviewPly ||
+          this.activeMode.collect !== this.reviewCollect ||
+          this.activeMode.resolve !== this.reviewResolve ||
+          this.activeMode.viewGame !== this.viewGame)
+      ) {
+        console.error('P3 mode drift: review data')
+      }
+      const legacyAnalysis = this.analyzing
+      const overlayAnalysis = this.analysisOverlay !== null
+      if (legacyAnalysis !== overlayAnalysis) {
+        console.error('P3 mode drift: analysisOverlay', { legacyAnalysis, overlayAnalysis })
+      }
+      if (
+        this.analysisOverlay &&
+        (this.analysisOverlay.data !== this.analysisData || this.analysisOverlay.fen !== this.analysisFen)
+      ) {
+        console.error('P3 mode drift: analysisOverlay data')
+      }
     }
   }
 
