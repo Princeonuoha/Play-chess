@@ -47,3 +47,21 @@ export function Field({ label, children }: { label: string; children: React.Reac
     </label>
   )
 }
+
+export function StatusNote({ slot }: { slot: { statusHtml: string; note: string } }) {
+  return (
+    <>
+      {slot.statusHtml && (
+        <div
+          className="tr-status min-h-[18px] text-[13px] font-semibold leading-snug"
+          dangerouslySetInnerHTML={{ __html: slot.statusHtml }}
+        />
+      )}
+      {slot.note && (
+        <div className="mt-0.5 border-l-[3px] border-[var(--color-brass)] py-1.5 pl-3 text-[13px] leading-relaxed text-[var(--color-ink)]">
+          {slot.note}
+        </div>
+      )}
+    </>
+  )
+}

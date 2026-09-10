@@ -1,5 +1,25 @@
 # Code Quality Hardening — Learnings
 
+## Todo 27: Extract TrainPanel
+
+- The `tab === 'train'` block is only 11 lines because the whole tab body was already a
+  self-contained `OpeningsExplorer` component living in `App.tsx`. There is no `SessionView`
+  in this codebase — the plan's `setHints`/`startTrainerLine` wiring is internal to the explorer,
+  so `TrainPanel` needs no extra handler props.
+- `OpeningsExplorer` had to move out of `App.tsx` with the panel: a `TrainPanel` that imported it
+  from `../App` would be the exact circular import that `ui/primitives.tsx` exists to prevent.
+  It moved **verbatim** (354 lines, byte-identical), so its six `useState`/one `useEffect`/three
+  `useMemo` calls are still the explorer's own local state — no hook left or entered `App()`.
+  A diff of the `App()` body before/after shows only the `<OpeningsExplorer>` → `<TrainPanel>`
+  JSX swap.
+- `formatMoves` is Train-only and moved into `TrainPanel.tsx`; `StatusNote` is shared with the
+  Games tab, so it moved to `ui/primitives.tsx` per the todo-26 note. Both are byte-identical and
+  the Games call site is untouched.
+- `App.tsx` also dropped its now-unused `./core/openings` and `COACH` imports and the
+  `SessionSlot`/`AnnotationState` type imports; `SetKey` stays (App's `watchLabel` still uses it).
+- Result: `App.tsx` 1228 → 836 LOC, which is what makes todo 30's ≤ 500 target reachable once
+  Games and Study extract.
+
 ## Todo 26: Extract PlayPanel
 
 - The Play block consumes two of App's local styled primitives (`Btn`, `Field`). Importing them
