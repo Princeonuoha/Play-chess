@@ -48,6 +48,46 @@ export function Field({ label, children }: { label: string; children: React.Reac
   )
 }
 
+export interface Group {
+  label: string
+  options: { value: number; label: string }[]
+}
+
+export function GroupedSelect({
+  value,
+  groups,
+  onChange,
+  emptyText,
+}: {
+  value: number | ''
+  groups: Group[]
+  onChange: (v: number) => void
+  emptyText?: string
+}) {
+  return (
+    <select
+      value={value === '' ? '' : String(value)}
+      onChange={(e) => onChange(parseInt(e.target.value, 10))}
+      className="w-full cursor-pointer rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 text-sm text-[var(--color-ink)] focus:border-[var(--color-brass)] focus:outline-none"
+    >
+      {groups.length === 0 && (
+        <option value="" disabled>
+          {emptyText || 'No results'}
+        </option>
+      )}
+      {groups.map((g) => (
+        <optgroup key={g.label} label={g.label}>
+          {g.options.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </optgroup>
+      ))}
+    </select>
+  )
+}
+
 export function StatusNote({ slot }: { slot: { statusHtml: string; note: string } }) {
   return (
     <>

@@ -1,16 +1,16 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   ChessController,
   type Snapshot,
-  type SetKey,
   type MoveLabel,
   type ReviewItem,
 } from './core/controller'
 import { pieceSVG } from './core/pieces'
-import { BOOK, OPENING_IDX, GAME_IDX, side, type BookLine } from './core/book'
-import { Btn, Field, StatusNote } from './ui/primitives'
+import { BOOK, OPENING_IDX, side } from './core/book'
+import { Btn, type Group } from './ui/primitives'
 import { PlayPanel } from './panels/PlayPanel'
 import { TrainPanel } from './panels/TrainPanel'
+import { GamesPanel } from './panels/GamesPanel'
 
 const LABEL_STYLE: Record<MoveLabel, string> = {
   Best: 'bg-[#7ea86a]/20 text-[#9fca88] border-[#7ea86a]/40',
@@ -51,7 +51,6 @@ function difficulty(v: number): { name: string; elo: string } {
 }
 
 type Tab = 'play' | 'train' | 'games' | 'study'
-type Facet = 'opening' | 'hero' | 'theme' | 'era'
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'play', label: 'Play' },
@@ -59,11 +58,6 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'games', label: 'Games' },
   { id: 'study', label: 'Study' },
 ]
-
-interface Group {
-  label: string
-  options: { value: number; label: string }[]
-}
 
 function openingGroups(): Group[] {
   const groups: Record<string, { value: number; label: string }[]> = {}
@@ -78,42 +72,6 @@ function openingGroups(): Group[] {
     groups[k].push({ value: i, label: `${l.variation}  (${side(l)})` })
   }
   return order.map((k) => ({ label: k, options: groups[k] }))
-}
-
-function gameGroups(facet: Facet, query: string): Group[] {
-  const q = query.trim().toLowerCase()
-  const label = (l: BookLine) => `${l.variation}  (You: ${side(l)})`
-  let indices = GAME_IDX
-  if (q) {
-    indices = GAME_IDX.filter((i) => {
-      const l = BOOK[i]
-      return [l.variation, l.hero, l.opening, l.theme, l.era, l.white, l.black].join(' ').toLowerCase().includes(q)
-    })
-    if (!indices.length) return []
-    return [{ label: `${indices.length} result${indices.length > 1 ? 's' : ''}`, options: indices.map((i) => ({ value: i, label: label(BOOK[i]) })) }]
-  }
-  const groups: Record<string, { value: number; label: string }[]> = {}
-  const order: string[] = []
-  for (const i of indices) {
-    const l = BOOK[i]
-    const k = (l[facet] as string) || '—'
-    if (!groups[k]) {
-      groups[k] = []
-      order.push(k)
-    }
-    groups[k].push({ value: i, label: label(BOOK[i]) })
-  }
-  return order.map((k) => ({ label: k, options: groups[k] }))
-}
-
-function metaHtml(l: BookLine | undefined): string {
-  if (!l) return ''
-  let meta = l.idea ? '<b>Idea:</b> ' + l.idea : ''
-  if (l.game) {
-    const bits = [l.opening, l.theme, l.era].filter(Boolean)
-    if (bits.length) meta += ` <span style="opacity:.7">· ${bits.join(' · ')}</span>`
-  }
-  return meta
 }
 
 /* ---------- small styled primitives ---------- */
@@ -144,41 +102,6 @@ function NavBtn({ children, onClick, label }: { children: React.ReactNode; onCli
   )
 }
 
-function GroupedSelect({
-  value,
-  groups,
-  onChange,
-  emptyText,
-}: {
-  value: number | ''
-  groups: Group[]
-  onChange: (v: number) => void
-  emptyText?: string
-}) {
-  return (
-    <select
-      value={value === '' ? '' : String(value)}
-      onChange={(e) => onChange(parseInt(e.target.value, 10))}
-      className="w-full cursor-pointer rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 text-sm text-[var(--color-ink)] focus:border-[var(--color-brass)] focus:outline-none"
-    >
-      {groups.length === 0 && (
-        <option value="" disabled>
-          {emptyText || 'No results'}
-        </option>
-      )}
-      {groups.map((g) => (
-        <optgroup key={g.label} label={g.label}>
-          {g.options.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </optgroup>
-      ))}
-    </select>
-  )
-}
-
 // Number a move list that starts partway through a game (startPly = plies already played).
 function formatMovesFrom(sans: string[], startPly: number): string {
   let out = ''
@@ -205,10 +128,6 @@ export default function App() {
   const [sideChoice, setSideChoice] = useState<'white' | 'black' | 'random'>('white')
   const [elo, setElo] = useState(4)
   const [tt, setTt] = useState(1000)
-  const [facet, setFacet] = useState<Facet>('opening')
-  const [search, setSearch] = useState('')
-  const [gameSel, setGameSel] = useState<number>(GAME_IDX[0])
-  const [mgHints, setMgHints] = useState(false)
   const [showIntro, setShowIntro] = useState(() => {
     try {
       return localStorage.getItem('cwp_intro_seen') !== '1'
@@ -260,15 +179,6 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab])
 
-  const gGroups = useMemo(() => gameGroups(facet, search), [facet, search])
-
-  // Keep the game selection valid as facet/search change.
-  useEffect(() => {
-    const flat = gGroups.flatMap((g) => g.options.map((o) => o.value))
-    if (flat.length && !flat.includes(gameSel)) setGameSel(flat[0])
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gGroups])
-
   const showToast = (msg: string) => {
     setToast(msg)
     if (toastTimer.current) clearTimeout(toastTimer.current)
@@ -298,8 +208,6 @@ export default function App() {
   const sessionKey = snap?.sessionKey ?? 'train'
   const finishLabel = selfPlay ? '■ Stop' : '▶ Watch Stockfish finish this game'
   const fullLabel = selfPlay ? '■ Stop' : '▶ Watch a full engine game'
-  const watchLabel = (set: SetKey, idle: string) =>
-    replaying && sessionKey === set ? '■ Stop replay' : selfPlay ? '■ Stop' : idle
 
   const review = snap?.review ?? null
   const reviewPly = snap?.reviewPly ?? null
@@ -309,9 +217,6 @@ export default function App() {
   const canBrowse = history.length > 0 && !selfPlay && !replaying && !exploring && !(snap?.thinking ?? false)
   const rows: { n: number; w: string; b: string }[] = []
   for (let i = 0; i < history.length; i += 2) rows.push({ n: i / 2 + 1, w: history[i] || '', b: history[i + 1] || '' })
-
-  const gameMeta = metaHtml(BOOK[gameSel])
-  const gameSelValid = gGroups.some((g) => g.options.some((o) => o.value === gameSel))
 
   return (
     <div className="mx-auto flex min-h-full max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-10">
@@ -484,72 +389,13 @@ export default function App() {
             )}
 
             {tab === 'games' && (
-              <>
-                <Field label="Search games">
-                  <input
-                    type="search"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="player, opening, e.g. Fischer or Berlin"
-                    autoComplete="off"
-                    className="w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 text-sm text-[var(--color-ink)] placeholder:text-[var(--color-muted)] focus:border-[var(--color-brass)] focus:outline-none"
-                  />
-                </Field>
-                <Field label="Browse by">
-                  <div className="grid grid-cols-4 gap-1 rounded-xl border border-white/10 p-1">
-                    {(['opening', 'hero', 'theme', 'era'] as const).map((f) => (
-                      <button
-                        key={f}
-                        onClick={() => {
-                          setFacet(f)
-                          setSearch('')
-                        }}
-                        className={
-                          'min-h-10 rounded-lg text-xs font-semibold transition ' +
-                          (facet === f && !search
-                            ? 'bg-[var(--color-brass)] text-[#1a130a]'
-                            : 'text-[var(--color-ink)] hover:bg-white/[0.05]')
-                        }
-                      >
-                        {f === 'hero' ? 'Player' : f[0].toUpperCase() + f.slice(1)}
-                      </button>
-                    ))}
-                  </div>
-                </Field>
-                <Field label="Master game">
-                  <GroupedSelect
-                    value={gameSelValid ? gameSel : ''}
-                    groups={gGroups}
-                    onChange={setGameSel}
-                    emptyText={search ? `No games match “${search}”` : 'No games'}
-                  />
-                </Field>
-                <div className="text-xs leading-relaxed text-[var(--color-muted)]" dangerouslySetInnerHTML={{ __html: gameMeta }} />
-                <div className="grid grid-cols-2 gap-2">
-                  <Btn primary disabled={!gameSelValid} onClick={() => ctrl.startTrainer(gameSel, 'games', mgHints)}>
-                    Play through
-                  </Btn>
-                  <Btn disabled={snap?.games.hintDisabled ?? true} onClick={() => ctrl.playBookMove('games')}>
-                    Play game move
-                  </Btn>
-                </div>
-                <Btn active={replaying && sessionKey === 'games'} disabled={!gameSelValid} onClick={() => ctrl.watch(gameSel, 'games')}>
-                  {watchLabel('games', '▶ Watch this game')}
-                </Btn>
-                <label className="flex cursor-pointer items-center gap-2 text-xs text-[var(--color-muted)]">
-                  <input
-                    type="checkbox"
-                    checked={mgHints}
-                    onChange={(e) => {
-                      setMgHints(e.target.checked)
-                      ctrl.setHints('games', e.target.checked)
-                    }}
-                    className="h-4 w-4 accent-[var(--color-brass)]"
-                  />
-                  Show hint (highlight the next move)
-                </label>
-                {snap && <StatusNote slot={snap.games} />}
-              </>
+              <GamesPanel
+                snap={snap}
+                replaying={replaying}
+                selfPlay={selfPlay}
+                sessionKey={sessionKey}
+                controller={ctrl}
+              />
             )}
 
             {tab === 'study' && (
