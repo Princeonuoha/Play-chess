@@ -1,5 +1,32 @@
 # Code Quality Hardening — Learnings
 
+## Todo 29: Extract StudyPanel
+
+- **The Stockfish/GPLv3 notice is NOT in the Study block.** It lives in `App.tsx`'s shared page
+  `<footer>` (outside every `tab === …` branch), so per the todo's own conditional it stayed in
+  `App.tsx` completely untouched — `git diff` shows zero `+`/`-` lines in the footer. A doc comment
+  in `StudyPanel.tsx` records where it lives so a future extractor does not go looking for it.
+- Study-only helpers moved verbatim into `StudyPanel.tsx`: `LABEL_STYLE`, `LABEL_ICON`,
+  `reviewComment`, `formatMovesFrom`. Every one had exactly zero non-Study readers, and leaving
+  them in `App.tsx` would have forced the panel to import `App.tsx` — the circular import
+  `ui/primitives.tsx` exists to prevent. Nothing new was added to `ui/primitives.tsx`: the Study
+  block's only shared primitive is `Btn`, already there since todo 26. `Card`/`NavBtn` stay in
+  `App.tsx` because only App's own chrome (panel shell, board scrubber) uses them.
+- The Study-tagged derived values from the P4 audit (`review`, `exploreMoves`, `rows`, `copyPGN`)
+  are recomputed inside the panel from `snap`/`history` rather than passed down, so `App` now
+  derives only what its own chrome reads. `exploring`, `reviewPly` and `history` **stay** in `App`
+  and travel as props: the board scrubber's `canBrowse` guard and the ply readout share them.
+- `copyPGN` moved with the tab but `showToast` did not — `App` owns the `toast` state and its
+  fixed-position toast element, so the panel takes `showToast` as a prop.
+- Verified the extraction is structural only: normalizing indentation and rewriting `ctrl.` →
+  `controller.`, the 219 JSX lines diff **clean** against the old block — zero className, copy, or
+  handler changes.
+- `App.tsx` 682 → 406 LOC, already under todo 30's ≤ 500 target before todo 30 runs.
+- Pre-existing dead code spotted, deliberately **not** touched here to keep this commit a pure
+  extraction: `openingGroups()` (and with it the `type Group` import) in `App.tsx` has had no
+  callers since todo 27 moved the Openings tab out. `noUnusedLocals` is `false` in
+  `web/tsconfig.json`, so `tsc` does not flag it. Worth deleting in a follow-up.
+
 ## Todo 27: Extract TrainPanel
 
 - The `tab === 'train'` block is only 11 lines because the whole tab body was already a
