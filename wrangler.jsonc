@@ -10,7 +10,10 @@
   // Serve the built React app (Vite output). `npm --prefix web run build`
   // writes the app + Stockfish engine + `_headers` into dist/, which is
   // committed so `npx wrangler deploy` publishes it with no CI build step.
-  "assets": { "directory": "dist" },
+  "assets": {
+    "directory": "dist",
+    "not_found_handling": "single-page-application"
+  },
 
   // Attach the custom domain. Because chesswithprince.com is already a zone in
   // this Cloudflare account, `custom_domain: true` provisions the DNS record and

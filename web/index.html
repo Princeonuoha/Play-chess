@@ -3,7 +3,43 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>chesswithprince.com — play Stockfish</title>
+    <title>Play — chesswithprince.com</title>
+    <meta
+      name="description"
+      content="Play chess against Stockfish on chesswithprince.com."
+    />
+    <script>
+      (() => {
+        const routeMetadata = {
+          '/play': ['Play', 'Play chess against Stockfish on chesswithprince.com.'],
+          '/openings': ['Openings', 'Explore chess openings on chesswithprince.com.'],
+          '/games': ['Games', 'Browse chess games on chesswithprince.com.'],
+          '/study': ['Study', 'Study chess positions on chesswithprince.com.'],
+        }
+
+        const applyRouteMetadata = () => {
+          const [title, description] =
+            routeMetadata[window.location.pathname] ?? [
+              'chesswithprince.com',
+              'Play and study chess on chesswithprince.com.',
+            ]
+          document.title = `${title} — chesswithprince.com`
+          document.querySelector('meta[name="description"]')?.setAttribute('content', description)
+        }
+
+        for (const method of ['pushState', 'replaceState']) {
+          const original = history[method]
+          history[method] = function (...args) {
+            const result = original.apply(this, args)
+            applyRouteMetadata()
+            return result
+          }
+        }
+
+        addEventListener('popstate', applyRouteMetadata)
+        applyRouteMetadata()
+      })()
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
