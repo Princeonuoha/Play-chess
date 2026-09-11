@@ -30,3 +30,7 @@ jobs:
             echo "::error::dist/ is stale. Run 'npm --prefix web run build' and commit the result before pushing."
             exit 1
           fi
+      # Run browser QA only after the build/drift gate: Playwright creates HTML
+      # reports that Tailwind v4 would otherwise scan as source during Vite build.
+      - name: Playwright smoke test
+        run: npx playwright install --with-deps chromium && npm --prefix web run test:e2e

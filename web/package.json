@@ -8,7 +8,8 @@
     "build": "tsc --noEmit && vite build && node scripts/postbuild.mjs",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "chess.js": "1.4.0",
@@ -16,6 +17,7 @@
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/vite": "^4.1.13",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
