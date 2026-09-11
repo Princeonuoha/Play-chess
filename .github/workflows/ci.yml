@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  push:
+    paths:
+      - 'web/**'
+      - 'engine/**'
+  pull_request:
+    paths:
+      - 'web/**'
+      - 'engine/**'
+
+jobs:
+  build-and-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+      - run: npm --prefix web ci
+      - run: npm --prefix web run build
+      - name: Drift check
+        run: |
+          if ! git diff --exit-code -- dist/; then
+            echo "::error::dist/ is stale. Run 'npm --prefix web run build' and commit the result before pushing."
+            exit 1
+          fi

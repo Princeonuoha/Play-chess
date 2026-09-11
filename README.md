@@ -65,6 +65,10 @@ npm --prefix web run build   # regenerates dist/ (app + engine + _headers)
 git add dist && git commit -m "Rebuild" && git push
 ```
 
+CI rebuilds the app and fails when the committed `dist/` output differs from the
+fresh build. Before pushing changes under `web/`, run `npm --prefix web run build`
+and commit the resulting `dist/` files.
+
 Because the apex `chesswithprince.com` already lives on Cloudflare, `custom_domain: true`
 provisions the `play` subdomain's DNS record and TLS certificate on deploy.
 
