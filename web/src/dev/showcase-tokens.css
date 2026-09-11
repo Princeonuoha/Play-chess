@@ -1,0 +1,155 @@
+/* ---------------------------------------------------------------------------
+ * DEV-ONLY token bridge for the primitive showcase (plan todo 4).
+ *
+ * Every declaration below is transcribed verbatim from the root DESIGN.md
+ * token tables (Sections 2, 3, 4, 5, 6). It exists so the showcase can render
+ * the documented contract BEFORE todo 9 moves these tokens into
+ * `web/src/index.css`. It is imported only by `showcase-main.tsx`, which is
+ * only reachable from the dev-only `web/showcase.html` entry, so it never
+ * reaches the production bundle.
+ *
+ * PENDING todo 9: delete this file and read the same tokens from index.css.
+ * `src/dev/__tests__/showcase-tokens.test.ts` fails if any value here drifts
+ * from DESIGN.md, so this bridge cannot silently diverge from the contract.
+ * ------------------------------------------------------------------------- */
+
+:root {
+  /* ---- DESIGN.md 2.1 Canvas family ---- */
+  --canvas-base: #0f151b;
+  --canvas-veil: color-mix(in oklab, var(--brass-base) 10%, transparent);
+  --canvas-sunken: rgba(0, 0, 0, 0.25);
+  --canvas-scrim: rgba(0, 0, 0, 0.60);
+
+  /* ---- DESIGN.md 2.2 Board family (square fills are FROZEN) ---- */
+  --board-square-ivory: #eeeed2;
+  --board-square-green: #769656;
+  --board-coord-on-ivory: #3d4f2c;
+  --board-coord-on-green: #26331a;
+  --board-rim: #0a0f14;
+  --board-select: color-mix(in oklab, var(--brass-base) 40%, transparent);
+  --board-last: color-mix(in oklab, var(--brass-base) 20%, transparent);
+  --board-dot: rgba(15, 21, 27, 0.40);
+  --board-check: var(--status-critical);
+
+  /* ---- DESIGN.md 2.3 Surface family ---- */
+  --surface-1: #161d25;
+  --surface-2: #1b232d;
+  --surface-3: #212a35;
+  --surface-inset: rgba(255, 255, 255, 0.03);
+  --surface-inset-hover: rgba(255, 255, 255, 0.07);
+  --surface-overlay: #1b232d;
+
+  /* ---- DESIGN.md 2.4 Brass family ---- */
+  --brass-base: #c69a52;
+  --brass-lift: #d9ad60;
+  --brass-dim: #9c793d;
+  --brass-rim: color-mix(in oklab, var(--brass-base) 50%, transparent);
+  --brass-wash: color-mix(in oklab, var(--brass-base) 12%, transparent);
+  --text-on-brass: #1a130a;
+
+  /* ---- DESIGN.md 2.5 Text family ---- */
+  --text-primary: #e7ecf1;
+  --text-secondary: #c6ccd4;
+  --text-muted: #8c98a6;
+  --text-link: var(--brass-base);
+
+  /* ---- DESIGN.md 2.6 Status family ---- */
+  --status-positive: #7ea86a;
+  --status-info: #5f9ea0;
+  --status-caution: #d6a95d;
+  --status-warning: #d08a3e;
+  --status-critical: #c0453f;
+  --status-best: var(--status-positive);
+  --status-good: var(--status-info);
+  --status-inaccuracy: var(--status-caution);
+  --status-mistake: var(--status-warning);
+  --status-blunder: var(--status-critical);
+
+  /* ---- DESIGN.md 2.7 Border family ---- */
+  --border-hairline: rgba(255, 255, 255, 0.06);
+  --border-subtle: rgba(255, 255, 255, 0.10);
+  --border-strong: #2a333f;
+  --border-brass: var(--brass-rim);
+  --border-focus: var(--brass-base);
+
+  /* ---- DESIGN.md 2.8 Depth family ---- */
+  --depth-flat: none;
+  --depth-inset-hairline: inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
+  --depth-raised: 0 18px 44px -22px rgba(0, 0, 0, 0.75);
+  --depth-floating: 0 10px 30px rgba(0, 0, 0, 0.45);
+  --depth-overlay: 0 28px 70px -20px rgba(0, 0, 0, 0.85);
+  --depth-board: 0 24px 60px -24px rgba(0, 0, 0, 0.75);
+
+  /* ---- DESIGN.md 3.1 Families ---- */
+  --type-font-ui: "Archivo", system-ui, -apple-system, sans-serif;
+  --type-font-numeric: "IBM Plex Mono", ui-monospace, monospace;
+
+  /* ---- DESIGN.md 3.2 Scale, expressed as `font` shorthands so a component
+       cannot pick a size without also taking the documented weight and
+       line-height. Tracking is applied alongside by the consuming rule. ---- */
+  --type-display: 800 1.875rem/1.15 var(--type-font-ui);
+  --type-title: 700 1.25rem/1.25 var(--type-font-ui);
+  --type-heading: 700 1.0625rem/1.3 var(--type-font-ui);
+  --type-body: 500 0.875rem/1.55 var(--type-font-ui);
+  --type-body-sm: 500 0.8125rem/1.55 var(--type-font-ui);
+  --type-label: 600 0.75rem/1.35 var(--type-font-ui);
+  --type-numeric: 500 0.8125rem/1.45 var(--type-font-numeric);
+
+  /* ---- DESIGN.md 3.3 Measure ---- */
+  --type-measure: 68ch;
+
+  /* ---- DESIGN.md 4.1 Spacing (4px grid) ---- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* ---- DESIGN.md 4.2 Radius ---- */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-pill: 999px;
+  --radius-board: 14px;
+
+  /* ---- DESIGN.md 4.4 Z-index ---- */
+  --z-base: 0;
+  --z-board-layer: 2;
+  --z-board-badge: 3;
+  --z-board-drag: 5;
+  --z-sticky: 20;
+  --z-nav: 30;
+  --z-scrim: 40;
+  --z-dialog: 50;
+  --z-toast: 60;
+
+  /* ---- DESIGN.md 5.1 Icon system ---- */
+  --icon-size-sm: 16px;
+  --icon-size-md: 20px;
+  --icon-size-lg: 24px;
+  --icon-stroke: 1.75;
+  --icon-target-min: 44px;
+
+  /* ---- DESIGN.md 6.1 Motion ---- */
+  --motion-instant: 80ms;
+  --motion-fast: 140ms;
+  --motion-base: 200ms;
+  --motion-slow: 320ms;
+  --motion-piece: 180ms;
+  --motion-ease-out: cubic-bezier(0.2, 0.7, 0.3, 1);
+  --motion-ease-in: cubic-bezier(0.4, 0.0, 1, 1);
+  --motion-ease-standard: cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
+/* DESIGN.md 3.2: the wordmark step grows at the tablet breakpoint. */
+@media (min-width: 768px) {
+  :root {
+    --type-display: 800 2.25rem/1.15 var(--type-font-ui);
+  }
+}
