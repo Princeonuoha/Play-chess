@@ -1,6 +1,7 @@
 node_modules/
 .DS_Store
 *.log
+react-doctor-report.json
 .venv/
 web/node_modules/
 web/dist/

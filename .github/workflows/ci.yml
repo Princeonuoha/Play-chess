@@ -3,10 +3,12 @@ name: CI
 on:
   push:
     paths:
+      - '.github/workflows/ci.yml'
       - 'web/**'
       - 'engine/**'
   pull_request:
     paths:
+      - '.github/workflows/ci.yml'
       - 'web/**'
       - 'engine/**'
 
@@ -24,6 +26,10 @@ jobs:
       - name: Test
         run: npm --prefix web test
       - run: npm --prefix web run build
+      - name: React Doctor
+        run: npm --prefix web run react-doctor
+      - name: Production devtools leak scan
+        run: npm --prefix web run verify:no-devtools
       - name: Drift check
         run: |
           if ! git diff --exit-code -- dist/; then
