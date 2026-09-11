@@ -13,8 +13,6 @@ const routes = [
 
 type Route = (typeof routes)[number]
 
-const pendingRouterEnabled = process.env.RUN_PENDING_ROUTER === '1'
-
 async function dismissIntro(page: Page): Promise<void> {
   const intro = page.getByRole('button', { name: 'Got it' })
   if (await intro.isVisible()) await intro.click()
@@ -71,9 +69,8 @@ function setting(page: Page, label: string): Locator {
   return page.locator('label').filter({ hasText: label }).getByRole('slider')
 }
 
-test.describe('@pending-router routed persistent workspace', () => {
+test.describe('routed persistent workspace', () => {
   test.describe.configure({ timeout: 30_000 })
-  test.fixme(!pendingRouterEnabled, 'TODO 6: enable after the persistent routed workspace is implemented')
 
   test('redirects the application root to the Play workspace', async ({ page }) => {
     // Given the application root, when it is opened, then routing replaces it with the canonical Play workspace.
