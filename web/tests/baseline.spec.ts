@@ -28,9 +28,13 @@ async function dismissIntro(page: Page): Promise<void> {
   if (await intro.isVisible()) await intro.click()
 }
 
-async function move(page: Page, from: string, to: string): Promise<void> {
-  await page.locator(`.piece.mine[data-square="${from}"]`).click()
+async function move(page: Page, from: string, to: string): Promise<'w' | 'b'> {
+  const movingPiece = page.locator(`.piece.mine[data-square="${from}"]`)
+  const color = await movingPiece.getAttribute('data-color')
+  if (color !== 'w' && color !== 'b') throw new Error(`Expected a movable ${from} piece color`)
+  await movingPiece.click()
   await page.locator(`.sq[data-square="${to}"]`).click({ force: true })
+  return color
 }
 
 async function boardState(page: Page): Promise<string> {
@@ -133,8 +137,8 @@ test('capture pre-redesign production behavior, geometry, console, and visual ba
   for (const [from, to] of [
     ['a2', 'a4'], ['b8', 'c6'], ['a4', 'a5'], ['g8', 'h6'], ['a5', 'a6'], ['h6', 'g8'], ['a6', 'b7'], ['a7', 'a6'], ['b7', 'b8'],
   ]) {
-    await move(page, from, to)
-    if (to !== 'b8') await expect(page.locator(`.piece[data-square="${to}"]`)).toBeVisible()
+    const movingColor = await move(page, from, to)
+    if (to !== 'b8') await expect(page.locator(`.piece[data-square="${to}"][data-color="${movingColor}"]`)).toBeVisible()
   }
   await expect(page.getByRole('heading', { name: 'Promote to' })).toBeVisible()
   const promotionChoices = page.locator('h3:text-is("Promote to") + div button')
