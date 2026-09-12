@@ -4,6 +4,7 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "play-chess1",
   "compatibility_date": "2026-08-20",
+  "main": "worker/index.ts",
   "workers_dev": true,
   "observability": { "enabled": true },
 
@@ -12,7 +13,9 @@
   // committed so `npx wrangler deploy` publishes it with no CI build step.
   "assets": {
     "directory": "dist",
-    "not_found_handling": "single-page-application"
+    "binding": "ASSETS",
+    "not_found_handling": "404-page",
+    "run_worker_first": true
   },
 
   // Attach the custom domain. Because chesswithprince.com is already a zone in
