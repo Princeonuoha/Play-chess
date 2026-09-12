@@ -1,6 +1,6 @@
+import { useState } from 'react'
 import { type ChessController, GRADE_GLYPH, type MoveLabel, type ReviewItem, type Snapshot } from '../core/controller'
-import { Btn } from '../ui/primitives'
-import { Icon, IconLabel } from '../ui/icons'
+import { Btn, Icon, InlineFeedback, SegmentedNav, Surface, type SegmentItem } from '../ui/primitives'
 
 export interface StudyPanelProps {
   snap: Snapshot | null
@@ -13,6 +13,9 @@ export interface StudyPanelProps {
   showToast: (msg: string) => void
   controller: ChessController
 }
+
+/** The two study surfaces: guided (Review) and open (Analysis + Explore). */
+type StudySurface = 'review' | 'analysis'
 
 /**
  * DESIGN.md §2.6 grade tokens. The ink is the status token lifted toward
@@ -53,8 +56,35 @@ function formatMovesFrom(sans: string[], startPly: number): string {
   return out.trim()
 }
 
+/** One evaluated engine line. The `.an-line` shape is owned by `index.css`. */
+function AnalysisLines({ lines }: { readonly lines: { ev: string; pv: string; best?: boolean }[] }) {
+  return (
+    <>
+      {lines.map((l, i) => (
+        <div key={i} className={'an-line' + (l.best ? ' best' : '')}>
+          <span className="ev">{l.ev}</span>
+          <span className="pv">{l.pv}</span>
+        </div>
+      ))}
+    </>
+  )
+}
+
 /**
- * The `Study` tab body: Explore, Game review, Analyze position, and the Scoresheet.
+ * The `Study` tab body, split into the two things a player actually does with a
+ * finished position: a GUIDED pass (Review) and an OPEN one (Analysis +
+ * Explore). A `SegmentedNav` names both, and the chosen surface is the only one
+ * that expands — the other keeps its heading, a one-line summary and its entry
+ * action, so both are always discoverable but never carry the same weight.
+ *
+ * Nothing here changes review grading, MultiPV, Explore or PGN semantics: every
+ * branch calls the same `ChessController` method it called before, and the panel
+ * owns no board state of its own. Selecting a surface is local `useState` only,
+ * so switching can never move the position the controller is showing.
+ *
+ * While Explore is running the open surface is pinned: Explore is a live board
+ * mode and its `Exit` control must not be navigable away from, so the `Review`
+ * segment is `aria-disabled` with the reason stated in the line beneath it.
  *
  * `LABEL_STYLE` / `reviewComment` / `formatMovesFrom` came out of
  * `App.tsx` verbatim: they are read only here, and a panel importing them back from
@@ -67,8 +97,19 @@ function formatMovesFrom(sans: string[], startPly: number): string {
  * shared page footer, outside every tab, and stays there untouched.
  */
 export function StudyPanel({ snap, history, reviewPly, exploring, showToast, controller }: StudyPanelProps) {
+  const [chosen, setChosen] = useState<StudySurface>('review')
+  const surface: StudySurface = exploring ? 'analysis' : chosen
+  const guided = surface === 'review'
+
   const review = snap?.review ?? null
+  const graded = review?.items ?? []
+  const story = review?.story ?? []
+  const running = review?.running === true
+  const analyzing = snap?.analyzing === true
+  const analysis = snap?.analysis ?? []
   const exploreMoves = snap?.exploreMoves ?? []
+  const viewed = graded.find((it) => it.ply === (reviewPly ?? history.length - 1)) ?? null
+
   const rows: { n: number; w: string; b: string }[] = []
   for (let i = 0; i < history.length; i += 2) rows.push({ n: i / 2 + 1, w: history[i] || '', b: history[i + 1] || '' })
 
@@ -88,241 +129,288 @@ export function StudyPanel({ snap, history, reviewPly, exploring, showToast, con
     }
   }
 
+  const segments: SegmentItem[] = [
+    { id: 'review', label: 'Review', icon: 'check', disabled: exploring },
+    { id: 'analysis', label: 'Analysis', icon: 'search' },
+  ]
+
   return (
     <>
-      {/* Explore board — play your own moves; engine analyses the line */}
-      {exploring ? (
-        <div className="grid gap-2 rounded-[var(--radius-xl)] border border-[color:var(--border-brass)] bg-[var(--surface-inset)] p-3">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-xs font-bold uppercase tracking-wide text-[color:var(--brass-base)]">
-              Exploring — play any moves
-            </span>
-            <div className="flex gap-2">
-              <Btn
-                onClick={() => controller.exploreUndo()}
-                disabled={!exploreMoves.length}
-                className="min-h-0 flex-none px-3 py-1.5"
-              >
-                Undo
-              </Btn>
-              <Btn onClick={() => controller.exitExplore()} className="min-h-0 flex-none px-3 py-1.5">
-                Exit
-              </Btn>
-            </div>
-          </div>
-          <div className="[font:var(--type-numeric)]">
-            {exploreMoves.length ? (
-              <span className="text-[color:var(--text-primary)]">
-                Your line: {formatMovesFrom(exploreMoves, (snap?.exploreStartPly ?? -1) + 1)}
-              </span>
-            ) : (
-              <span className="text-[color:var(--text-muted)]">
-                Drag a piece to try a line for either side — Stockfish evaluates each position below.
-              </span>
-            )}
-          </div>
-          <div className="grid gap-1">
-            {snap?.analysis && snap.analysis.length ? (
-              snap.analysis.map((l, i) => (
-                <div key={i} className={'an-line' + (l.best ? ' best' : '')}>
-                  <span className="ev">{l.ev}</span>
-                  <span className="pv">{l.pv}</span>
-                </div>
-              ))
-            ) : (
-              <div className="flex items-center gap-2 text-xs text-[color:var(--text-muted)]">
-                <span className="inline-block h-3 w-3 animate-spin rounded-[var(--radius-pill)] border-2 border-[color:var(--brass-base)] border-r-transparent" />
-                Stockfish is looking at the position…
-              </div>
-            )}
-          </div>
-        </div>
-      ) : (
-        <Btn onClick={() => controller.startExplore()} className="justify-self-start min-h-0 flex-none px-3 py-1.5">
-          <IconLabel icon="explore" size="sm">
-            Explore — play your own moves
-          </IconLabel>
-        </Btn>
-      )}
+      <SegmentedNav
+        label="Study surface"
+        items={segments}
+        selectedId={surface}
+        onSelect={(id) => setChosen(id === 'analysis' ? 'analysis' : 'review')}
+      />
+      <p className="ui-field-desc">
+        {exploring
+          ? 'You are on the free board. Exit Explore to go back to the guided review.'
+          : guided
+            ? 'Guided: Stockfish walks a finished game move by move and names what you missed.'
+            : 'Open: read Stockfish’s lines for the position on the board, or play your own.'}
+      </p>
 
-      {/* Game review */}
-      <div className="flex items-center justify-between">
-        <span className="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Game review</span>
-        <div className="flex gap-2">
-          {review && (
-            <Btn onClick={() => controller.clearReview()} className="min-h-0 flex-none px-3 py-1.5">
-              Clear
-            </Btn>
-          )}
+      {/* ------------------------------------------------ guided: Game review */}
+      <Surface
+        label="Guided game review"
+        title="Game review"
+        tone={guided ? 2 : 1}
+        body={
+          review === null
+            ? 'Play or load a game, then review it: Stockfish grades every move, shows the stronger move you missed, and — where your game followed a known line — tells you how the masters handled it.'
+            : `${graded.length} move${graded.length === 1 ? '' : 's'} graded${story.length ? `, ${story.length} from the books` : ''}.`
+        }
+      >
+        <div className="flex flex-wrap gap-2">
           <Btn
-            primary
-            disabled={review?.running || !history.length}
-            onClick={() => controller.reviewGame()}
-            className="min-h-0 flex-none px-3 py-1.5"
+            primary={guided}
+            loading={running}
+            disabled={running || history.length === 0}
+            onClick={() => {
+              setChosen('review')
+              controller.reviewGame()
+            }}
           >
-            {review?.running ? 'Reviewing…' : 'Review game'}
+            {running ? 'Reviewing…' : 'Review game'}
           </Btn>
+          {review !== null && <Btn onClick={() => controller.clearReview()}>Clear</Btn>}
         </div>
-      </div>
 
-      {!review && (
-        <div className="text-xs italic leading-relaxed text-[color:var(--text-muted)]">
-          Play or load a game, then “Review game”: Stockfish grades every move, shows the stronger move you
-          missed, and — where your game followed a known line — tells you how the masters handled it.
-        </div>
-      )}
+        {/* 1. progress — stays visible even while the open surface is chosen */}
+        {running && (
+          <div data-study-block="progress">
+            <InlineFeedback state="loading" message={review.progress} skeletonRows={2} />
+          </div>
+        )}
 
-      {review?.running && (
-        <div className="flex items-center gap-2 text-sm text-[color:var(--text-muted)]">
-          <span className="inline-block h-3 w-3 animate-spin rounded-[var(--radius-pill)] border-2 border-[color:var(--brass-base)] border-r-transparent" />
-          {review.progress}
-        </div>
-      )}
+        {guided && (
+          <>
+            {/* 2. story cards from the games DB */}
+            {story.length > 0 && (
+              <div data-study-block="story" className="grid gap-2">
+                {story.map((s, i) => (
+                  <Surface key={i} tone={3} label={s.title}>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span
+                        className={
+                          'rounded-[var(--radius-pill)] border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ' +
+                          (s.kind === 'master'
+                            ? 'border-[color:var(--border-brass)] text-[color:var(--brass-base)]'
+                            : 'border-[color:var(--border-subtle)] text-[color:var(--text-muted)]')
+                        }
+                      >
+                        {s.kind === 'master' ? 'From the masters' : 'Opening'}
+                      </span>
+                      <span className="[font:var(--type-body-sm)] font-semibold">{s.title}</span>
+                    </div>
+                    <p className="ui-surface-body">{s.text}</p>
+                  </Surface>
+                ))}
+              </div>
+            )}
 
-      {/* Story cards from the games DB */}
-      {review?.story.map((s, i) => (
-        <div
-          key={i}
-          className="rounded-[var(--radius-lg)] border border-[color:var(--border-subtle)] bg-[var(--surface-inset)] p-3 [font:var(--type-body-sm)]"
-        >
-          <div className="mb-1 flex items-center gap-2">
-            <span
-              className={
-                'rounded-[var(--radius-pill)] border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ' +
-                (s.kind === 'master'
-                  ? 'border-[color:var(--border-brass)] text-[color:var(--brass-base)]'
-                  : 'border-[color:var(--border-subtle)] text-[color:var(--text-muted)]')
-              }
+            {/* 3. legend */}
+            {graded.length > 0 && (
+              <div data-study-block="legend" className="flex flex-wrap gap-1.5">
+                {(['Best', 'Good', 'Inaccuracy', 'Mistake', 'Blunder'] as MoveLabel[]).map((l) => (
+                  <span key={l} className={'rounded-[var(--radius-sm)] border px-1.5 py-0.5 text-[10px] font-bold ' + LABEL_STYLE[l]}>
+                    <span aria-hidden="true" className="font-[family-name:var(--type-font-numeric)]">
+                      {GRADE_GLYPH[l]}
+                    </span>{' '}
+                    {l}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* 4. commentary for the move being viewed */}
+            {viewed !== null && (
+              <div
+                data-study-block="commentary"
+                className={'flex items-start gap-2 rounded-[var(--radius-lg)] border p-3 [font:var(--type-body-sm)] ' + LABEL_STYLE[viewed.label]}
+              >
+                <span aria-hidden="true" className="mt-0.5 shrink-0 font-[family-name:var(--type-font-numeric)] font-bold">
+                  {GRADE_GLYPH[viewed.label]}
+                </span>
+                <span className="text-[color:var(--text-primary)]">{reviewComment(viewed)}</span>
+                <span className="ml-auto shrink-0 font-[family-name:var(--type-font-numeric)] text-xs opacity-80">{viewed.evalWhite}</span>
+              </div>
+            )}
+
+            {/* 5. the better line the engine wanted instead */}
+            {viewed !== null && viewed.betterSan !== undefined && (
+              <div data-study-block="better" className="flex items-center gap-2 [font:var(--type-body-sm)] text-[color:var(--text-muted)]">
+                <Icon name="arrow-right" size="sm" />
+                <span>Better line</span>
+                <span className="font-[family-name:var(--type-font-numeric)] font-semibold text-[color:var(--status-positive)]">
+                  {viewed.betterSan}
+                </span>
+              </div>
+            )}
+
+            {/* per-move grades: the scrubber for everything above */}
+            {graded.length > 0 && (
+              <div data-study-block="moves" className="grid gap-2">
+                {reviewPly !== null && (
+                  <Btn icon="arrow-left" onClick={() => controller.resumeGame()} className="justify-self-start">
+                    Back to final position
+                  </Btn>
+                )}
+                <div className="max-h-80 divide-y divide-[color:var(--border-hairline)] overflow-auto rounded-[var(--radius-lg)] border border-[color:var(--border-subtle)]">
+                  {graded.map((it) => (
+                    <button
+                      key={it.ply}
+                      onClick={() => controller.gotoPly(it.ply)}
+                      className={
+                        'flex w-full min-h-[var(--icon-target-min)] items-center gap-2 px-3 py-2 text-left [font:var(--type-body-sm)] transition hover:bg-[var(--surface-inset-hover)] ' +
+                        (reviewPly === it.ply ? 'bg-[color:var(--brass-wash)] ring-1 ring-inset ring-[color:var(--border-brass)]' : '')
+                      }
+                    >
+                      <span className="w-9 shrink-0 text-right font-[family-name:var(--type-font-numeric)] text-xs text-[color:var(--text-muted)]">
+                        {it.moveNo}{it.side === 'w' ? '.' : '…'}
+                      </span>
+                      <span className="w-14 shrink-0 font-[family-name:var(--type-font-numeric)] font-semibold">{it.san}</span>
+                      <span
+                        className={'shrink-0 rounded-[var(--radius-sm)] border px-1.5 py-0.5 text-[10px] font-bold ' + LABEL_STYLE[it.label]}
+                        title={it.lossCp != null ? `-${(it.lossCp / 100).toFixed(1)} vs best` : 'Top engine move'}
+                      >
+                        <span aria-hidden="true" className="font-[family-name:var(--type-font-numeric)]">
+                          {GRADE_GLYPH[it.label]}
+                        </span>{' '}
+                        {it.label}
+                      </span>
+                      <span className="ml-auto shrink-0 font-[family-name:var(--type-font-numeric)] text-xs text-[color:var(--text-muted)]">{it.evalWhite}</span>
+                      {it.betterSan && (
+                        <span className="hidden shrink-0 items-center gap-1 font-[family-name:var(--type-font-numeric)] text-[11px] text-[color:var(--status-positive)] sm:inline-flex">
+                          <Icon name="arrow-right" size="sm" />
+                          <span className="sr-only">Better move:</span>
+                          {it.betterSan}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[11px] leading-relaxed text-[color:var(--text-muted)]">
+                  Tap a move to see it on the board. “Better” shows the engine’s top move when you missed it.
+                </p>
+              </div>
+            )}
+
+            {/* 6. scoresheet */}
+            <div data-study-block="scoresheet" className="grid gap-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h4 className="ui-field-label">Scoresheet</h4>
+                <Btn onClick={copyPGN}>Copy PGN</Btn>
+              </div>
+              <div className="moves max-h-72 overflow-auto">
+                {rows.length ? (
+                  <table>
+                    <tbody>
+                      {rows.map((r) => (
+                        <tr key={r.n}>
+                          <td className="n">{r.n}.</td>
+                          <td className="mv w">{r.w}</td>
+                          <td className="mv b">{r.b}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : (
+                  <p className="ui-field-desc p-3">No moves yet.</p>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+      </Surface>
+
+      {/* ------------------------------------ open: Analyze position + Explore */}
+      <Surface
+        label="Open analysis and Explore"
+        title="Position analysis"
+        tone={guided ? 1 : 2}
+        body="Stockfish’s top moves in the position on the board, at full strength — or take the board yourself and try a line."
+      >
+        <div className="flex flex-wrap gap-2">
+          <Btn
+            primary={!guided}
+            loading={analyzing}
+            disabled={analyzing}
+            onClick={() => {
+              setChosen('analysis')
+              controller.analyze()
+            }}
+          >
+            {analyzing ? 'Analyzing…' : 'Analyze'}
+          </Btn>
+          {!exploring && (
+            <Btn
+              icon="explore"
+              onClick={() => {
+                setChosen('analysis')
+                controller.startExplore()
+              }}
             >
-              {s.kind === 'master' ? 'From the masters' : 'Opening'}
-            </span>
-            <span className="font-semibold">{s.title}</span>
-          </div>
-          <div className="text-[color:var(--text-muted)]">{s.text}</div>
-        </div>
-      ))}
-
-      {/* Per-move grades */}
-      {review && review.items.length > 0 && (
-        <>
-          <div className="flex flex-wrap gap-1.5">
-            {(['Best', 'Good', 'Inaccuracy', 'Mistake', 'Blunder'] as MoveLabel[]).map((l) => (
-              <span key={l} className={'rounded-[var(--radius-sm)] border px-1.5 py-0.5 text-[10px] font-bold ' + LABEL_STYLE[l]}>
-                <span aria-hidden="true" className="font-[family-name:var(--type-font-numeric)]">
-                  {GRADE_GLYPH[l]}
-                </span>{' '}
-                {l}
-              </span>
-            ))}
-          </div>
-          {reviewPly !== null && (
-            <Btn onClick={() => controller.resumeGame()} className="min-h-0 flex-none px-3 py-1.5">
-              <IconLabel icon="arrow-left" size="sm">
-                Back to final position
-              </IconLabel>
+              Explore — play your own moves
             </Btn>
           )}
-          {/* Live commentary for the move being viewed */}
-          {(() => {
-            const vp = reviewPly ?? history.length - 1
-            const it = review.items.find((x) => x.ply === vp)
-            if (!it) return null
-            return (
-              <div className={'flex items-start gap-2 rounded-[var(--radius-lg)] border p-3 [font:var(--type-body-sm)] ' + LABEL_STYLE[it.label]}>
-                <span aria-hidden="true" className="mt-0.5 shrink-0 font-[family-name:var(--type-font-numeric)] font-bold">
-                  {GRADE_GLYPH[it.label]}
-                </span>
-                <span className="text-[color:var(--text-primary)]">{reviewComment(it)}</span>
-                <span className="ml-auto shrink-0 font-[family-name:var(--type-font-numeric)] text-xs opacity-80">{it.evalWhite}</span>
-              </div>
-            )
-          })()}
-          <div className="max-h-80 divide-y divide-[color:var(--border-hairline)] overflow-auto rounded-[var(--radius-lg)] border border-[color:var(--border-subtle)]">
-            {review.items.map((it) => (
-              <button
-                key={it.ply}
-                onClick={() => controller.gotoPly(it.ply)}
-                className={
-                  'flex w-full items-center gap-2 px-3 py-2 text-left [font:var(--type-body-sm)] transition hover:bg-[var(--surface-inset-hover)] ' +
-                  (reviewPly === it.ply ? 'bg-[color:var(--brass-wash)] ring-1 ring-inset ring-[color:var(--border-brass)]' : '')
-                }
-              >
-                <span className="w-9 shrink-0 text-right font-[family-name:var(--type-font-numeric)] text-xs text-[color:var(--text-muted)]">
-                  {it.moveNo}{it.side === 'w' ? '.' : '…'}
-                </span>
-                <span className="w-14 shrink-0 font-[family-name:var(--type-font-numeric)] font-semibold">{it.san}</span>
-                <span
-                  className={'shrink-0 rounded-[var(--radius-sm)] border px-1.5 py-0.5 text-[10px] font-bold ' + LABEL_STYLE[it.label]}
-                  title={it.lossCp != null ? `-${(it.lossCp / 100).toFixed(1)} vs best` : 'Top engine move'}
-                >
-                  <span aria-hidden="true" className="font-[family-name:var(--type-font-numeric)]">
-                    {GRADE_GLYPH[it.label]}
-                  </span>{' '}
-                  {it.label}
-                </span>
-                <span className="ml-auto shrink-0 font-[family-name:var(--type-font-numeric)] text-xs text-[color:var(--text-muted)]">{it.evalWhite}</span>
-                {it.betterSan && (
-                  <span className="hidden shrink-0 items-center gap-1 font-[family-name:var(--type-font-numeric)] text-[11px] text-[color:var(--status-positive)] sm:inline-flex">
-                    <Icon name="arrow-right" size="sm" />
-                    <span className="sr-only">Better move:</span>
-                    {it.betterSan}
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
-          <div className="text-[11px] leading-relaxed text-[color:var(--text-muted)]">
-            Tap a move to see it on the board. “Better” shows the engine’s top move when you missed it.
-          </div>
-        </>
-      )}
+        </div>
 
-      {/* Position analysis */}
-      <div className="flex items-center justify-between border-t border-[color:var(--border-subtle)] pt-3">
-        <span className="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Analyze position</span>
-        <Btn disabled={snap?.analyzing} onClick={() => controller.analyze()} className="min-h-0 flex-none px-3 py-1.5">
-          {snap?.analyzing ? 'Analyzing…' : 'Analyze'}
-        </Btn>
-      </div>
-      <div className="grid gap-1.5">
-        {snap?.analysis && snap.analysis.length ? (
-          snap.analysis.map((l, i) => (
-            <div key={i} className={'an-line' + (l.best ? ' best' : '')}>
-              <span className="ev">{l.ev}</span>
-              <span className="pv">{l.pv}</span>
+        {!guided && (
+          <>
+            {/* 1. MultiPV */}
+            <div data-study-block="multipv" className="grid gap-1.5">
+              {exploring ? (
+                <p className="ui-field-desc">Stockfish is following the line you are playing below.</p>
+              ) : analysis.length ? (
+                <AnalysisLines lines={analysis} />
+              ) : (
+                <p className="ui-field-desc">Run Analyze to rank the strongest moves here.</p>
+              )}
             </div>
-          ))
-        ) : (
-          <div className="text-xs italic text-[color:var(--text-muted)]">
-            Stockfish’s top moves in the current position (full strength).
-          </div>
-        )}
-      </div>
 
-      {/* Scoresheet */}
-      <div className="flex items-center justify-between border-t border-[color:var(--border-subtle)] pt-3">
-        <span className="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Scoresheet</span>
-        <Btn onClick={copyPGN} className="min-h-0 flex-none px-3 py-1.5">
-          Copy PGN
-        </Btn>
-      </div>
-      <div className="moves max-h-72 overflow-auto">
-        {rows.length ? (
-          <table>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.n}>
-                  <td className="n">{r.n}.</td>
-                  <td className="mv w">{r.w}</td>
-                  <td className="mv b">{r.b}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : (
-          <div className="p-3 text-sm italic text-[color:var(--text-muted)]">No moves yet.</div>
+            {/* 2. Explore — play your own moves; the engine analyses the line */}
+            <div data-study-block="explore">
+              {exploring ? (
+                <Surface label="Explore board" tone={3}>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="ui-field-label">Exploring — play any moves</span>
+                    <div className="flex flex-wrap gap-2">
+                      <Btn onClick={() => controller.exploreUndo()} disabled={exploreMoves.length === 0}>
+                        Undo
+                      </Btn>
+                      <Btn onClick={() => controller.exitExplore()}>Exit</Btn>
+                    </div>
+                  </div>
+                  <p className="[font:var(--type-numeric)]">
+                    {exploreMoves.length ? (
+                      <span className="text-[color:var(--text-primary)]">
+                        Your line: {formatMovesFrom(exploreMoves, (snap?.exploreStartPly ?? -1) + 1)}
+                      </span>
+                    ) : (
+                      <span className="text-[color:var(--text-muted)]">
+                        Drag a piece to try a line for either side — Stockfish evaluates each position below.
+                      </span>
+                    )}
+                  </p>
+                  <div className="grid gap-1">
+                    {analysis.length ? (
+                      <AnalysisLines lines={analysis} />
+                    ) : (
+                      <InlineFeedback state="loading" message="Stockfish is looking at the position…" skeletonRows={2} />
+                    )}
+                  </div>
+                </Surface>
+              ) : (
+                <p className="ui-field-desc">
+                  Explore hands you both sides of a scratch board from the position you are viewing. The game you came
+                  from is kept exactly as it was.
+                </p>
+              )}
+            </div>
+          </>
         )}
-      </div>
+      </Surface>
     </>
   )
 }
