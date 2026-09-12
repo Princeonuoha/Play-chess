@@ -42,19 +42,22 @@ function wrapTab(node: HTMLDialogElement, event: React.KeyboardEvent<HTMLDialogE
 /**
  * DESIGN.md 8.5 A11Y-10 focus restoration.
  *
- * Not every dialog is opened by a control: the promotion dialog is raised by a
- * pointer sequence on the board, so its invoker is the body — and `body.focus()`
- * is a no-op, which would leave focus sitting on a dialog control that is about
- * to be removed. Handing focus back to the document is the honest restoration
- * for that case.
+ * `close` is dispatched on a queued task, so by the time this runs the user may
+ * already have moved focus somewhere deliberate — restoration must therefore
+ * act only on focus still stranded inside the closed dialog, never steal it
+ * back. And not every dialog is opened by a control: the promotion dialog is
+ * raised by a pointer sequence on the board, so its invoker is the body, and
+ * `body.focus()` is a no-op that would leave focus on a hidden control. Handing
+ * focus back to the document is the honest restoration for that case.
  */
-function restoreFocus(invoker: HTMLElement | null): void {
+function restoreFocus(node: HTMLDialogElement | null, invoker: HTMLElement | null): void {
+  const active = document.activeElement
+  if (node === null || !(active instanceof HTMLElement) || !node.contains(active)) return
   if (invoker !== null && invoker !== document.body && invoker.isConnected) {
     invoker.focus()
     return
   }
-  const active = document.activeElement
-  if (active instanceof HTMLElement) active.blur()
+  active.blur()
 }
 
 export function DialogSurface({
@@ -147,7 +150,7 @@ export function DialogSurface({
    */
   useEffect(
     () => () => {
-      if (dialog.current?.open === true) restoreFocus(invoker.current)
+      if (dialog.current?.open === true) restoreFocus(dialog.current, invoker.current)
     },
     [],
   )
@@ -160,7 +163,7 @@ export function DialogSurface({
       className="ui-dialog"
       aria-labelledby={titleId}
       onClose={() => {
-        restoreFocus(invoker.current)
+        restoreFocus(dialog.current, invoker.current)
         onClose()
       }}
       onClick={(event) => {
