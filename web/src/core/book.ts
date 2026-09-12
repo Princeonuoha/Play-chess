@@ -153,7 +153,7 @@ export const BOOK: BookLine[] = [
     variation:'Kasparov–Topalov “Kasparov’s Immortal” · 1999', you:'w', result:'1–0', white:'Kasparov', black:'Topalov',
     idea:'Kasparov vs Topalov, Wijk aan Zee 1999 — “Kasparov’s Immortal”. A rook sacrifice launches a king hunt from a7 all the way to d1.',
     moves:['e4','d6','d4','Nf6','Nc3','g6','Be3','Bg7','Qd2','c6','f3','b5','Nge2','Nbd7','Bh6','Bxh6','Qxh6','Bb7','a3','e5','O-O-O','Qe7','Kb1','a6','Nc1','O-O-O','Nb3','exd4','Rxd4','c5','Rd1','Nb6','g3','Kb8','Na5','Ba8','Bh3','d5','Qf4+','Ka7','Rhe1','d4','Nd5','Nbxd5','exd5','Qd6','Rxd4','cxd4','Re7+','Kb6','Qxd4+','Kxa5','b4+','Ka4','Qc3','Qxd5','Ra7','Bb7','Rxb7','Qc4','Qxf6','Kxa3','Qxa6+','Kxb4','c3+','Kxc3','Qa1+','Kd2','Qb2+','Kd1','Bf1','Rd2','Rd7','Rxd7','Bxc4','bxc4','Qxh8','Rd3','Qa8','c3','Qa4+','Ke1','f4','f5','Kc1','Rd2','Qa7'],
-    notes:{46:'24.Rxd4!! A rook sacrifice tearing open the black king — the start of a famous king hunt.',48:'25.Re7+ and the king is dragged across the entire board, a7 → d1.'} },
+    notes:{46:'24.Rxd4!! A rook sacrifice tearing open the black king — the start of a famous king hunt.',48:'25.Re7+ and the king is dragged across the entire board, a7 all the way to d1.'} },
   { game:true, hero:'Steinitz', opening:'Italian Game', theme:'Attack', era:'Classical (early 1900s)',
     variation:'Steinitz–von Bardeleben · 1895', you:'w', result:'1–0', white:'Steinitz', black:'von Bardeleben',
     idea:'Steinitz vs von Bardeleben, Hastings 1895 — a storied attack where every white piece hangs yet the black king cannot escape.',

@@ -150,6 +150,13 @@ export function WorkspaceFooter() {
   )
 }
 
+const PROMOTION_PIECES = [
+  { piece: 'q', name: 'Queen' },
+  { piece: 'r', name: 'Rook' },
+  { piece: 'b', name: 'Bishop' },
+  { piece: 'n', name: 'Knight' },
+] as const
+
 export function PromotionDialog({
   promotion,
   onCancel,
@@ -164,11 +171,13 @@ export function PromotionDialog({
       <div className="rounded-[var(--radius-xl)] border border-[color:var(--border-subtle)] bg-[color:var(--surface-1)] p-4 text-center shadow-[var(--depth-overlay)]" onClick={(event) => event.stopPropagation()}>
         <h3 className="mb-3 text-sm font-semibold text-[color:var(--text-muted)]">Promote to</h3>
         <div className="flex gap-2">
-          {['q', 'r', 'b', 'n'].map((piece) => (
+          {PROMOTION_PIECES.map(({ piece, name }) => (
             <button
               key={piece}
               onClick={() => onChoose(piece)}
-              className="grid h-16 w-16 place-items-center rounded-[var(--radius-lg)] border border-[color:var(--border-subtle)] bg-[var(--surface-inset)] hover:border-[color:var(--brass-base)]"
+              aria-label={`Promote to ${name}`}
+              title={`Promote to ${name}`}
+              className="grid h-16 w-16 min-h-[var(--icon-target-min)] min-w-[var(--icon-target-min)] place-items-center rounded-[var(--radius-lg)] border border-[color:var(--border-subtle)] bg-[var(--surface-inset)] hover:border-[color:var(--brass-base)]"
               dangerouslySetInnerHTML={{ __html: pieceSVG(piece, promotion.color) }}
               style={{ padding: 8 }}
             />
