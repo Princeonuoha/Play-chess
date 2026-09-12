@@ -664,6 +664,11 @@
 .ui-dialog {
   display: grid;
   gap: var(--space-3);
+  /* The UA centres a modal dialog with `margin: auto` against its `inset: 0`.
+     Tailwind's preflight resets `margin` to 0 on every element, which silently
+     pins the dialog to the top-left corner of the viewport, so the centring has
+     to be restated here. */
+  margin: auto;
   width: min(92vw, 26rem);
   max-width: 100%;
   padding: var(--space-5);
