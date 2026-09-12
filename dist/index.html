@@ -8,6 +8,22 @@
       name="description"
       content="Play chess against Stockfish on chesswithprince.com."
     />
+    <link rel="canonical" href="https://play.chesswithprince.com/play" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="chesswithprince.com" />
+    <meta property="og:title" content="Play — chesswithprince.com" />
+    <meta property="og:description" content="Play chess against Stockfish on chesswithprince.com." />
+    <meta property="og:url" content="https://play.chesswithprince.com/play" />
+    <meta property="og:image" content="https://play.chesswithprince.com/icon-512.png" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Play — chesswithprince.com" />
+    <meta name="twitter:description" content="Play chess against Stockfish on chesswithprince.com." />
+    <meta name="twitter:image" content="https://play.chesswithprince.com/icon-512.png" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/icon-32.png" sizes="32x32" type="image/png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
     <script>
       (() => {
         const routeMetadata = {
@@ -23,8 +39,16 @@
               'chesswithprince.com',
               'Play and study chess on chesswithprince.com.',
             ]
-          document.title = `${title} — chesswithprince.com`
+          const canonicalUrl = `https://play.chesswithprince.com${window.location.pathname}`
+          const fullTitle = `${title} — chesswithprince.com`
+          document.title = fullTitle
           document.querySelector('meta[name="description"]')?.setAttribute('content', description)
+          document.querySelector('link[rel="canonical"]')?.setAttribute('href', canonicalUrl)
+          document.querySelector('meta[property="og:title"]')?.setAttribute('content', fullTitle)
+          document.querySelector('meta[property="og:description"]')?.setAttribute('content', description)
+          document.querySelector('meta[property="og:url"]')?.setAttribute('content', canonicalUrl)
+          document.querySelector('meta[name="twitter:title"]')?.setAttribute('content', fullTitle)
+          document.querySelector('meta[name="twitter:description"]')?.setAttribute('content', description)
         }
 
         for (const method of ['pushState', 'replaceState']) {
@@ -43,8 +67,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
-    <script type="module" crossorigin src="/assets/index-BtCCLvsM.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-AlidmHwC.css">
+    <script type="module" crossorigin src="/assets/index-B3KHYVyY.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-Cgdyvp47.css">
   </head>
   <body>
     <div id="root"></div>
