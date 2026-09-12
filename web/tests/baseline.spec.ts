@@ -28,13 +28,11 @@ async function dismissIntro(page: Page): Promise<void> {
   if (await intro.isVisible()) await intro.click()
 }
 
-async function move(page: Page, from: string, to: string): Promise<'w' | 'b'> {
+async function move(page: Page, from: string, to: string, color: 'w' | 'b'): Promise<void> {
   const movingPiece = page.locator(`.piece.mine[data-square="${from}"]`)
-  const color = await movingPiece.getAttribute('data-color')
-  if (color !== 'w' && color !== 'b') throw new Error(`Expected a movable ${from} piece color`)
+  await expect(movingPiece).toHaveAttribute('data-color', color)
   await movingPiece.click()
   await page.locator(`.sq[data-square="${to}"]`).click({ force: true })
-  return color
 }
 
 async function boardState(page: Page): Promise<string> {
@@ -109,7 +107,7 @@ test('capture pre-redesign production behavior, geometry, console, and visual ba
   await page.reload()
   await dismissIntro(page)
   await page.getByRole('button', { name: 'New game' }).click()
-  await move(page, 'e2', 'e4')
+  await move(page, 'e2', 'e4', 'w')
   await expect(page.locator('.piece[data-square="e4"]')).toBeVisible()
   // Wait for the one expected engine reply; only then is the position stable enough to prove tab persistence.
   await expect(page.locator('.piece.mine')).toHaveCount(16, { timeout: 5_000 })
@@ -132,13 +130,20 @@ test('capture pre-redesign production behavior, geometry, console, and visual ba
   await page.getByRole('button', { name: 'Copy PGN' }).click()
   await expect(page.getByText('PGN copied to clipboard')).toBeVisible()
 
+  // Given a completed live-game check, when promotion capture begins, then Explore starts from a reset board.
+  await visitTab(page, 'Play')
+  await page.getByRole('button', { name: 'New game' }).click()
+  await expect(page.locator('.board .piece')).toHaveCount(32)
+  await expect(page.locator('.piece.mine[data-square="e2"]')).toHaveAttribute('data-color', 'w')
+  await visitTab(page, 'Study')
+
   // Explore accepts legal moves for both colors, so this real on-board sequence reaches the existing promotion dialog without a test-only FEN hook.
   await page.getByRole('button', { name: /Explore — play your own moves/ }).click()
-  for (const [from, to] of [
-    ['a2', 'a4'], ['b8', 'c6'], ['a4', 'a5'], ['g8', 'h6'], ['a5', 'a6'], ['h6', 'g8'], ['a6', 'b7'], ['a7', 'a6'], ['b7', 'b8'],
+  for (const [from, to, color] of [
+    ['a2', 'a4', 'w'], ['b8', 'c6', 'b'], ['a4', 'a5', 'w'], ['g8', 'h6', 'b'], ['a5', 'a6', 'w'], ['h6', 'g8', 'b'], ['a6', 'b7', 'w'], ['a7', 'a6', 'b'], ['b7', 'b8', 'w'],
   ]) {
-    const movingColor = await move(page, from, to)
-    if (to !== 'b8') await expect(page.locator(`.piece[data-square="${to}"][data-color="${movingColor}"]`)).toBeVisible()
+    await move(page, from, to, color)
+    if (to !== 'b8') await expect(page.locator(`.piece[data-square="${to}"][data-color="${color}"]`)).toBeVisible()
   }
   await expect(page.getByRole('heading', { name: 'Promote to' })).toBeVisible()
   const promotionChoices = page.locator('h3:text-is("Promote to") + div button')
