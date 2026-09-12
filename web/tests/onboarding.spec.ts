@@ -58,6 +58,10 @@ function dismissControl(page: Page): Locator {
   return page.getByRole('button', { name: 'Got it' })
 }
 
+function guideChoice(page: Page, label: string): Locator {
+  return dialog(page).getByRole('button', { name: new RegExp(`^${label}:`) })
+}
+
 /** Document-space geometry: a viewport-relative top changes meaning the moment the page scrolls. */
 async function boardTop(page: Page): Promise<number> {
   return page.locator('.board').evaluate((node) => node.getBoundingClientRect().top + window.scrollY)
@@ -141,7 +145,7 @@ test.describe('first-visit workspace guide', () => {
       await expect(guide.getByText(TITLE)).toBeVisible()
       await expect(guide.getByText('One board, four workspaces.', { exact: false })).toBeVisible()
       for (const route of ROUTES) {
-        const choice = guide.getByRole('button', { name: `Open ${route.label}` })
+        const choice = guideChoice(page, route.label)
         await expect(choice).toBeVisible()
         // DESIGN.md 5.1: the destination mark is drawn SVG, never an emoji.
         await expect(choice.locator('svg[data-icon]')).toHaveCount(1)
@@ -158,7 +162,7 @@ test.describe('first-visit workspace guide', () => {
       const targets = [
         dismissControl(page),
         dialog(page).getByRole('button', { name: 'Close the guide' }),
-        ...ROUTES.map((route) => dialog(page).getByRole('button', { name: `Open ${route.label}` })),
+        ...ROUTES.map((route) => guideChoice(page, route.label)),
       ]
       for (const target of targets) {
         const name = (await target.getAttribute('aria-label')) ?? (await target.innerText())
@@ -192,8 +196,10 @@ test.describe('first-visit workspace guide', () => {
     await invoker.click()
     await expect(dialog(page)).toBeVisible()
 
-    await expect(dialog(page).getByRole('button', { name: 'Open Play' })).toBeFocused()
-    expect(await activeElementLabel(page), 'initial focus lands on the first destination').toBe('Open Play')
+    await expect(guideChoice(page, 'Play')).toBeFocused()
+    expect(await activeElementLabel(page), 'initial focus lands on the first destination').toBe(
+      'Play: Play Stockfish from Beginner to Maximum, as either colour.',
+    )
 
     // Twice around the dialog's own controls: a trap that only holds for one
     // lap is not a trap.
@@ -256,7 +262,7 @@ test.describe('first-visit workspace guide', () => {
 
       await helpControl(page).tap()
       await expect(dialog(page)).toBeVisible()
-      await dialog(page).getByRole('button', { name: 'Open Study' }).tap()
+      await guideChoice(page, 'Study').tap()
       await expect(page).toHaveURL(/\/study$/)
       await expect(dialog(page)).toBeHidden()
     })
@@ -293,7 +299,7 @@ test.describe('first-visit workspace guide', () => {
           .locator('.board')
           .evaluate((node) => ((node as HTMLElement).dataset.probe = 'one-mount'))
 
-        await dialog(page).getByRole('button', { name: `Open ${route.label}` }).click()
+        await guideChoice(page, route.label).click()
 
         await expect(page).toHaveURL(new RegExp(`${route.path}$`))
         await expect(dialog(page)).toBeHidden()

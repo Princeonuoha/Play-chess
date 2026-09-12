@@ -63,7 +63,7 @@ async function measuredBox(page: Page, selector: string): Promise<Box> {
 }
 
 async function visitTab(page: Page, tab: (typeof tabs)[number]): Promise<void> {
-  const dialogChoice = page.getByRole('dialog').getByRole('button', { name: `Open ${tab}` })
+  const dialogChoice = page.getByRole('dialog').getByRole('button', { name: new RegExp(`^${tab}:`) })
   if (await dialogChoice.isVisible()) {
     await dialogChoice.click()
     await expect(page).toHaveURL(new RegExp(`/${tab.toLowerCase()}$`))

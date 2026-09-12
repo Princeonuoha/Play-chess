@@ -166,7 +166,7 @@ test.describe('responsive workspace shell geometry', () => {
       expect(await horizontalOverflow(page), 'first-visit state overflows horizontally').toBe(false)
 
       await page.locator('[data-shell="intro"] summary').click()
-      await expect(page.getByRole('button', { name: 'Open Play' })).toBeVisible()
+      await expect(page.getByRole('button', { name: /^Play:/ })).toBeVisible()
       expect(await horizontalOverflow(page), 'expanded guide overflows horizontally').toBe(false)
 
       await dismissIntro(page)
