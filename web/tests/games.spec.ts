@@ -114,10 +114,10 @@ test.describe('master-game library and replay workspace', () => {
     // Given the library, when era and theme facets are chosen, then the picker regroups and the strip reports the active facet.
     await openGames(page)
 
-    const browse = page.getByRole('group', { name: 'Browse by' })
-    await browse.getByRole('button', { name: 'Era', exact: true }).click()
+    const browse = page.getByLabel('Browse by')
+    await browse.selectOption('era')
 
-    await expect(browse.getByRole('button', { name: 'Era', exact: true })).toHaveAttribute('aria-pressed', 'true')
+    await expect(browse).toHaveValue('era')
     await expect(library(page)).toContainText(`${GAME_COUNT} master games, grouped by era`)
     expect(await groupLabels(page)).toEqual([
       'Romantic (1800s)',
@@ -127,8 +127,9 @@ test.describe('master-game library and replay workspace', () => {
     ])
     expect(await optionLabels(page)).toHaveLength(GAME_COUNT)
 
-    await browse.getByRole('button', { name: 'Theme', exact: true }).click()
+    await browse.selectOption('theme')
 
+    await expect(browse).toHaveValue('theme')
     await expect(library(page)).toContainText(`${GAME_COUNT} master games, grouped by theme`)
     expect(await groupLabels(page)).toEqual(['Attack', 'Sacrifice', 'Combination', 'Counterattack', 'Positional'])
     await expectContextMatchesPicker(page)
@@ -260,8 +261,9 @@ test.describe('master-game library and replay workspace', () => {
     await expect(selectedGame(page)).toContainText('Bogoljubov')
     await expectContextMatchesPicker(page)
 
-    await page.getByRole('group', { name: 'Browse by' }).getByRole('button', { name: 'Player', exact: true }).click()
+    await page.getByLabel('Browse by').selectOption('hero')
 
+    await expect(page.getByLabel('Search games')).toHaveValue('')
     expect(await optionLabels(page)).toHaveLength(GAME_COUNT)
     await expectContextMatchesPicker(page)
   })
@@ -283,11 +285,17 @@ test.describe('master-game library and replay workspace', () => {
       await expectTarget(page.getByRole('button', { name: 'Watch this game' }), 'watch this game')
       await expectTarget(page.getByRole('button', { name: 'Play game move' }), 'play game move')
       await expectTarget(page.getByText('Show hint (highlight the next move)'), 'hint toggle')
-      for (const facet of ['Opening', 'Player', 'Theme', 'Era']) {
-        await expectTarget(page.getByRole('group', { name: 'Browse by' }).getByRole('button', { name: facet, exact: true }), `${facet} facet`)
-      }
+      await expectTarget(page.getByLabel('Browse by'), 'browse-by facet picker')
 
       expect(await horizontalOverflow(page), `the games workspace overflows at ${viewport.name}`).toBe(false)
+
+      // DESIGN.md 3.3: no action label may break across lines in this column.
+      const wrapped = await selectedGame(page).evaluate((region) =>
+        [...region.querySelectorAll('.ui-btn-label')]
+          .filter((label) => label.getClientRects().length > 1)
+          .map((label) => label.textContent ?? ''),
+      )
+      expect(wrapped, 'an action label wrapped onto a second line').toEqual([])
 
       // Long values must wrap rather than truncate: the era fact is the longest string in the summary.
       await expect(selectedGame(page)).toContainText('Romantic (1800s)')

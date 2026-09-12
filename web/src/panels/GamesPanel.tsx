@@ -8,11 +8,9 @@ import {
   GroupedSelect,
   InlineFeedback,
   Loading,
-  SegmentedNav,
   StatusNote,
   Surface,
   type Group,
-  type SegmentItem,
 } from '../ui/primitives'
 
 type Facet = 'opening' | 'hero' | 'theme' | 'era'
@@ -26,16 +24,23 @@ export interface GamesPanelProps {
 }
 
 /**
- * The four library facets. Typed as `SegmentItem` so the DESIGN.md 7.3
- * `SegmentedNav` primitive owns the strip's visuals, roving focus and 44px
- * targets — the panel no longer hand-rolls a four-button grid.
+ * The four library facets.
+ *
+ * They are offered through a native `<select>` rather than a `SegmentedNav`
+ * strip for a measured reason: the panel column is 309px on a 375px phone and
+ * 296px in the desktop sidebar, which leaves ~45-53px of text room per segment,
+ * while `Opening` needs 59px at the selected weight. A strip would therefore
+ * break a label mid-word ("Openi/ng") at *every* width. DESIGN.md 7.3 keeps the
+ * native element precisely for this — the platform picker takes any label
+ * length, keyboard and screen-reader behaviour for free — and it replaces the
+ * pre-redesign four-button grid, which was a local one-off control.
  */
 const FACETS = [
   { id: 'opening', label: 'Opening' },
   { id: 'hero', label: 'Player' },
   { id: 'theme', label: 'Theme' },
   { id: 'era', label: 'Era' },
-] as const satisfies readonly (SegmentItem & { id: Facet })[]
+] as const satisfies readonly { id: Facet; label: string }[]
 
 const FACET_NOUN: Record<Facet, string> = {
   opening: 'opening',
@@ -214,19 +219,32 @@ export function GamesPanel({ snap, replaying, selfPlay, sessionKey, controller }
           )}
         </Field>
 
-        <div className="grid min-w-0 gap-2">
-          <p className="ui-field-label">Browse by</p>
-          <SegmentedNav
-            label="Browse by"
-            items={FACETS}
-            selectedId={query === '' ? facet : ''}
-            onSelect={(id) => {
-              if (!isFacet(id)) return
-              setFacet(id)
-              setSearch('')
-            }}
-          />
-        </div>
+        <Field label="Browse by" description="Groups the picker below; searching groups by relevance instead.">
+          {(control) => (
+            <select
+              id={control.id}
+              aria-describedby={control['aria-describedby']}
+              value={query === '' ? facet : ''}
+              onChange={(event) => {
+                if (!isFacet(event.target.value)) return
+                setFacet(event.target.value)
+                setSearch('')
+              }}
+              className="ui-control ui-select"
+            >
+              {query !== '' && (
+                <option value="" disabled>
+                  Search results
+                </option>
+              )}
+              {FACETS.map((entry) => (
+                <option key={entry.id} value={entry.id}>
+                  {entry.label}
+                </option>
+              ))}
+            </select>
+          )}
+        </Field>
 
         <p className="min-w-0 break-words text-[color:var(--text-muted)] [font:var(--type-body-sm)]">
           <span className="text-[color:var(--text-primary)] [font:var(--type-numeric)]">{resultCount}</span>{' '}
@@ -268,23 +286,24 @@ export function GamesPanel({ snap, replaying, selfPlay, sessionKey, controller }
           <SelectedGame line={selected} />
         )}
 
+        {/* Stacked, not a two-up grid: "Watch this game" and "Play game move" both
+            wrap to two lines in a 296px sidebar column, and DESIGN.md 3.3 does not
+            allow a label to break where the full value has nowhere else to appear. */}
         <div className="grid gap-2 pt-1">
           <Btn primary icon="play" disabled={selected === undefined} onClick={() => controller.startTrainer(gameSel, 'games', mgHints)}>
             Play through
           </Btn>
-          <div className="grid grid-cols-2 gap-2">
-            <Btn
-              active={replayingGames}
-              icon={replayingGames || selfPlay ? 'stop' : 'circle-play'}
-              disabled={selected === undefined && !replayingGames && !selfPlay}
-              onClick={() => controller.watch(gameSel, 'games')}
-            >
-              {watchLabel}
-            </Btn>
-            <Btn icon="skip-forward" disabled={snap?.games.hintDisabled ?? true} onClick={() => controller.playBookMove('games')}>
-              Play game move
-            </Btn>
-          </div>
+          <Btn
+            active={replayingGames}
+            icon={replayingGames || selfPlay ? 'stop' : 'circle-play'}
+            disabled={selected === undefined && !replayingGames && !selfPlay}
+            onClick={() => controller.watch(gameSel, 'games')}
+          >
+            {watchLabel}
+          </Btn>
+          <Btn icon="skip-forward" disabled={snap?.games.hintDisabled ?? true} onClick={() => controller.playBookMove('games')}>
+            Play game move
+          </Btn>
         </div>
 
         <label className="flex min-h-[var(--icon-target-min)] cursor-pointer items-center gap-2 text-[color:var(--text-muted)] [font:var(--type-body-sm)]">
