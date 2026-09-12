@@ -311,6 +311,20 @@ bundle accounting happen in todo 10; whatever is chosen, these rules bind:
 | `--icon-stroke` | `1.75` | Uniform stroke width across every icon at every size. |
 | `--icon-target-min` | `44px` | Minimum hit area of any icon-only control. |
 
+**Chosen family (todo 10): a local typed set, `web/src/ui/icons.tsx`.** No icon package is
+installed — the dependency cost of a tree-shaken package exceeds the bytes of the marks this product
+actually draws, and a local set makes "one family" a type error to break rather than a review note.
+The module is the single icon source: it exports `Icon`, `IconButton`, the `IconName` union, and the
+`IconSize` scale, every mark is authored on one `viewBox="0 0 24 24"` grid, stroked with
+`stroke="currentColor"` over `fill="none"`, and both size and stroke are `var()` references to the
+tokens above rather than literals. `scripts/verify-icons.mjs` (`npm run verify:icons`) fails the
+build on a structural emoji or transport glyph in product source, on an `<svg>` authored outside the
+module, and on any second stroke width, size, or geometry grid.
+
+`web/src/dev/pending.tsx` holds a dev-only stand-in with the same `Icon`/`IconName` shape for the
+§7.3 showcase. It is never imported by product code and never reaches the production bundle; todo 11
+deletes it when the real primitives land.
+
 ### 5.2 Prohibitions
 
 - **No emoji is used as an interface icon**, anywhere, ever. The current onboarding card marks, the
@@ -338,6 +352,13 @@ are domain notation, not interface icons, and may remain as text. Each must:
    the accessible name, and
 3. Never be the only distinguishing feature between two grades — the `--status-*` color and the word
    are both present.
+
+The surviving sites are exactly three, and `scripts/verify-icons.mjs` allows this set and no other
+character: `GRADE_GLYPH` in `web/src/core/controller.ts` (the on-board grade badge), `LABEL_ICON` in
+`web/src/panels/StudyPanel.tsx` (the review legend, the commentary card, and the per-move rows), and
+the `✓` / `✗` book-move marks in the trainer status line. Every one renders in
+`--type-font-numeric`, is `aria-hidden` where visible text already spells the grade, and is paired
+with the spelled word in the accessible name.
 
 ---
 
