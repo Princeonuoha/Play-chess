@@ -19,6 +19,7 @@
     "test:e2e:showcase": "playwright test --config=playwright.showcase.config.ts",
     "react-doctor": "react-doctor --json --no-score -y > react-doctor-report.json",
     "react-scan:flows": "react-scan --version && node scripts/react-scan-flows.mjs",
+    "lighthouse:real-chrome": "node scripts/lighthouse-real-chrome.mjs",
     "verify:no-devtools": "if matches=$(find ../dist -type f -name '*.js' -exec grep -E -i -l 'react[-_]?scan|react[-_]?grab|react[-_]?doctor' {} +); then if [ -n \"$matches\" ]; then printf '%s\\n' \"$matches\"; echo 'React audit tooling leaked into dist.' >&2; exit 1; fi; fi"
   },
   "dependencies": {
@@ -35,6 +36,8 @@
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",
+    "chrome-launcher": "^1.2.1",
+    "lighthouse": "^13.4.1",
     "react-doctor": "^0.9.13",
     "react-grab": "^0.2.0",
     "react-scan": "^0.5.7",
