@@ -71,22 +71,35 @@ async function openBoard(page: Page, route = '/play'): Promise<void> {
 }
 
 async function clickSquare(page: Page, square: string): Promise<void> {
-  const box = await page.locator(`.board .sq[data-square="${square}"]`).boundingBox()
-  if (box === null) throw new Error(`square ${square} has no box`)
-  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
+  const position = await page.locator(`.board .sq[data-square="${square}"]`).evaluate((node) => ({
+    x: (node as HTMLElement).offsetLeft + (node as HTMLElement).offsetWidth / 2,
+    y: (node as HTMLElement).offsetTop + (node as HTMLElement).offsetHeight / 2,
+  }))
+  await page.locator('.board').click({ position })
 }
 
-/* The board refuses input while a piece is travelling, and a click on a board
-   that still holds a stale selection is consumed clearing it, so selecting is a
-   retry rather than a single click. */
 async function selectSquare(page: Page, square: string): Promise<void> {
-  const selected = page.locator('.board .hl.sel')
-  for (let attempt = 0; attempt < 5; attempt++) {
-    await clickSquare(page, square)
-    if (await selected.count()) return
-    await page.waitForTimeout(300)
-  }
-  throw new Error(`${square} never became the selected square`)
+  await clickSquare(page, square)
+  const position = await squarePosition(page, square)
+  await expect(page.locator('.board .hl.sel')).toHaveJSProperty('offsetLeft', position.left)
+  await expect(page.locator('.board .hl.sel')).toHaveJSProperty('offsetTop', position.top)
+}
+
+async function squarePosition(page: Page, square: string): Promise<{ readonly left: number; readonly top: number }> {
+  return page.locator(`.board .sq[data-square="${square}"]`).evaluate((node) => ({
+    left: (node as HTMLElement).offsetLeft,
+    top: (node as HTMLElement).offsetTop,
+  }))
+}
+
+async function expectLastMove(page: Page, from: string, to: string): Promise<void> {
+  const [fromPosition, toPosition] = await Promise.all([squarePosition(page, from), squarePosition(page, to)])
+  const last = page.locator('.board .hl.last')
+  await expect(last).toHaveCount(2)
+  await expect(last.nth(0)).toHaveJSProperty('offsetLeft', fromPosition.left)
+  await expect(last.nth(0)).toHaveJSProperty('offsetTop', fromPosition.top)
+  await expect(last.nth(1)).toHaveJSProperty('offsetLeft', toPosition.left)
+  await expect(last.nth(1)).toHaveJSProperty('offsetTop', toPosition.top)
 }
 
 async function dragSquare(page: Page, from: string, to: string): Promise<void> {
@@ -128,10 +141,7 @@ async function playIntoCheck(page: Page): Promise<void> {
   for (const [from, to] of [['e2', 'e4'], ['e7', 'e5'], ['f1', 'c4'], ['g8', 'f6'], ['c4', 'f7']]) {
     await clickSquare(page, from)
     await clickSquare(page, to)
-    // A capture leaves the taken piece in the DOM until the travel finishes, so
-    // settle on the committed last-move cue and let the board unlock input.
-    await expect(page.locator('.board .hl.last')).toHaveCount(2)
-    await page.waitForTimeout(300)
+    await expectLastMove(page, from, to)
   }
 }
 
