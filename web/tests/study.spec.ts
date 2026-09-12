@@ -151,8 +151,9 @@ test.describe('study: guided review beside open analysis', () => {
     await expect(page.getByRole('button', { name: 'Analyze' })).toBeVisible()
   })
 
-  test('walks a game through review, a stepped move, Explore, exit and Copy PGN', async ({ page }) => {
+  test('walks a game through review, a stepped move, Explore, exit and Copy PGN', async ({ page, context }) => {
     // Given a played game, when it is reviewed, stepped, explored and exported, then every stage of the journey works.
+    await context.grantPermissions(['clipboard-read', 'clipboard-write'])
     await playShortGame(page)
     const gradedMoves = await reviewTheGame(page)
 
@@ -190,6 +191,8 @@ test.describe('study: guided review beside open analysis', () => {
     await expect(block(page, 'scoresheet')).toBeVisible()
     await page.getByRole('button', { name: 'Copy PGN' }).click()
     await expect(page.getByText('PGN copied to clipboard')).toBeVisible()
+    const exported = await page.evaluate(() => navigator.clipboard.readText())
+    expect(exported, 'the exported scoresheet is the game that was just reviewed').toContain('e4')
   })
 
   test('keeps the reviewed position while the chosen surface changes', async ({ page }) => {
