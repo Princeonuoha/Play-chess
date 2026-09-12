@@ -12,12 +12,32 @@ export default defineConfig({
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'], headless: true } }],
-  webServer: externalBaseURL
-    ? undefined
-    : {
-        command: 'npm run preview -- --host 127.0.0.1 --port 8000 --strictPort',
-        url: 'http://127.0.0.1:8000',
-        reuseExistingServer: false,
-      },
+  projects: [
+    {
+      name: 'chromium',
+      testIgnore: /showcase\.spec\.ts/,
+      use: { ...devices['Desktop Chrome'], headless: true },
+    },
+    {
+      name: 'showcase',
+      testMatch: /showcase\.spec\.ts/,
+      use: { ...devices['Desktop Chrome'], headless: true, baseURL: 'http://127.0.0.1:4173' },
+    },
+  ],
+  webServer: [
+    ...(externalBaseURL
+      ? []
+      : [
+          {
+            command: 'npm run preview -- --host 127.0.0.1 --port 8000 --strictPort',
+            url: 'http://127.0.0.1:8000',
+            reuseExistingServer: false,
+          },
+        ]),
+    {
+      command: 'npm run dev -- --host 127.0.0.1 --port 4173 --strictPort',
+      url: 'http://127.0.0.1:4173/showcase.html',
+      reuseExistingServer: false,
+    },
+  ],
 })
