@@ -186,7 +186,10 @@ test.describe('play workspace: one primary action and a readable hierarchy', () 
     }, TYPE_FLOOR)
 
     expect(undersized, `DESIGN.md 3.2 floors rendered text at ${TYPE_FLOOR}px`).toEqual([])
-    await expect(page.getByRole('region', { name: 'Game setup' })).toContainText('Facing')
+
+    const setup = page.getByRole('region', { name: 'Game setup' })
+    await expect(setup, 'the engine is named at a readable step').toContainText('Opponent')
+    await expect(sliderBlock(page, 'Difficulty').locator('.ui-slider-value'), 'the tier is readable beside its label').not.toBeEmpty()
   })
 
   test(`keeps every target at least ${TARGET_MIN}px at ${VIEWPORTS[0].name}`, async ({ page }) => {

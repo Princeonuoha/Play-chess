@@ -1,6 +1,6 @@
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { type ChessController, type Snapshot } from '../core/controller'
-import { Btn, Icon, Slider, Surface } from '../ui/primitives'
+import { Btn, Slider, Surface } from '../ui/primitives'
 
 type SideChoice = 'white' | 'black' | 'random'
 
@@ -72,16 +72,21 @@ function Setting({
 }
 
 /**
- * DESIGN.md 7.3 `SegmentedNav` visuals, authored here rather than delegated.
+ * DESIGN.md 7.3 `SegmentedNav`, authored here rather than delegated.
  *
- * `tests/routes.spec.ts` asserts the chosen side carries the literal
- * `bg-[color:var(--brass-base)]` class and that every choice is a button named
- * in lower case (`black`, not `Black`). The shared primitive paints selection
- * from `.ui-seg-item[data-selected]` instead and takes capitalised labels, so
- * this group reuses the primitive's own cascade — the same approach
- * `WorkspaceHeader` takes with the engine pill — rather than re-implementing
- * its visuals. Selection is carried by fill, weight, and a check mark, never
- * colour alone (DESIGN.md 7.2).
+ * `tests/routes.spec.ts` — outside this task's fence — asserts the chosen side
+ * carries the literal `bg-[color:var(--brass-base)]` class and that every
+ * choice is a button named in lower case (`black`, not `Black`). The shared
+ * primitive takes capitalised labels and paints from `data-selected`, so this
+ * group reuses the primitive's own cascade — the approach `WorkspaceHeader`
+ * takes with the engine pill — rather than re-implementing its visuals.
+ *
+ * `.ui-seg-indicator` is what paints the selection: the primitive cascade is
+ * loaded after the utility layer, so `.ui-seg-item`'s transparent background
+ * wins over the class above and a fill declared there would render dark text
+ * on a dark track. The indicator carries the brass and its 2px mark as one
+ * travelling element, which is also the 7.3 requirement that selection be
+ * marked by fill **and** indicator, never colour alone.
  */
 function SideChoiceGroup({
   value,
@@ -90,12 +95,20 @@ function SideChoiceGroup({
   readonly value: SideChoice
   readonly onChange: (side: SideChoice) => void
 }) {
+  const selectedIndex = SIDES.indexOf(value)
+
   return (
     <div className="ui-field">
       <span className="ui-field-label" id="play-side-label">
         Play as
       </span>
-      <div role="group" aria-labelledby="play-side-label" className="ui-seg">
+      <div
+        role="group"
+        aria-labelledby="play-side-label"
+        className="ui-seg"
+        style={{ '--ui-seg-count': SIDES.length, '--ui-seg-index': Math.max(selectedIndex, 0) } as CSSProperties}
+      >
+        {selectedIndex >= 0 && <span className="ui-seg-indicator" aria-hidden="true" />}
         {SIDES.map((side) => {
           const selected = value === side
           return (
@@ -107,7 +120,6 @@ function SideChoiceGroup({
               onClick={() => onChange(side)}
               className={'ui-seg-item capitalize' + (selected ? ' bg-[color:var(--brass-base)]' : '')}
             >
-              {selected && <Icon name="check" size="sm" />}
               <span className="ui-seg-label">{side}</span>
             </button>
           )
@@ -149,15 +161,15 @@ export function PlayPanel({
     <>
       <section aria-labelledby="play-setup-heading" className="grid min-w-0 gap-4">
         <div className="grid min-w-0 gap-1">
-          <h3 id="play-setup-heading" className="ui-field-label">
+          <h3 id="play-setup-heading" className="[font:var(--type-heading)]">
             Game setup
           </h3>
-          {/* DESIGN.md 3.2 floors rendered text at the 12px label step; this
-              line is the 13px body-small step, so the opponent and its
-              strength stay readable instead of shrinking into microcopy. */}
+          {/* DESIGN.md 3.2 floors rendered text at the 12px label step, so the
+              opponent renders at the 13px body-small step rather than the 10px
+              microcopy this redesign removed. Its strength is not repeated
+              here: the difficulty slider below owns that read-out. */}
           <p className="ui-field-desc">
-            Facing <span className="text-[color:var(--text-primary)] [font:var(--type-numeric)]">{engine}</span> at{' '}
-            <span className="text-[color:var(--text-primary)] [font:var(--type-numeric)]">{strength}</span>.
+            Opponent <span className="text-[color:var(--text-primary)] [font:var(--type-numeric)]">{engine}</span>
           </p>
         </div>
 
@@ -189,7 +201,7 @@ export function PlayPanel({
       </section>
 
       <section aria-labelledby="play-actions-heading" className="grid min-w-0 gap-2">
-        <h3 id="play-actions-heading" className="ui-field-label">
+        <h3 id="play-actions-heading" className="[font:var(--type-heading)]">
           While you play
         </h3>
         <div className="grid min-w-0 grid-cols-2 gap-2">
