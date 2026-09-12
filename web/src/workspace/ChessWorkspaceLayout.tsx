@@ -3,7 +3,6 @@ import { Outlet, useLocation, useNavigate } from 'react-router'
 import { ChessController, type Snapshot } from '../core/controller'
 import {
   Card,
-  NavBtn,
   PromotionDialog,
   type Promotion,
   type WorkspaceRoute,
@@ -12,6 +11,7 @@ import {
   WorkspaceNavigation,
   WORKSPACE_ROUTES,
 } from './WorkspaceChrome'
+import { Icon, IconButton } from '../ui/icons'
 import type { WorkspaceOutletContext } from './WorkspaceRoutes'
 
 function difficulty(value: number): { readonly name: string; readonly elo: string } {
@@ -137,11 +137,11 @@ export function ChessWorkspaceLayout() {
         </span>
         <button
           onClick={() => setShowIntro(true)}
-          className="ml-auto grid h-8 w-8 place-items-center rounded-[var(--radius-pill)] border border-[color:var(--border-subtle)] bg-[var(--surface-inset)] text-sm font-bold text-[color:var(--text-muted)] transition hover:text-[color:var(--text-primary)]"
+          className="ml-auto grid min-h-[var(--icon-target-min)] min-w-[var(--icon-target-min)] place-items-center rounded-[var(--radius-pill)] border border-[color:var(--border-subtle)] bg-[var(--surface-inset)] text-[color:var(--text-muted)] transition hover:text-[color:var(--text-primary)]"
           aria-label="How it works"
           title="How it works"
         >
-          ?
+          <Icon name="help" />
         </button>
       </header>
 
@@ -161,11 +161,11 @@ export function ChessWorkspaceLayout() {
           </div>
           {canBrowse && (
             <div className="flex w-full max-w-[560px] items-center gap-1 rounded-[var(--radius-lg)] border border-[color:var(--border-subtle)] bg-[var(--canvas-sunken)] p-1">
-              <NavBtn onClick={() => controller.navFirst()} label="First move">⏮</NavBtn>
-              <NavBtn onClick={() => controller.navPrev()} label="Previous move">◀</NavBtn>
+              <IconButton icon="skip-back" onClick={() => controller.navFirst()} label="First move" />
+              <IconButton icon="chevron-left" onClick={() => controller.navPrev()} label="Previous move" />
               <div className="flex-1 text-center text-xs text-[color:var(--text-muted)]">
                 {reviewPly === null ? (
-                  <span>Live · move {Math.ceil(history.length / 2)} <span className="opacity-50">· use ← →</span></span>
+                  <span>Live · move {Math.ceil(history.length / 2)} <span className="opacity-50">· use the arrow keys</span></span>
                 ) : (
                   <span className="text-[color:var(--text-primary)]">
                     Viewing move {Math.ceil((reviewPly + 1) / 2) || 0}
@@ -173,8 +173,8 @@ export function ChessWorkspaceLayout() {
                   </span>
                 )}
               </div>
-              <NavBtn onClick={() => controller.navNext()} label="Next move">▶</NavBtn>
-              <NavBtn onClick={() => controller.navLast()} label="Latest / live">⏭</NavBtn>
+              <IconButton icon="chevron-right" onClick={() => controller.navNext()} label="Next move" />
+              <IconButton icon="skip-forward" onClick={() => controller.navLast()} label="Latest / live" />
             </div>
           )}
         </div>
