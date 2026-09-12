@@ -662,6 +662,13 @@
   animation: ui-rise var(--motion-base) var(--motion-ease-out);
 }
 
+/* A class-level `display` out-specifies the user agent's
+   `dialog:not([open]) { display: none }`, which would leave a closed dialog
+   painted into the page. The closed case has to be restated here. */
+.ui-dialog:not([open]) {
+  display: none;
+}
+
 .ui-dialog::backdrop {
   background: var(--canvas-scrim);
 }

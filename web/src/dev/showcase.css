@@ -139,10 +139,6 @@
   min-width: 0;
 }
 
-.sc-cell-body > * {
-  min-width: 0;
-}
-
 .sc-stack {
   display: grid;
   gap: var(--space-2);

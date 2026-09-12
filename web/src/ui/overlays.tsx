@@ -6,9 +6,9 @@ import { IconButton } from './icons'
  * DESIGN.md 7.3 `DialogSurface`. A native `<dialog>` in a body portal, because
  * `showModal()` is the only mechanism that gives a real focus trap, inertness
  * for the page behind it, top-layer stacking, and `::backdrop` without a
- * library. Escape and backdrop are routed back through `onClose` so React
- * state stays the single source of open-ness, and focus returns to whatever
- * invoked the dialog.
+ * library. Every route out — Escape, the backdrop, the dismiss control, a
+ * choice — lands on the element's own `close` event, so focus returns to the
+ * invoker exactly once no matter which one the user took.
  */
 const FOCUSABLE = 'button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])'
 
@@ -49,10 +49,7 @@ export function DialogSurface({
       initialFocus(node)?.focus()
       return
     }
-    if (!open && node.open) {
-      node.close()
-      invoker.current?.focus()
-    }
+    if (!open && node.open) node.close()
   }, [open])
 
   if (typeof document === 'undefined') return null
@@ -62,8 +59,8 @@ export function DialogSurface({
       ref={dialog}
       className="ui-dialog"
       aria-labelledby={titleId}
-      onCancel={(event) => {
-        event.preventDefault()
+      onClose={() => {
+        invoker.current?.focus()
         onClose()
       }}
       onClick={(event) => {
