@@ -55,6 +55,14 @@ async function move(page: Page, from: string, to: string, color: 'w' | 'b'): Pro
   await page.locator(`.sq[data-square="${to}"]`).click({ force: true })
 }
 
+async function clickBoardSquare(page: Page, square: string): Promise<void> {
+  const position = await page.locator(`.board .sq[data-square="${square}"]`).evaluate((node) => {
+    const square = node as HTMLElement
+    return { x: square.offsetLeft + square.offsetWidth / 2, y: square.offsetTop + square.offsetHeight / 2 }
+  })
+  await page.locator('.board').click({ position })
+}
+
 /** The element focus is actually on, described well enough to fail readably. */
 async function activeElement(page: Page): Promise<{ tag: string | null; name: string | null; connected: boolean; inDialog: boolean }> {
   return page.evaluate(() => {
@@ -135,9 +143,8 @@ for (const viewport of VIEWPORTS) {
     await expect(page.locator('.piece[data-square="b8"]')).toHaveCount(0)
     await expectFocusSettledOutsideDialog(page, 'a dismissed dialog must hand focus back to the document')
 
-    // Given the move re-offered — a cancelled promotion leaves the pawn selected, so tapping the
-    // square again re-asks — when a choice is taken with the keyboard alone, then that exact piece is promoted.
-    await page.locator('.sq[data-square="b8"]').click({ force: true })
+    // Given the move re-offered, when its already-selected destination is activated through the board surface, then the dialog remains reachable after focus restoration.
+    await clickBoardSquare(page, 'b8')
     await expect(dialog).toBeVisible()
     await expect(dialog.getByRole('button', { name: 'Promote to Queen', exact: true })).toBeFocused()
     await page.keyboard.press('Tab')
