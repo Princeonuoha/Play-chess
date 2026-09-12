@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title description">
+  <title id="title">Chess with Prince</title>
+  <desc id="description">An original brass knight over a green chessboard square.</desc>
+  <rect width="64" height="64" rx="14" fill="#0f151b"/>
+  <path fill="#769656" d="M8 8h24v24H8zm24 0h24v24H32zM8 32h24v24H8zm24 0h24v24H32z"/>
+  <path fill="#c69a52" d="M42.9 13.4c-4.8 1.2-9.5 4.5-12 8.7-1.2 2-1.5 4.2-1.2 6.4l-5.4 5.4c-1.3 1.3-.4 3.6 1.5 3.6h2.8v4.2c0 1.5 1.2 2.7 2.7 2.7h2.1v4.2c0 1.5 1.2 2.7 2.7 2.7h7.8c1.5 0 2.7-1.2 2.7-2.7v-8.4c0-2.7-1.1-5.2-3-7.1l-2.7-2.7c1.9-1 3.4-2.8 4.2-4.9l1.9-5.1c.8-2.2.2-4.7-1.5-6.2ZM36 42.3h4.5v2.7H36v-2.7Z"/>
+  <circle cx="37.6" cy="21.3" r="1.8" fill="#0f151b"/>
+</svg>
