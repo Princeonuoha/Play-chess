@@ -213,17 +213,24 @@ body {
   width: min(100%, 600px, calc(100dvh - 200px));
   aspect-ratio: 1 / 1;
   position: relative; border-radius: var(--radius-board); overflow: hidden;
-  box-shadow: var(--depth-board), var(--depth-inset-hairline);
+  box-shadow: var(--depth-board);
   border: 1px solid var(--board-rim);
   touch-action: none; user-select: none;
 }
-/* The rim-light. A 1px `--brass-rim` edge (§2.4 restraint rule 2 — a rim, never
-   a fill) that fades in while a piece is held, a square is selected, or focus is
-   inside the board. Opacity only, so it composites. */
+/* The frame. `::before` is the permanent lit edge — the squares layer is opaque
+   and would bury an inset shadow declared on `.board` itself, so the bevel is
+   drawn above the squares. `::after` is the rim-light: a 1px `--brass-rim` edge
+   (§2.4 restraint rule 2 — a rim, never a fill) that fades in while a piece is
+   held, a square is selected, or focus is inside the board. Opacity only, so it
+   composites. Both sit under the dragged piece (`--z-board-drag`). */
+.board::before,
 .board::after {
   content: ''; position: absolute; inset: 0; pointer-events: none;
-  border-radius: inherit; border: 1px solid var(--brass-rim);
-  opacity: 0; z-index: var(--z-board-badge);
+  border-radius: inherit; z-index: var(--z-board-badge);
+}
+.board::before { box-shadow: var(--depth-inset-hairline), inset 0 -1px 0 0 var(--canvas-sunken); }
+.board::after {
+  border: 1px solid var(--brass-rim); opacity: 0;
   transition: opacity var(--motion-fast) var(--motion-ease-out);
 }
 .board:focus-within::after,
@@ -261,11 +268,18 @@ body {
      check      → a closed DOUBLE ring
      review     → a typographic grade glyph (`.gb-badge`, below)
 
+   Every geometry is struck in `--board-rim`, the board's own ink, because brass
+   measures 2.2:1 against ivory and 1.3:1 against green — below the §8.6 3:1
+   floor for a UI edge, so a brass ring would vanish the moment hue is removed.
+   `--board-rim` measures 16:1 and 5.7:1 on the same two squares. Hue still does
+   its job through the washes beneath (`--board-select`, `--board-last`,
+   `--board-check`); it is simply never the only channel.
+
    `border-style` is the machine-checkable signal: `tests/board.spec.ts` asserts
    the shape, never the colour. --------------------------------------------- */
 .board .hl {
   position: absolute; width: 12.5%; height: 12.5%; box-sizing: border-box;
-  pointer-events: none; border: 0 solid transparent; border-radius: var(--radius-xs);
+  pointer-events: none; border: 0 solid var(--board-rim); border-radius: var(--radius-xs);
 }
 .board .hl.last { background: var(--board-last); }
 /* Registration brackets on the from/to squares: an L at the top-left and an L
@@ -273,16 +287,16 @@ body {
    for the closed rings above even with colour removed. */
 .board .hl.last::before,
 .board .hl.last::after {
-  content: ''; position: absolute; width: 28%; height: 28%;
-  border: 2px solid var(--brass-base);
+  content: ''; position: absolute; width: 30%; height: 30%;
+  border: 3px solid var(--board-rim);
 }
 .board .hl.last::before { top: 0; left: 0; border-right-width: 0; border-bottom-width: 0; border-top-left-radius: var(--radius-xs); }
 .board .hl.last::after { right: 0; bottom: 0; border-left-width: 0; border-top-width: 0; border-bottom-right-radius: var(--radius-xs); }
-.board .hl.sel { background: var(--board-select); border-width: 2px; border-color: var(--brass-base); }
-.board .hl.hint { border-style: dashed; border-width: 3px; border-color: var(--brass-base); }
+.board .hl.sel { background: var(--board-select); border-width: 3px; }
+.board .hl.hint { border-style: dashed; border-width: 3px; }
 .board .hl.check {
   background: radial-gradient(circle at center, var(--board-check) 0, transparent 72%);
-  border-style: double; border-width: 6px; border-color: var(--board-check);
+  border-style: double; border-width: 6px;
 }
 .board .dot { position: absolute; width: 12.5%; height: 12.5%; display: grid; place-items: center; pointer-events: none; }
 .board .dot i { width: 30%; height: 30%; border-radius: 50%; background: var(--board-dot); }

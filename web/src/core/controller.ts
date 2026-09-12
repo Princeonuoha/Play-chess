@@ -1281,9 +1281,11 @@ export class ChessController {
     if (this.activeMode.kind === 'review') this.activeMode = { kind: 'idle' }
     this.viewGame = null
     this.reviewPly = null
+    // The grade badge reads `review.done`, so the result has to be in place
+    // before the board is repainted or the badge misses its own render.
+    this.review = { running: false, done: true, progress: '', items, story }
     this.renderPieces()
     this.renderHighlights()
-    this.review = { running: false, done: true, progress: '', items, story }
     this.emit()
   }
 
