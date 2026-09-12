@@ -20,7 +20,7 @@ test('P3 mode-model smoke', async ({ page }) => {
 
   await test.step('1. Boot Stockfish within 15 seconds', async () => {
     // Given the local production bundle; when its engine starts; then its loading tag clears.
-    await expect(page.locator('header > span.rounded-\\[var\\(--radius-pill\\)\\]')).not.toHaveText('loading engine…', { timeout: 15_000 })
+    await expect(page.locator('header [role="status"]')).not.toHaveText('loading engine…', { timeout: 15_000 })
   })
 
   await test.step('2. Play e4 and receive a Stockfish reply', async () => {
