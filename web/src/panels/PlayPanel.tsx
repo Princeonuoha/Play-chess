@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { type ChessController, type Snapshot } from '../core/controller'
 import { Btn, Field } from '../ui/primitives'
 
@@ -11,8 +12,8 @@ export interface PlayPanelProps {
   setSideChoice: (side: SideChoice) => void
   /** `difficulty(elo)` tier, computed by `App`. */
   diff: { name: string; elo: string }
-  finishLabel: string
-  fullLabel: string
+  finishLabel: ReactNode
+  fullLabel: ReactNode
   onNewGame: () => void
   onFlip: () => void
   onUndo: () => void

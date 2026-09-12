@@ -5,6 +5,7 @@ import { GamesPanel } from '../panels/GamesPanel'
 import { PlayPanel } from '../panels/PlayPanel'
 import { StudyPanel } from '../panels/StudyPanel'
 import { TrainPanel } from '../panels/TrainPanel'
+import { IconLabel } from '../ui/icons'
 
 type SideChoice = 'white' | 'black' | 'random'
 
@@ -57,8 +58,16 @@ export function PlayWorkspace() {
         sideChoice={workspace.sideChoice}
         setSideChoice={workspace.setSideChoice}
         diff={workspace.difficulty}
-        finishLabel={workspace.selfPlay ? '■ Stop' : '▶ Watch Stockfish finish this game'}
-        fullLabel={workspace.selfPlay ? '■ Stop' : '▶ Watch a full engine game'}
+        finishLabel={
+          workspace.selfPlay ? (
+            <IconLabel icon="stop">Stop</IconLabel>
+          ) : (
+            <IconLabel icon="play">Watch Stockfish finish this game</IconLabel>
+          )
+        }
+        fullLabel={
+          workspace.selfPlay ? <IconLabel icon="stop">Stop</IconLabel> : <IconLabel icon="play">Watch a full engine game</IconLabel>
+        }
         onNewGame={() => workspace.controller.newGame(workspace.sideChoice)}
         onFlip={() => workspace.controller.flip()}
         onUndo={() => workspace.controller.undo()}

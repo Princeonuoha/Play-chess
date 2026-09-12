@@ -15,6 +15,7 @@ import {
 } from '../core/openings'
 import { COACH } from '../core/coach'
 import { Btn, Field, StatusNote } from '../ui/primitives'
+import { Icon, IconLabel } from '../ui/icons'
 
 export interface TrainPanelProps {
   snap: Snapshot
@@ -110,7 +111,14 @@ function OpeningsExplorer({
   }
 
   const coach = sel ? COACH[sel.primary] : undefined
-  const watchLabel = replaying && sessionKey === 'train' ? '■ Stop' : selfPlay ? '■ Stop' : '▶ Watch this line played out'
+  const watchLabel =
+    replaying && sessionKey === 'train' ? (
+      <IconLabel icon="stop">Stop</IconLabel>
+    ) : selfPlay ? (
+      <IconLabel icon="stop">Stop</IconLabel>
+    ) : (
+      <IconLabel icon="play">Watch this line played out</IconLabel>
+    )
 
   if (err)
     return (
@@ -204,7 +212,9 @@ function OpeningsExplorer({
             }}
             className="justify-self-start text-xs text-[color:var(--text-muted)] hover:text-[color:var(--text-primary)]"
           >
-            ‹ Back to list
+            <IconLabel icon="chevron-left" size="sm">
+              Back to list
+            </IconLabel>
           </button>
 
           <div className="rounded-[var(--radius-lg)] border border-[color:var(--border-subtle)] bg-[var(--surface-inset)] p-3">
@@ -216,7 +226,7 @@ function OpeningsExplorer({
             </div>
             <div className="text-xs text-[color:var(--text-muted)]">
               {sel.variation}
-              {sel.subline ? ' › ' + sel.subline : ''}
+              {sel.subline ? ' · ' + sel.subline : ''}
             </div>
             <div className="mt-2 [font:var(--type-numeric)] text-[color:var(--text-primary)]">{formatMoves(sel.moves)}</div>
           </div>
@@ -241,8 +251,12 @@ function OpeningsExplorer({
             </div>
           ) : (
             <div className="rounded-[var(--radius-lg)] border border-[color:var(--border-subtle)] bg-[var(--surface-inset)] p-3 [font:var(--type-body-sm)] text-[color:var(--text-muted)]">
-              Step through the line on the board with the ◀ ▶ controls, then train it against Stockfish. Coaching notes
-              are being written for more openings.
+              <span className="inline-flex flex-wrap items-center gap-1">
+                <span>Step through the line on the board with the</span>
+                <Icon name="chevron-left" size="sm" />
+                <Icon name="chevron-right" size="sm" />
+                <span>controls, then train it against Stockfish. Coaching notes are being written for more openings.</span>
+              </span>
             </div>
           )}
 
@@ -398,7 +412,7 @@ function OpeningsExplorer({
                     <span className="w-9 shrink-0 font-[family-name:var(--type-font-numeric)] text-[11px] text-[color:var(--brass-base)]">{e.eco}</span>
                     <span className="[font:var(--type-body-sm)]">
                       {e.variation}
-                      {e.subline ? ' › ' + e.subline : ''}
+                      {e.subline ? ' · ' + e.subline : ''}
                     </span>
                   </button>
                 ))}

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { type ChessController, type Snapshot, type SetKey } from '../core/controller'
 import { BOOK, GAME_IDX, side, type BookLine } from '../core/book'
 import { Btn, Field, GroupedSelect, StatusNote, type Group } from '../ui/primitives'
+import { IconLabel } from '../ui/icons'
 
 type Facet = 'opening' | 'hero' | 'theme' | 'era'
 
@@ -73,7 +74,13 @@ export function GamesPanel({ snap, replaying, selfPlay, sessionKey, controller }
   }, [gGroups])
 
   const watchLabel =
-    replaying && sessionKey === 'games' ? '■ Stop replay' : selfPlay ? '■ Stop' : '▶ Watch this game'
+    replaying && sessionKey === 'games' ? (
+      <IconLabel icon="stop">Stop replay</IconLabel>
+    ) : selfPlay ? (
+      <IconLabel icon="stop">Stop</IconLabel>
+    ) : (
+      <IconLabel icon="play">Watch this game</IconLabel>
+    )
 
   const gameMeta = metaHtml(BOOK[gameSel])
   const gameSelValid = gGroups.some((g) => g.options.some((o) => o.value === gameSel))

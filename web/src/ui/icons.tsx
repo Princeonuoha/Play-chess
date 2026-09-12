@@ -162,6 +162,28 @@ export function Icon({ name, size = 'md', label, className = '' }: IconProps) {
 }
 
 /**
+ * A leading icon plus its visible label. The icon is decorative here (DESIGN.md
+ * 5.3) because the label is the accessible name, so a control keeps the name it
+ * had when the label was a glyph string.
+ */
+export function IconLabel({
+  icon,
+  size = 'md',
+  children,
+}: {
+  readonly icon: IconName
+  readonly size?: IconSize
+  readonly children: ReactNode
+}) {
+  return (
+    <span className="inline-flex items-center justify-center gap-2">
+      <Icon name={icon} size={size} />
+      {children}
+    </span>
+  )
+}
+
+/**
  * An icon-only control. DESIGN.md 5.2 forbids an unlabeled one and 7.3 puts the
  * hit area floor at `--icon-target-min` (44px), so the label is required and
  * the target is not negotiable at the call site.

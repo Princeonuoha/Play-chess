@@ -996,7 +996,7 @@ export class ChessController {
     if (!mv) return
     this.activeMode.ply++
     this.hintSquares = null
-    this.setTrStatus('good', '▸ ' + mv.san + (this.activeMode.line.result ? '' : ' — book.'))
+    this.setTrStatus('good', '• ' + mv.san + (this.activeMode.line.result ? '' : ' — book.'))
     this.showNoteFor(this.activeMode.ply - 1)
     this.applyMove(mv)
   }

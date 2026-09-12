@@ -1,5 +1,6 @@
 import { type ChessController, type MoveLabel, type ReviewItem, type Snapshot } from '../core/controller'
 import { Btn } from '../ui/primitives'
+import { Icon, IconLabel } from '../ui/icons'
 
 export interface StudyPanelProps {
   snap: Snapshot | null
@@ -146,7 +147,9 @@ export function StudyPanel({ snap, history, reviewPly, exploring, showToast, con
         </div>
       ) : (
         <Btn onClick={() => controller.startExplore()} className="justify-self-start min-h-0 flex-none px-3 py-1.5">
-          ↔ Explore — play your own moves
+          <IconLabel icon="explore" size="sm">
+            Explore — play your own moves
+          </IconLabel>
         </Btn>
       )}
 
@@ -213,13 +216,18 @@ export function StudyPanel({ snap, history, reviewPly, exploring, showToast, con
           <div className="flex flex-wrap gap-1.5">
             {(['Best', 'Good', 'Inaccuracy', 'Mistake', 'Blunder'] as MoveLabel[]).map((l) => (
               <span key={l} className={'rounded-[var(--radius-sm)] border px-1.5 py-0.5 text-[10px] font-bold ' + LABEL_STYLE[l]}>
-                {LABEL_ICON[l]} {l}
+                <span aria-hidden="true" className="font-[family-name:var(--type-font-numeric)]">
+                  {LABEL_ICON[l]}
+                </span>{' '}
+                {l}
               </span>
             ))}
           </div>
           {reviewPly !== null && (
             <Btn onClick={() => controller.resumeGame()} className="min-h-0 flex-none px-3 py-1.5">
-              ← Back to final position
+              <IconLabel icon="arrow-left" size="sm">
+                Back to final position
+              </IconLabel>
             </Btn>
           )}
           {/* Live commentary for the move being viewed */}
@@ -229,7 +237,9 @@ export function StudyPanel({ snap, history, reviewPly, exploring, showToast, con
             if (!it) return null
             return (
               <div className={'flex items-start gap-2 rounded-[var(--radius-lg)] border p-3 [font:var(--type-body-sm)] ' + LABEL_STYLE[it.label]}>
-                <span className="mt-0.5 shrink-0 font-bold">{LABEL_ICON[it.label]}</span>
+                <span aria-hidden="true" className="mt-0.5 shrink-0 font-[family-name:var(--type-font-numeric)] font-bold">
+                  {LABEL_ICON[it.label]}
+                </span>
                 <span className="text-[color:var(--text-primary)]">{reviewComment(it)}</span>
                 <span className="ml-auto shrink-0 font-[family-name:var(--type-font-numeric)] text-xs opacity-80">{it.evalWhite}</span>
               </div>
@@ -253,12 +263,17 @@ export function StudyPanel({ snap, history, reviewPly, exploring, showToast, con
                   className={'shrink-0 rounded-[var(--radius-sm)] border px-1.5 py-0.5 text-[10px] font-bold ' + LABEL_STYLE[it.label]}
                   title={it.lossCp != null ? `-${(it.lossCp / 100).toFixed(1)} vs best` : 'Top engine move'}
                 >
-                  {LABEL_ICON[it.label]} {it.label}
+                  <span aria-hidden="true" className="font-[family-name:var(--type-font-numeric)]">
+                    {LABEL_ICON[it.label]}
+                  </span>{' '}
+                  {it.label}
                 </span>
                 <span className="ml-auto shrink-0 font-[family-name:var(--type-font-numeric)] text-xs text-[color:var(--text-muted)]">{it.evalWhite}</span>
                 {it.betterSan && (
-                  <span className="hidden shrink-0 font-[family-name:var(--type-font-numeric)] text-[11px] text-[color:var(--status-positive)] sm:inline">
-                    ▸ {it.betterSan}
+                  <span className="hidden shrink-0 items-center gap-1 font-[family-name:var(--type-font-numeric)] text-[11px] text-[color:var(--status-positive)] sm:inline-flex">
+                    <Icon name="arrow-right" size="sm" />
+                    <span className="sr-only">Better move:</span>
+                    {it.betterSan}
                   </span>
                 )}
               </button>
