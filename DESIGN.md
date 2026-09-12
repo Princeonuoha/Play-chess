@@ -493,7 +493,7 @@ validator fails.
 | `SegmentedNav` | focus | Universal focus ring on the item. | Roving focus with arrow keys inside the group. |
 | `SegmentedNav` | active | Selected item: `--brass-base` fill, `--text-on-brass`, plus a 2px indicator that slides over `--motion-base`. | Selection is marked by fill **and** indicator, never color alone. |
 | `SegmentedNav` | disabled | Item at `opacity: 0.4`. | `aria-disabled="true"`; remains focusable so its state is discoverable. |
-| `WorkspaceNav` | default | `SegmentedNav` visuals plus a `--icon-size-md` leading icon and a visible text label on every destination at every width. | `<nav aria-label="Workspace">` containing `NavLink`s; labels are never hidden on mobile. |
+| `WorkspaceNav` | default | `SegmentedNav` visuals plus a `--icon-size-md` leading icon and a visible text label on every destination at every width. Below the tablet step the destination stacks its mark above its label so four labels stay whole rather than wrapping mid-word. | `<nav aria-label="Workspace">` containing `NavLink`s; labels are never hidden on mobile. |
 | `WorkspaceNav` | hover | Inherits `SegmentedNav` hover. | — |
 | `WorkspaceNav` | focus | Inherits the universal focus ring. | `Tab` order follows visual order. |
 | `WorkspaceNav` | active | Inherits `SegmentedNav` active. | `aria-current="page"` on the active destination; after navigation focus moves to the route heading. |

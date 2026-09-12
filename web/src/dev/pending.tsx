@@ -40,7 +40,7 @@ export function WorkspaceNavPreview({
 
   return (
     <nav
-      className="ui-seg"
+      className="ui-seg ui-seg--stacked"
       aria-label="Workspace preview"
       aria-busy={pendingId === undefined ? undefined : true}
       style={{ '--ui-seg-count': items.length, '--ui-seg-index': currentIndex } as React.CSSProperties}

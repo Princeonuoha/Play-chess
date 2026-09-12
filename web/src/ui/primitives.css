@@ -427,6 +427,19 @@
   overflow-wrap: anywhere;
 }
 
+/* Four destinations do not fit side by side on a phone. Stacking the mark
+   above the label keeps every label whole instead of breaking it mid-word. */
+.ui-seg--stacked .ui-seg-item {
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: 0 var(--space-1);
+}
+
+.ui-seg--stacked .ui-seg-label {
+  overflow-wrap: normal;
+  white-space: nowrap;
+}
+
 /* 7.3 WorkspaceNav loading: the pending destination keeps its label and grows
    an indeterminate bar beneath it. */
 .ui-seg-item[data-pending='true']::after {

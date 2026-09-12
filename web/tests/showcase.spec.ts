@@ -70,6 +70,9 @@ for (const viewport of viewports) {
     // Given every interactive element in the gallery; when measured; then none is below the 44px hit-area floor.
     expect(await measureTargets(page)).toEqual([])
 
+    // The resting gallery is the documentation artefact, so it is captured before any state is driven.
+    await page.screenshot({ path: testInfo.outputPath(`showcase-${viewport.name}-${viewport.width}.png`), fullPage: true })
+
     // Given keyboard navigation; when Tab leaves the focus seed; then the Btn primitive exposes the contracted focus ring.
     const seed = page.locator('[data-sc-seed="Btn:focus"]')
     await seed.focus()
@@ -121,6 +124,12 @@ for (const viewport of viewports) {
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()
     await expect(page.getByRole('button', { name: 'Queen' })).toBeFocused()
+    // The dialog body must be opaque over its own scrim; Chromium's page capture
+    // composites top-layer content unreliably, so this is asserted, not eyeballed.
+    const dialogFill = await dialog.evaluate((element) => getComputedStyle(element).backgroundColor)
+    expect(dialogFill).not.toBe('rgba(0, 0, 0, 0)')
+    expect(dialogFill).not.toMatch(/,\s*0?\.\d+\)$/)
+    await dialog.screenshot({ path: testInfo.outputPath(`showcase-dialog-${viewport.name}-${viewport.width}.png`) })
     for (let tab = 0; tab < 8; tab += 1) await page.keyboard.press('Tab')
     expect(await page.evaluate(() => document.activeElement?.closest('dialog') !== null)).toBe(true)
     await page.keyboard.press('Escape')
@@ -133,8 +142,6 @@ for (const viewport of viewports) {
     await dismiss.click()
     await expect(page.locator('[data-sc-case="Toast:default"] .ui-toast')).toHaveCount(0)
     expect(await page.evaluate(() => document.activeElement?.tagName)).toBe('BODY')
-
-    await page.screenshot({ path: testInfo.outputPath(`showcase-${viewport.name}-${viewport.width}.png`), fullPage: true })
 
     // Given a reduced-motion preference; when the loading state renders; then its animation becomes one near-instant
     // iteration and the spinner still reads as a determinate mark rather than a frozen ring.
