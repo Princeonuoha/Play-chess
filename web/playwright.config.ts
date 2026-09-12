@@ -21,33 +21,18 @@ export default defineConfig({
     },
     {
       // The Stockfish-backed baseline owns the CPU while it captures the production state.
-      // Running it before the other projects keeps its engine startup deterministic.
+      // Showcase coverage runs in a separate invocation so its Vite server cannot contend here.
       name: 'baseline',
       testMatch: /baseline\.spec\.ts/,
       fullyParallel: false,
       use: { ...devices['Desktop Chrome'], headless: true },
     },
-    {
-      name: 'showcase',
-      dependencies: ['baseline'],
-      testMatch: /showcase\.spec\.ts/,
-      use: { ...devices['Desktop Chrome'], headless: true, baseURL: 'http://127.0.0.1:4173' },
-    },
   ],
-  webServer: [
-    ...(externalBaseURL
-      ? []
-      : [
-          {
-            command: 'npm run preview -- --host 127.0.0.1 --port 8000 --strictPort',
-            url: 'http://127.0.0.1:8000',
-            reuseExistingServer: false,
-          },
-        ]),
-    {
-      command: 'npm run dev -- --host 127.0.0.1 --port 4173 --strictPort',
-      url: 'http://127.0.0.1:4173/showcase.html',
-      reuseExistingServer: false,
-    },
-  ],
+  webServer: externalBaseURL
+    ? undefined
+    : {
+        command: 'npm run preview -- --host 127.0.0.1 --port 8000 --strictPort',
+        url: 'http://127.0.0.1:8000',
+        reuseExistingServer: false,
+      },
 })
