@@ -2,8 +2,10 @@ import { expect, test, type Page } from '@playwright/test'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
-const evidenceDir = '/Users/prince.onuoha/work/tmp/chess-stockfish/.omo/evidence/frontend-visual-polish/task-2-frontend-visual-polish'
-const manifestPath = join(evidenceDir, 'baseline-manifest.json')
+// Todo 2's pre-redesign record is archival evidence. Current-state captures
+// deliberately live elsewhere so this spec cannot rewrite that history.
+const evidenceDir = '/Users/prince.onuoha/work/tmp/chess-stockfish/.omo/evidence/frontend-visual-polish/baseline-retarget/current-state'
+const manifestPath = join(evidenceDir, 'current-state-manifest.json')
 const viewports = [
   { name: '375x812', width: 375, height: 812 },
   { name: '390x844', width: 390, height: 844 },
@@ -18,9 +20,16 @@ type Box = { readonly x: number; readonly y: number; readonly width: number; rea
 type Artifact = { readonly tab: (typeof tabs)[number]; readonly path: string }
 type Capture = {
   readonly viewport: (typeof viewports)[number]
-  readonly state: 'first-visit-intro'
+  readonly state: 'first-visit-onboarding-dialog'
   readonly artifacts: { readonly screenshot: string; readonly geometry: string; readonly accessibility: readonly Artifact[] }
-  readonly geometry: Record<'intro' | 'board' | 'tabs' | 'header' | 'footer', Box>
+  readonly geometry: {
+    readonly onboardingDialog: Box
+    readonly inFlowIntro: { readonly state: 'absent'; readonly reason: string }
+    readonly board: Box
+    readonly tabs: Box
+    readonly header: Box
+    readonly footer: Box
+  }
 }
 
 async function dismissIntro(page: Page): Promise<void> {
@@ -54,11 +63,17 @@ async function measuredBox(page: Page, selector: string): Promise<Box> {
 }
 
 async function visitTab(page: Page, tab: (typeof tabs)[number]): Promise<void> {
+  const dialogChoice = page.getByRole('dialog').getByRole('button', { name: `Open ${tab}` })
+  if (await dialogChoice.isVisible()) {
+    await dialogChoice.click()
+    await expect(page).toHaveURL(new RegExp(`/${tab.toLowerCase()}$`))
+    return
+  }
   await page.getByRole('link', { name: tab, exact: true }).click()
   await expect(page.getByRole('link', { name: tab, exact: true })).toBeVisible()
 }
 
-test('capture pre-redesign production behavior, geometry, console, and visual baselines', async ({ page, context }) => {
+test('capture current production behavior, geometry, console, and visual baselines', async ({ page, context }) => {
   const consoleErrors: string[] = []
   const requestFailures: string[] = []
   const responseErrors: string[] = []
@@ -78,19 +93,24 @@ test('capture pre-redesign production behavior, geometry, console, and visual ba
     await page.goto('/')
     await page.evaluate(() => localStorage.clear())
     await page.reload()
-    await expect(page.getByText("Welcome — here's how it works")).toBeVisible()
+    const onboardingDialog = page.getByRole('dialog', { name: "Welcome — here's how it works" })
+    await expect(onboardingDialog).toBeVisible()
 
     const screenshot = join(evidenceDir, `first-visit-${viewport.name}.png`)
     const geometryPath = join(evidenceDir, `geometry-${viewport.name}.json`)
     await page.screenshot({ path: screenshot, fullPage: true })
     const geometry = {
-      intro: await measuredBox(page, 'header + div.rounded-\\[var\\(--radius-xl\\)\\]'),
+      onboardingDialog: await measuredBox(page, 'dialog[open]'),
+      inFlowIntro: {
+        state: 'absent' as const,
+        reason: 'Todo 18 renders the first-visit onboarding surface as a portal dialog, so it intentionally occupies no document-flow slot.',
+      },
       board: await measuredBox(page, '.board'),
       tabs: await measuredBox(page, '[data-nav-safe-area="true"]'),
       header: await measuredBox(page, 'header'),
       footer: await measuredBox(page, 'footer'),
     }
-    await writeFile(geometryPath, `${JSON.stringify({ viewport, state: 'first-visit-intro', geometry }, null, 2)}\n`)
+    await writeFile(geometryPath, `${JSON.stringify({ viewport, state: 'first-visit-onboarding-dialog', geometry }, null, 2)}\n`)
 
     const accessibility: Artifact[] = []
     for (const tab of tabs) {
@@ -99,7 +119,7 @@ test('capture pre-redesign production behavior, geometry, console, and visual ba
       await writeFile(path, `${await page.locator('body').ariaSnapshot()}\n`)
       accessibility.push({ tab, path })
     }
-    captures.push({ viewport, state: 'first-visit-intro', artifacts: { screenshot, geometry: geometryPath, accessibility }, geometry })
+    captures.push({ viewport, state: 'first-visit-onboarding-dialog', artifacts: { screenshot, geometry: geometryPath, accessibility }, geometry })
   }
 
   await page.setViewportSize({ width: 1280, height: 800 })
@@ -155,14 +175,20 @@ test('capture pre-redesign production behavior, geometry, console, and visual ba
   await expect(engineBadge).not.toHaveText('loading engine…', { timeout: 15_000 })
   const enginePresentation = { selector: 'header > span.rounded-\\[var\\(--radius-pill\\)\\]', visibleText: (await engineBadge.textContent())?.trim() ?? '' }
 
-  // Chromium does not request a favicon for this document without a link tag. Fetching the conventional path records the existing missing asset as a known baseline defect.
-  await page.evaluate(async () => {
-    await fetch('/favicon.ico')
-  })
+  // Fetch the conventional path explicitly because Chromium may not request it
+  // during a document visit. Todo 20 made this a successful asset, not a known defect.
+  const faviconStatus = await page.evaluate(async () => (await fetch('/favicon.ico')).status)
+  expect(faviconStatus).toBe(200)
   const behaviorPath = join(evidenceDir, 'behavior.json')
   const consoleNetworkPath = join(evidenceDir, 'console-network.json')
   const behavior = {
-    firstVisitIntro: { storageKey: 'cwp_intro_seen', clearedLocalStorage: true, state: 'captured' },
+    firstVisitOnboarding: {
+      storageKey: 'cwp_intro_seen',
+      clearedLocalStorage: true,
+      state: 'captured',
+      surface: 'portal dialog',
+      inFlowIntro: { state: 'absent', reason: 'Todo 18 replaced it with the portal dialog.' },
+    },
     persistence: {
       state: 'captured',
       evidenceType: 'board-and-move-list-dom',
@@ -184,7 +210,8 @@ test('capture pre-redesign production behavior, geometry, console, and visual ba
     consoleErrors,
     requestFailures,
     responseErrors,
-    knownBaselineDefects: [{ defect: 'favicon 404', path: '/favicon.ico', status: 404, reason: 'unchanged app has no favicon asset' }],
+    favicon: { path: '/favicon.ico', status: faviconStatus, state: 'captured' },
+    knownBaselineDefects: [],
   }
   await writeFile(behaviorPath, `${JSON.stringify(behavior, null, 2)}\n`)
   await writeFile(consoleNetworkPath, `${JSON.stringify(consoleNetwork, null, 2)}\n`)
@@ -197,7 +224,7 @@ test('capture pre-redesign production behavior, geometry, console, and visual ba
         tabs,
         captures,
         states: {
-          firstVisitIntro: 'captured at every viewport',
+          firstVisitOnboarding: 'portal dialog captured at every viewport; in-flow intro intentionally absent',
           persistence: behaviorPath,
           keyboardMoveNavigation: behaviorPath,
           toast: behaviorPath,
