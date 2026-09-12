@@ -301,6 +301,9 @@ test.describe('board presentation contract', () => {
       'ring-double',
       'ring-solid',
     ])
+    for (const [cue, shape] of Object.entries(shapes)) {
+      expect(shape, `${cue} must draw a real mark, not an empty one`).not.toMatch(/^bracket-0px\/0px$/)
+    }
     expect(new Set(drawn).size, `each state needs its own shape, got ${JSON.stringify(shapes)}`).toBe(drawn.length)
   })
 
