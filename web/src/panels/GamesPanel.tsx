@@ -299,7 +299,7 @@ export function GamesPanel({ snap, replaying, selfPlay, sessionKey, controller }
             active={replayingGames}
             icon={replayingGames || selfPlay ? 'stop' : 'circle-play'}
             disabled={selected === undefined && !replayingGames && !selfPlay}
-            onClick={() => controller.watch(gameSel, 'games')}
+            onClick={() => controller.togglePlayback(gameSel, 'games')}
           >
             {watchLabel}
           </Btn>

@@ -988,8 +988,7 @@ export class ChessController {
     this.renderAll()
   }
 
-  // Watch button in a trainer/games set: replay a game, or play an opening out.
-  watch(idx: number, set: SetKey) {
+  togglePlayback(idx: number, set: SetKey) {
     if (this.activeMode.kind === 'selfPlay') {
       this.stopSelfPlay()
       return
