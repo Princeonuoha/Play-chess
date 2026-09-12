@@ -72,7 +72,7 @@ export function WorkspaceGuide({
               className="ui-contents"
               data-dialog-autofocus={index === 0 ? true : undefined}
             >
-              <Surface tone={2} onClick={() => onSelect(route)} actionLabel={`Open ${route.label}`}>
+              <Surface tone={2} onClick={() => onSelect(route)} actionLabel={`${route.label}: ${description}`}>
                 <span className="flex items-center gap-2 text-[color:var(--brass-base)] [font:var(--type-heading)]">
                   <Icon name={route.icon} size="sm" />
                   {route.label}
