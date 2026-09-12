@@ -195,20 +195,18 @@ export function ChessWorkspaceLayout() {
             </div>
             <div className="text-[color:var(--text-muted)] [font:var(--type-body-sm)]">{snapshot?.statusSub ?? 'White to play'}</div>
           </div>
-          {/* DESIGN.md 7.3 `EngineStatus`. Ready needs no block here — the
-              header pill already carries and announces it; the two states that
-              change what the board can do are the ones that earn the space. */}
-          {engine !== 'ready' && (
+          {/* DESIGN.md 7.3 `EngineStatus`. Ready and loading are the header
+              pill's job — it already carries and announces both, and a block
+              that appears for the boot and then leaves would shift the panel
+              under the player (`tests/board.spec.ts` measures exactly that).
+              Failure is the state that changes what the board can do, so it is
+              the one that earns space on every route. */}
+          {engine === 'error' && (
             <div data-shell="engine-state" className="border-b border-[color:var(--border-subtle)] px-4 py-3">
               <EngineStatus
-                state={engine}
-                announce={engine === 'error'}
-                detail={
-                  engine === 'error'
-                    ? 'Stockfish could not start, so the board will not reply to your moves.'
-                    : undefined
-                }
-                onRetry={engine === 'error' ? () => controller.boot() : undefined}
+                state="error"
+                detail="Stockfish could not start, so the board will not reply to your moves."
+                onRetry={() => controller.boot()}
               />
             </div>
           )}

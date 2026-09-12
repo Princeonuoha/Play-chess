@@ -254,8 +254,8 @@ test.describe('engine state', () => {
     await expect(page.getByRole('button', { name: 'Retry' }), 'a recovered engine leaves no stale failure behind').toHaveCount(0)
   })
 
-  test('states the engine is still loading while it is', async ({ page }) => {
-    // Given an engine whose script never arrives, when the workspace renders, then the wait is named and marked busy.
+  test('keeps the engine wait in the header, so the panel never shifts under the player', async ({ page }) => {
+    // Given an engine whose script never arrives, when the workspace renders, then the wait is named and marked busy where it costs no layout.
     await page.route('**/stockfish-18-lite-single.js*', async (route) => {
       await new Promise((resolve) => setTimeout(resolve, 60_000))
       await route.abort('failed')
@@ -265,13 +265,13 @@ test.describe('engine state', () => {
     await page.goto('/play')
     await dismissIntro(page)
 
-    const loading = page.locator('[data-shell="engine-state"] .ui-engine')
-    await expect(loading).toBeVisible()
-    await expect(loading).toContainText('Loading engine…')
-    await expect(loading).toHaveAttribute('aria-busy', 'true')
+    const pill = page.locator('header [role="status"]')
+    await expect(pill).toContainText('loading engine…')
+    await expect(pill).toHaveAttribute('aria-busy', 'true')
+    await expect(pill.locator('.ui-spinner'), 'the wait carries the primitive spinner').toHaveCount(1)
     await expect(
-      page.locator('[data-shell="engine-state"] [role="status"]'),
-      'the header pill is the single announcer of engine readiness',
+      page.locator('[data-shell="engine-state"]'),
+      'a block that appears for the boot and then leaves would shift the panel',
     ).toHaveCount(0)
     await shot(page, 'engine-loading-375')
   })
