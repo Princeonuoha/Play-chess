@@ -43,9 +43,16 @@ export function NavBtn({ children, onClick, label }: { readonly children: ReactN
   )
 }
 
+const SAFE_AREA_TRACK = {
+  paddingLeft: 'max(0.25rem, env(safe-area-inset-left))',
+  paddingRight: 'max(0.25rem, env(safe-area-inset-right))',
+  paddingBottom: 'max(0.25rem, env(safe-area-inset-bottom))',
+  scrollMarginBottom: 'env(safe-area-inset-bottom)',
+} as const
+
 export function WorkspaceNavigation() {
   return (
-    <div className="m-1.5 flex gap-2 rounded-xl bg-black/20 p-1">
+    <div data-nav-safe-area="true" style={SAFE_AREA_TRACK} className="m-1.5 flex gap-2 rounded-xl bg-black/20 p-1">
       <nav aria-label="Workspace" className="contents">
         {WORKSPACE_ROUTES.map((route) => (
           <NavLink
