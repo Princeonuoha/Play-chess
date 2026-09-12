@@ -89,11 +89,23 @@ async function firstVisit(page: Page, viewport: { width: number; height: number 
   await expect(page.locator('.board')).toBeVisible()
 }
 
-/** A return visit: storage already carries the dismissal. */
+/**
+ * A return visit: storage already carries the dismissal.
+ *
+ * The auto-opened guide has no invoking control, so the platform restores focus
+ * to the document — and it does so in a task queued by the close steps, not
+ * synchronously. Waiting for that to land is what makes everything after it
+ * deterministic: a control focused inside the gap has focus taken back off it.
+ */
 async function returningVisit(page: Page, viewport: { width: number; height: number }): Promise<void> {
   await firstVisit(page, viewport)
   await dismissControl(page).click()
   await expect(dialog(page)).toBeHidden()
+  await expect
+    .poll(() => page.evaluate(() => document.activeElement === document.body), {
+      message: 'focus must leave the hidden dialog after the guide closes',
+    })
+    .toBe(true)
 }
 
 async function activeElementInsideDialog(page: Page): Promise<boolean> {
