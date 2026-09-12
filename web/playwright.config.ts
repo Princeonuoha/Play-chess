@@ -15,11 +15,21 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      testIgnore: /showcase\.spec\.ts/,
+      dependencies: ['baseline'],
+      testIgnore: /(?:baseline|showcase)\.spec\.ts/,
+      use: { ...devices['Desktop Chrome'], headless: true },
+    },
+    {
+      // The Stockfish-backed baseline owns the CPU while it captures the production state.
+      // Running it before the other projects keeps its engine startup deterministic.
+      name: 'baseline',
+      testMatch: /baseline\.spec\.ts/,
+      fullyParallel: false,
       use: { ...devices['Desktop Chrome'], headless: true },
     },
     {
       name: 'showcase',
+      dependencies: ['baseline'],
       testMatch: /showcase\.spec\.ts/,
       use: { ...devices['Desktop Chrome'], headless: true, baseURL: 'http://127.0.0.1:4173' },
     },
