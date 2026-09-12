@@ -1,0 +1,74 @@
+=== 0. GREEN baseline (HEAD ff45209) ===
+$ npm --prefix web run verify:icons   # clean tree
+
+> verify:icons
+> node scripts/verify-icons.mjs
+
+verify-icons: PASS — 21 files, 14 icons from src/ui/icons.tsx, stroke var(--icon-stroke), grid 0 0 24 24, 3 documented DESIGN.md 5.4 glyph(s).
+EXIT=0
+
+=== 1. FAILURE: emoji reintroduced as an onboarding control mark ===
+--- injected: <span>[U+1F4D6 open-book emoji]</span> in WorkspaceIntro card header ---
+$ npm --prefix web run verify:icons   # emoji control reintroduced
+
+> verify:icons
+> node scripts/verify-icons.mjs
+
+src/workspace/WorkspaceChrome.tsx:110  [structural-glyph]  U+1F4D6
+src/workspace/WorkspaceChrome.tsx:104  [glyph-only-control]  visible content is `📖` — use an <Icon>
+
+verify-icons: FAIL — 2 violation(s).
+EXIT=1
+
+=== 2. FAILURE: mismatched stroke width inside the icon module ===
+--- injected: strokeWidth: '2' replacing var(--icon-stroke) in the family <svg> ---
+$ npm --prefix web run verify:icons   # mismatched stroke width in the module
+
+> verify:icons
+> node scripts/verify-icons.mjs
+
+src/ui/icons.tsx:111  [mixed-stroke]  stroke width `2` is not var(--icon-stroke)
+src/ui/icons.tsx:105  [module-contract]  the family <svg> must declare strokeWidth: 'var(--icon-stroke)'
+
+verify-icons: FAIL — 2 violation(s).
+EXIT=1
+
+=== 3. FAILURE: a second stroke width added by a call site ===
+--- injected: inline <svg viewBox="0 0 20 20" strokeWidth={1.5}/> in PlayPanel ---
+$ npm --prefix web run verify:icons   # second icon source, second stroke, second grid
+
+> verify:icons
+> node scripts/verify-icons.mjs
+
+src/panels/PlayPanel.tsx:50  [stray-icon-source]  `<svg` belongs in src/ui/icons.tsx
+src/panels/PlayPanel.tsx:50  [stray-icon-source]  `viewBox` belongs in src/ui/icons.tsx
+src/panels/PlayPanel.tsx:50  [stray-icon-source]  `strokeWidth` belongs in src/ui/icons.tsx
+src/panels/PlayPanel.tsx:50  [mixed-stroke]  stroke width `1.5` is not var(--icon-stroke)
+src/panels/PlayPanel.tsx:50  [mixed-geometry]  viewBox `0 0 20 20` is not the family grid
+
+verify-icons: FAIL — 5 violation(s).
+EXIT=1
+
+=== 4. FAILURE: glyph-only control (the old help '?') ===
+--- injected: bare '?' replacing <Icon name="help" /> in the header control ---
+$ npm --prefix web run verify:icons   # glyph-only control
+
+> verify:icons
+> node scripts/verify-icons.mjs
+
+src/workspace/ChessWorkspaceLayout.tsx:138  [glyph-only-control]  visible content is `?` — use an <Icon>
+
+verify-icons: FAIL — 1 violation(s).
+EXIT=1
+
+=== 5. GREEN again after revert ===
+$ npm --prefix web run verify:icons   # tree restored
+
+> verify:icons
+> node scripts/verify-icons.mjs
+
+verify-icons: PASS — 21 files, 14 icons from src/ui/icons.tsx, stroke var(--icon-stroke), grid 0 0 24 24, 3 documented DESIGN.md 5.4 glyph(s).
+EXIT=0
+
+?? playwright-report/
+?? test-results/

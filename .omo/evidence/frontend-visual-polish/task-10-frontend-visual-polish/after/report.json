@@ -1,0 +1,220 @@
+{
+  "baseURL": "http://127.0.0.1:8113/",
+  "accessibleNames": {
+    "How it works": {
+      "found": true,
+      "width": 44,
+      "height": 44,
+      "meetsTarget": true
+    },
+    "First move": {
+      "found": true,
+      "width": 44,
+      "height": 44,
+      "meetsTarget": true
+    },
+    "Previous move": {
+      "found": true,
+      "width": 44,
+      "height": 44,
+      "meetsTarget": true
+    },
+    "Next move": {
+      "found": true,
+      "width": 44,
+      "height": 44,
+      "meetsTarget": true
+    },
+    "Latest / live": {
+      "found": true,
+      "width": 44,
+      "height": 44,
+      "meetsTarget": true
+    }
+  },
+  "iconOnlyTargets": [
+    {
+      "accessibleName": "How it works",
+      "width": 44,
+      "height": 44,
+      "meetsTarget": true
+    },
+    {
+      "accessibleName": "First move",
+      "width": 44,
+      "height": 44,
+      "meetsTarget": true
+    },
+    {
+      "accessibleName": "Previous move",
+      "width": 44,
+      "height": 44,
+      "meetsTarget": true
+    },
+    {
+      "accessibleName": "Next move",
+      "width": 44,
+      "height": 44,
+      "meetsTarget": true
+    },
+    {
+      "accessibleName": "Latest / live",
+      "width": 44,
+      "height": 44,
+      "meetsTarget": true
+    }
+  ],
+  "iconGeometry": [
+    {
+      "icon": "help",
+      "viewBox": "0 0 24 24",
+      "strokeWidth": "1.75px",
+      "width": "20px",
+      "height": "20px",
+      "fill": "none",
+      "stroke": "rgb(140, 152, 166)",
+      "hidden": "true"
+    },
+    {
+      "icon": "skip-back",
+      "viewBox": "0 0 24 24",
+      "strokeWidth": "1.75px",
+      "width": "20px",
+      "height": "20px",
+      "fill": "none",
+      "stroke": "rgb(231, 236, 241)",
+      "hidden": "true"
+    },
+    {
+      "icon": "chevron-left",
+      "viewBox": "0 0 24 24",
+      "strokeWidth": "1.75px",
+      "width": "20px",
+      "height": "20px",
+      "fill": "none",
+      "stroke": "rgb(231, 236, 241)",
+      "hidden": "true"
+    },
+    {
+      "icon": "chevron-right",
+      "viewBox": "0 0 24 24",
+      "strokeWidth": "1.75px",
+      "width": "20px",
+      "height": "20px",
+      "fill": "none",
+      "stroke": "rgb(231, 236, 241)",
+      "hidden": "true"
+    },
+    {
+      "icon": "skip-forward",
+      "viewBox": "0 0 24 24",
+      "strokeWidth": "1.75px",
+      "width": "20px",
+      "height": "20px",
+      "fill": "none",
+      "stroke": "rgb(231, 236, 241)",
+      "hidden": "true"
+    },
+    {
+      "icon": "circle-play",
+      "viewBox": "0 0 24 24",
+      "strokeWidth": "1.75px",
+      "width": "20px",
+      "height": "20px",
+      "fill": "none",
+      "stroke": "rgb(140, 152, 166)",
+      "hidden": "true"
+    },
+    {
+      "icon": "book",
+      "viewBox": "0 0 24 24",
+      "strokeWidth": "1.75px",
+      "width": "20px",
+      "height": "20px",
+      "fill": "none",
+      "stroke": "rgb(140, 152, 166)",
+      "hidden": "true"
+    },
+    {
+      "icon": "trophy",
+      "viewBox": "0 0 24 24",
+      "strokeWidth": "1.75px",
+      "width": "20px",
+      "height": "20px",
+      "fill": "none",
+      "stroke": "rgb(140, 152, 166)",
+      "hidden": "true"
+    },
+    {
+      "icon": "search",
+      "viewBox": "0 0 24 24",
+      "strokeWidth": "1.75px",
+      "width": "20px",
+      "height": "20px",
+      "fill": "none",
+      "stroke": "rgb(26, 19, 10)",
+      "hidden": "true"
+    },
+    {
+      "icon": "explore",
+      "viewBox": "0 0 24 24",
+      "strokeWidth": "1.75px",
+      "width": "16px",
+      "height": "16px",
+      "fill": "none",
+      "stroke": "rgb(231, 236, 241)",
+      "hidden": "true"
+    }
+  ],
+  "glyphScanIntro": {},
+  "glyphScanWorkspace": {},
+  "buttonNamesByRoute": {
+    "openings": [
+      "How it works",
+      "First move",
+      "Previous move",
+      "Next move",
+      "Latest / live",
+      "Back to list",
+      "Suggest best moves",
+      "White",
+      "Black",
+      "Train this line",
+      "Play book move",
+      "Watch this line played out",
+      "C00Main line",
+      "C00Banzai-Leong Gambit",
+      "C00Bird Invitation",
+      "C00Chigorin Variation",
+      "C00Horwitz Attack",
+      "C00King's Indian Attack",
+      "C00Knight Variation",
+      "C00La Bourdonnais Variation"
+    ],
+    "games": [
+      "How it works",
+      "First move",
+      "Previous move",
+      "Next move",
+      "Latest / live",
+      "Opening",
+      "Player",
+      "Theme",
+      "Era",
+      "Play through",
+      "Play game move",
+      "Watch this game"
+    ],
+    "study": [
+      "How it works",
+      "First move",
+      "Previous move",
+      "Next move",
+      "Latest / live",
+      "Explore — play your own moves",
+      "Review game",
+      "Analyze",
+      "Copy PGN"
+    ]
+  }
+}

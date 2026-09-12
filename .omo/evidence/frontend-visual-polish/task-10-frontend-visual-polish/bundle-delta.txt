@@ -1,0 +1,4 @@
+kind|before raw|after raw|delta raw|before gzip|after gzip|delta gzip
+js|327756|331028|3272|102877|103507|630
+css|37868|37823|-45|8117|8109|-8
+total|365624|368851|3227|110994|111616|622
