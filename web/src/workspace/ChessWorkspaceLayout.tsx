@@ -155,7 +155,7 @@ export function ChessWorkspaceLayout() {
         <div data-shell="board-column" className="flex flex-col items-center gap-2">
           <div className="flex w-full items-stretch justify-center gap-3">
             <div className="evalbar" title="Evaluation (White's perspective)">
-              <div className="white" style={{ height: `${((snapshot?.evalFrac ?? 0.5) * 100).toFixed(1)}%` }} />
+              <div className="white" style={{ transform: `scaleY(${(snapshot?.evalFrac ?? 0.5).toFixed(3)})` }} />
               <div className="mid" />
               <div className="num">{snapshot?.evalLabel ?? '0.0'}</div>
             </div>

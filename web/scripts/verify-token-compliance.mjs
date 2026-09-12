@@ -39,8 +39,6 @@ const ART_ALLOWLIST = ['src/core/pieces.ts']
 
 /** DESIGN.md 3.2 names these as defects and hands them to todos 12-14. */
 const DEFERRALS = [
-  { file: 'src/index.css', literal: 'font-size: 10px', count: 2, owner: 'DESIGN.md 3.2 (in-board coordinate exception) + todo 13 (eval bar)' },
-  { file: 'src/index.css', literal: 'font-size: min(2.6vmin, 15px)', count: 1, owner: 'todo 13 (grade badge sizing)' },
   { file: 'src/index.css', literal: 'font-size: 11.5px', count: 1, owner: 'DESIGN.md 3.2 names `.tr-status .path`; todos 12-14' },
   { file: 'src/panels/PlayPanel.tsx', literal: 'text-[10px]', count: 2, owner: 'DESIGN.md 3.2; todo 14' },
   { file: 'src/panels/StudyPanel.tsx', literal: 'text-[10px]', count: 3, owner: 'DESIGN.md 3.2; todo 17' },
