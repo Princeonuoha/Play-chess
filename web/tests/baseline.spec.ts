@@ -53,8 +53,8 @@ async function measuredBox(page: Page, selector: string): Promise<Box> {
 }
 
 async function visitTab(page: Page, tab: (typeof tabs)[number]): Promise<void> {
-  await page.getByRole('button', { name: tab, exact: true }).click()
-  await expect(page.getByRole('button', { name: tab, exact: true })).toBeVisible()
+  await page.getByRole('link', { name: tab, exact: true }).click()
+  await expect(page.getByRole('link', { name: tab, exact: true })).toBeVisible()
 }
 
 test('capture pre-redesign production behavior, geometry, console, and visual baselines', async ({ page, context }) => {
@@ -85,7 +85,7 @@ test('capture pre-redesign production behavior, geometry, console, and visual ba
     const geometry = {
       intro: await measuredBox(page, 'header + div.rounded-2xl'),
       board: await measuredBox(page, '.board'),
-      tabs: await measuredBox(page, 'div.m-1\\.5.flex.gap-1.rounded-xl'),
+      tabs: await measuredBox(page, '[data-nav-safe-area="true"]'),
       header: await measuredBox(page, 'header'),
       footer: await measuredBox(page, 'footer'),
     }

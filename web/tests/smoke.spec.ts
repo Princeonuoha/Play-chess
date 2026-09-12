@@ -40,7 +40,7 @@ test('P3 mode-model smoke', async ({ page }) => {
 
   await test.step('4. Train three French Defense book plies and exit', async () => {
     // Given the unambiguous five-ply French Defense: Alapin Gambit data line; when e4 and d4 are played; then progress reaches move two and the mode exits.
-    await page.getByRole('button', { name: 'Openings', exact: true }).click()
+    await page.getByRole('link', { name: 'Openings', exact: true }).click()
     await page.getByPlaceholder('name or ECO — e.g. Najdorf, Caro-Kann, B12').fill('French Defense: Alapin Gambit')
     await page.getByRole('button', { name: /French Defense: Alapin Gambit/ }).click()
     await page.getByRole('button', { name: 'White', exact: true }).click()
@@ -51,14 +51,14 @@ test('P3 mode-model smoke', async ({ page }) => {
     await page.getByRole('button', { name: 'Play book move' }).click()
     await expect(page.locator('.piece[data-square="d4"]')).toBeVisible()
     await expect(page.locator('.tr-status')).toContainText('move 2/20')
-    await page.getByRole('button', { name: 'Play', exact: true }).click()
+    await page.getByRole('link', { name: 'Play', exact: true }).click()
     await page.getByRole('button', { name: 'New game' }).click()
     await expect(page.locator('.tr-status')).toHaveCount(0)
   })
 
   await test.step('5. Auto-replay ten Immortal Game plies and stop', async () => {
     // Given the Immortal Game; when auto-replay begins; then ten plies are visible within thirty seconds and replay stops.
-    await page.getByRole('button', { name: 'Games', exact: true }).click()
+    await page.getByRole('link', { name: 'Games', exact: true }).click()
     await page.getByLabel('Master game').selectOption({ label: 'The “Immortal Game” · 1851  (You: White)' })
     await page.getByRole('button', { name: '▶ Watch this game' }).click()
     await expect
@@ -70,17 +70,17 @@ test('P3 mode-model smoke', async ({ page }) => {
 
   await test.step('6. Analyze the position with three lines', async () => {
     // Given Study; when Analyze is clicked; then all three MultiPV lines render.
-    await page.getByRole('button', { name: 'Study', exact: true }).click()
+    await page.getByRole('link', { name: 'Study', exact: true }).click()
     await page.getByRole('button', { name: 'Analyze' }).click()
     await expect(page.locator('.an-line')).toHaveCount(3, { timeout: 15_000 })
   })
 
   await test.step('7. Review a completed game and render grade labels', async () => {
     // Given the completed Immortal Game; when Review game runs; then React renders the completed review's graded move rows.
-    await page.getByRole('button', { name: 'Games', exact: true }).click()
+    await page.getByRole('link', { name: 'Games', exact: true }).click()
     await page.getByRole('button', { name: '▶ Watch this game' }).click()
     await expect(page.getByRole('button', { name: '■ Stop replay' })).toBeHidden({ timeout: 50_000 })
-    await page.getByRole('button', { name: 'Study', exact: true }).click()
+    await page.getByRole('link', { name: 'Study', exact: true }).click()
     await page.getByRole('button', { name: 'Review game' }).click()
     await expect(page.getByRole('button', { name: 'Reviewing…' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Reviewing…' })).toBeHidden({ timeout: 45_000 })
