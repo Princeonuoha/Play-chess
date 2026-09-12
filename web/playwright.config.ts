@@ -15,7 +15,6 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      dependencies: ['baseline'],
       testIgnore: /(?:baseline|showcase)\.spec\.ts/,
       use: { ...devices['Desktop Chrome'], headless: true },
     },
