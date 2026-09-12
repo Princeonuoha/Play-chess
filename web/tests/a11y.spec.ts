@@ -203,7 +203,7 @@ test.describe('workspace accessibility contract', () => {
       ['e5', '1\u2026 e5.', 'e5'],
       ['Bc4', '2. Bc4.', 'c4'],
       ['Nf6', '2\u2026 Nf6.', 'f6'],
-      ['Bxf7', '3. Bxf7+.', 'f7'],
+      ['Bxf7', '3. Bxf7.', 'f7'],
     ] as const) {
       await playTyped(page, text, spoken, on)
     }
@@ -241,7 +241,7 @@ test.describe('workspace accessibility contract', () => {
     await expect(page.locator('.board .piece[data-square="a8"]')).toBeVisible()
     await settled(page, 'a8')
     await expect(boardAlt(page, 'placement'), 'the promoted queen is stated by name').toContainText('a8 white queen')
-    await expect(boardAlt(page, 'summary')).toContainText('Last move 5. bxa8=Q')
+    await expect(boardAlt(page, 'summary')).toContainText('Last move 5. bxa8 promoting to queen.')
   })
 
   test('follows the board back through history and into the live position', async ({ page }) => {

@@ -163,9 +163,25 @@ export function readBoard(snapshot: Snapshot | null): BoardState {
   }
 }
 
+const PROMOTION_WORD: Record<string, string> = { q: 'queen', r: 'rook', b: 'bishop', n: 'knight' }
+
+/**
+ * SAN as a screen reader should say it.
+ *
+ * `bxa8=Q` is read out as "b x a8 equals Q", which is not a move anyone would
+ * recognise, so the promotion is worded. The check and mate markers are dropped
+ * instead of worded because check and the result are already their own
+ * sentences in the summary, and saying both would announce check twice.
+ */
+export function spokenSan(san: string): string {
+  return san
+    .replace(/=([QRBN])/, (_, piece: string) => ` promoting to ${PROMOTION_WORD[piece.toLowerCase()]}`)
+    .replace(/[+#]$/, '')
+}
+
 /** "1. e4" / "1… e5" — the notation a player would say out loud. */
 export function spokenMove(move: LastMove): string {
-  return `${move.number}${move.side === 'w' ? '.' : '…'} ${move.san}`
+  return `${move.number}${move.side === 'w' ? '.' : '…'} ${spokenSan(move.san)}`
 }
 
 export function legalFrom(game: Chess, square: string): readonly Move[] {
