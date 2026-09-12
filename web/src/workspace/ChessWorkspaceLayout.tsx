@@ -8,10 +8,10 @@ import {
   type WorkspaceRoute,
   WorkspaceFooter,
   WorkspaceHeader,
-  WorkspaceIntro,
   WorkspaceNavigation,
   WORKSPACE_ROUTES,
 } from './WorkspaceChrome'
+import { WorkspaceGuide } from './WorkspaceGuide'
 import { IconButton } from '../ui/primitives'
 import type { WorkspaceOutletContext } from './WorkspaceRoutes'
 
@@ -43,8 +43,6 @@ export function ChessWorkspaceLayout() {
       return true
     }
   })
-  /** Collapsed on arrival so the board leads the first screen (DESIGN.md 8.3). */
-  const [introExpanded, setIntroExpanded] = useState(false)
   const location = useLocation()
   const navigate = useNavigate()
 
@@ -93,10 +91,7 @@ export function ChessWorkspaceLayout() {
       localStorage.setItem('cwp_intro_seen', '1')
     } catch {}
   }
-  const openIntroExpanded = () => {
-    setShowIntro(true)
-    setIntroExpanded(true)
-  }
+  const openIntro = () => setShowIntro(true)
   const selectIntroRoute = (route: WorkspaceRoute) => {
     navigate(route.path)
     dismissIntro()
@@ -135,16 +130,7 @@ export function ChessWorkspaceLayout() {
 
   return (
     <div className="mx-auto flex min-h-full max-w-6xl flex-col gap-4 px-4 pb-6 pt-4 sm:gap-6 sm:px-6 lg:px-10">
-      <WorkspaceHeader engineTag={snapshot?.engineTag} onHelp={openIntroExpanded} />
-
-      {showIntro && (
-        <WorkspaceIntro
-          expanded={introExpanded}
-          onExpandedChange={setIntroExpanded}
-          onDismiss={dismissIntro}
-          onSelect={selectIntroRoute}
-        />
-      )}
+      <WorkspaceHeader engineTag={snapshot?.engineTag} onHelp={openIntro} />
 
       {/* DESIGN.md 8.2: one column on a phone in board → status → nav → inspector
           order, two top-aligned columns from 1024 up. */}
@@ -214,6 +200,8 @@ export function ChessWorkspaceLayout() {
       </main>
 
       <WorkspaceFooter />
+
+      <WorkspaceGuide open={showIntro} onClose={dismissIntro} onSelect={selectIntroRoute} />
 
       {promotion && (
         <PromotionDialog

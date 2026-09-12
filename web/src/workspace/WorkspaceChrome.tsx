@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { NavLink } from 'react-router'
 import { pieceSVG } from '../core/pieces'
-import { Btn, Icon, IconButton, Surface, type IconName } from '../ui/primitives'
+import { Icon, IconButton, type IconName } from '../ui/primitives'
 
 export type WorkspaceRoute = {
   readonly path: '/play' | '/openings' | '/games' | '/study'
@@ -137,86 +137,6 @@ export function WorkspaceNavigation() {
           </NavLink>
         ))}
       </nav>
-    </div>
-  )
-}
-
-const INTRO_DESTINATIONS = [
-  [WORKSPACE_ROUTES[0], 'Play against Stockfish. Pick a difficulty from Beginner to Maximum, choose your colour, and drag or tap to move.'],
-  [WORKSPACE_ROUTES[1], 'Drill a real opening line. The app plays the theory for the other side and checks your moves against the book.'],
-  [WORKSPACE_ROUTES[2], 'Play through or watch famous master games — search by player, opening, theme, or era.'],
-  [WORKSPACE_ROUTES[3], 'Review any game: Stockfish grades every move, shows the better move you missed, and tells you how the masters handled the line.'],
-] as const
-
-/* ---------------------------------------------------------------------------
- * DESIGN.md 8.3 first-visit strip.
- *
- * The measured defect this redesign exists to close: as an always-expanded
- * block between the header and the board, this content stood 578px tall on a
- * 375px phone and pushed the board's top edge to y=738 — 178px past the §8.3
- * threshold and well below the fold on the very first screen a player sees.
- *
- * Nothing here is deleted. Every destination, every description, and the
- * transport hint are still present, still keyboard reachable, and still
- * announced — they sit behind a native `<details>` disclosure so the strip
- * costs one 44px row instead of a screenful, and the board leads. Opening the
- * strip from the header's help control opens the disclosure with it, because a
- * player who asked "how does this work" wants the answer, not a second click.
- *
- * Todo 18 lifts this into a focus-trapped portal dialog; this is the
- * composition that makes the board lead in the meantime.
- * ------------------------------------------------------------------------- */
-export function WorkspaceIntro({
-  expanded,
-  onExpandedChange,
-  onDismiss,
-  onSelect,
-}: {
-  readonly expanded: boolean
-  readonly onExpandedChange: (open: boolean) => void
-  readonly onDismiss: () => void
-  readonly onSelect: (route: WorkspaceRoute) => void
-}) {
-  return (
-    <div
-      data-shell="intro"
-      className="relative rounded-[var(--radius-xl)] border border-[color:var(--border-brass)] bg-[color:var(--surface-1)]/80 p-3 backdrop-blur sm:p-4"
-    >
-      <details className="ui-details" open={expanded} onToggle={(event) => onExpandedChange(event.currentTarget.open)}>
-        <summary className="ui-disclosure list-none gap-2 pe-20">
-          <Icon
-            name="chevron-right"
-            size="sm"
-            className="text-[color:var(--brass-base)] transition-transform duration-[var(--motion-fast)] ease-[var(--motion-ease-out)] [[open]_&]:rotate-90"
-          />
-          <h2 className="min-w-0 truncate text-[color:var(--text-primary)] [font:var(--type-body)] sm:[font:var(--type-heading)]">
-            Welcome — here's how it works
-          </h2>
-        </summary>
-
-        <div className="grid gap-2 pt-3 sm:grid-cols-2">
-          {INTRO_DESTINATIONS.map(([route, description]) => (
-            <Surface key={route.path} tone={2} onClick={() => onSelect(route)} actionLabel={`Open ${route.label}`}>
-              <span className="flex items-center gap-2 text-[color:var(--brass-base)] [font:var(--type-heading)]">
-                <Icon name={route.icon} size="sm" />
-                {route.label}
-              </span>
-              <span className="text-[color:var(--text-muted)] [font:var(--type-body-sm)]">{description}</span>
-            </Surface>
-          ))}
-        </div>
-
-        <p className="mt-3 flex flex-wrap items-center gap-1 text-[11px] text-[color:var(--text-muted)]">
-          <span>Tap a card to jump straight in · use the</span>
-          <Icon name="chevron-left" size="sm" />
-          <Icon name="chevron-right" size="sm" />
-          <span>buttons under the board (or your arrow keys) to step through any game.</span>
-        </p>
-      </details>
-
-      <Btn onClick={onDismiss} className="absolute end-3 top-3 sm:end-4 sm:top-4">
-        Got it
-      </Btn>
     </div>
   )
 }

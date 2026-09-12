@@ -6,6 +6,8 @@ import { PlayPanel } from '../panels/PlayPanel'
 import { StudyPanel } from '../panels/StudyPanel'
 import { TrainPanel } from '../panels/TrainPanel'
 import { IconLabel } from '../ui/icons'
+import { Loading } from '../ui/primitives'
+import { RouteHint } from './WorkspaceGuide'
 
 type SideChoice = 'white' | 'black' | 'random'
 
@@ -51,6 +53,11 @@ export function PlayWorkspace() {
   return (
     <>
       <RouteHeading>Play</RouteHeading>
+      {workspace.history.length === 0 && (
+        <RouteHint route="Play" icon="circle-play">
+          No game is under way yet. Press New game, then drag a piece — or tap it and tap its square.
+        </RouteHint>
+      )}
       <PlayPanel
         snap={workspace.snapshot}
         elo={workspace.elo}
@@ -90,7 +97,9 @@ export function OpeningsWorkspace() {
   return (
     <>
       <RouteHeading>Openings</RouteHeading>
-      {workspace.snapshot && (
+      {workspace.snapshot === null ? (
+        <Loading label="Preparing the opening workspace…" rows={2} />
+      ) : (
         <TrainPanel
           snap={workspace.snapshot}
           replaying={workspace.replaying}
@@ -125,6 +134,11 @@ export function StudyWorkspace() {
   return (
     <>
       <RouteHeading>Study</RouteHeading>
+      {workspace.history.length === 0 && (
+        <RouteHint route="Study" icon="search">
+          There is nothing to review yet. Play a game, or replay one from Games, and Stockfish will grade every move.
+        </RouteHint>
+      )}
       <StudyPanel
         snap={workspace.snapshot}
         history={workspace.history}

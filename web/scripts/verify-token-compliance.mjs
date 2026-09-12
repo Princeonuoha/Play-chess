@@ -42,7 +42,6 @@ const DEFERRALS = [
   { file: 'src/index.css', literal: 'font-size: 11.5px', count: 1, owner: 'DESIGN.md 3.2 names `.tr-status .path`; todos 12-14' },
   { file: 'src/panels/StudyPanel.tsx', literal: 'text-[10px]', count: 3, owner: 'DESIGN.md 3.2; todo 17' },
   { file: 'src/panels/StudyPanel.tsx', literal: 'text-[11px]', count: 2, owner: 'DESIGN.md 3.2; todo 17' },
-  { file: 'src/workspace/WorkspaceChrome.tsx', literal: 'text-[11px]', count: 1, owner: 'DESIGN.md 3.2; todo 18' },
 ]
 
 const NAMED_COLOURS =
