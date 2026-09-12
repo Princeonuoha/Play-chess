@@ -48,20 +48,17 @@ export function WorkspaceNavigation() {
     <div className="m-1.5 flex gap-1 rounded-xl bg-black/20 p-1">
       <nav aria-label="Workspace" className="contents">
         {WORKSPACE_ROUTES.map((route) => (
-          <NavLink key={route.path} to={route.path} className="flex-1">
-            {({ isActive }) => (
-              <button
-                type="button"
-                className={
-                  'w-full rounded-lg px-2 py-2.5 text-sm font-semibold transition ' +
-                  (isActive
-                    ? 'bg-[var(--color-brass)] text-[#1a130a] shadow'
-                    : 'text-[var(--color-muted)] hover:text-[var(--color-ink)]')
-                }
-              >
-                {route.label}
-              </button>
-            )}
+          <NavLink
+            key={route.path}
+            to={route.path}
+            className={({ isActive }) =>
+              'flex flex-1 items-center justify-center rounded-lg px-2 py-2.5 text-center text-sm font-semibold transition ' +
+              (isActive
+                ? 'bg-[var(--color-brass)] text-[#1a130a] shadow'
+                : 'text-[var(--color-muted)] hover:text-[var(--color-ink)]')
+            }
+          >
+            {route.label}
           </NavLink>
         ))}
       </nav>
