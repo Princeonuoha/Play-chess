@@ -75,20 +75,30 @@ async function type(page: Page, text: string): Promise<void> {
  * before it animates it, so an engine-analysis snapshot arriving mid-flight can
  * publish the new move while the board is still busy.
  */
-async function settled(page: Page, on: string): Promise<void> {
-  const square = await page
-    .locator(`.board .sq[data-square="${on}"]`)
-    .evaluate((node) => ({ left: (node as HTMLElement).offsetLeft, top: (node as HTMLElement).offsetTop }))
+async function settled(page: Page, lan: string): Promise<void> {
+  const [from, to] = [lan.slice(0, 2), lan.slice(2, 4)]
+  const boxes = await page.locator('.board .squares').evaluate((squares, ends) =>
+    ends.map((square) => {
+      const cell = squares.querySelector(`.sq[data-square="${square}"]`) as HTMLElement
+      return { left: cell.offsetLeft, top: cell.offsetTop }
+    }),
+    [from, to],
+  )
   const last = page.locator('.board .hl.last')
   await expect(last).toHaveCount(2)
-  await expect(last.nth(1)).toHaveJSProperty('offsetLeft', square.left)
-  await expect(last.nth(1)).toHaveJSProperty('offsetTop', square.top)
+  /* Both ends, never just the destination: a capture lands on a square that
+     already carried the previous move's bracket, so the destination alone
+     would report "settled" before this move had started. */
+  for (const [index, box] of boxes.entries()) {
+    await expect(last.nth(index)).toHaveJSProperty('offsetLeft', box.left)
+    await expect(last.nth(index)).toHaveJSProperty('offsetTop', box.top)
+  }
 }
 
-async function playTyped(page: Page, text: string, spoken: string, on: string): Promise<void> {
+async function playTyped(page: Page, text: string, spoken: string, lan: string): Promise<void> {
   await type(page, text)
   await expect(boardAlt(page, 'summary')).toContainText(`Last move ${spoken}`)
-  await settled(page, on)
+  await settled(page, lan)
 }
 
 async function startExplore(page: Page): Promise<void> {
@@ -181,7 +191,7 @@ test.describe('workspace accessibility contract', () => {
     await openWorkspace(page)
     const before = await placement(page)
 
-    await playTyped(page, 'e4', '1. e4.', 'e4')
+    await playTyped(page, 'e4', '1. e4.', 'e2e4')
 
     const after = await placement(page)
     expect(before, 'the pawn started on e2').toContain('e2 white pawn')
@@ -199,11 +209,11 @@ test.describe('workspace accessibility contract', () => {
     await startExplore(page)
 
     for (const [text, spoken, on] of [
-      ['e4', '1. e4.', 'e4'],
-      ['e5', '1\u2026 e5.', 'e5'],
-      ['Bc4', '2. Bc4.', 'c4'],
-      ['Nf6', '2\u2026 Nf6.', 'f6'],
-      ['Bxf7', '3. Bxf7.', 'f7'],
+      ['e4', '1. e4.', 'e2e4'],
+      ['e5', '1\u2026 e5.', 'e7e5'],
+      ['Bc4', '2. Bc4.', 'f1c4'],
+      ['Nf6', '2\u2026 Nf6.', 'g8f6'],
+      ['Bxf7', '3. Bxf7.', 'c4f7'],
     ] as const) {
       await playTyped(page, text, spoken, on)
     }
@@ -220,14 +230,14 @@ test.describe('workspace accessibility contract', () => {
     await startExplore(page)
 
     for (const [text, spoken, on] of [
-      ['e4', '1. e4.', 'e4'],
-      ['d5', '1\u2026 d5.', 'd5'],
-      ['exd5', '2. exd5.', 'd5'],
-      ['c6', '2\u2026 c6.', 'c6'],
-      ['dxc6', '3. dxc6.', 'c6'],
-      ['Nf6', '3\u2026 Nf6.', 'f6'],
-      ['cxb7', '4. cxb7.', 'b7'],
-      ['Ne4', '4\u2026 Ne4.', 'e4'],
+      ['e4', '1. e4.', 'e2e4'],
+      ['d5', '1\u2026 d5.', 'd7d5'],
+      ['exd5', '2. exd5.', 'e4d5'],
+      ['c6', '2\u2026 c6.', 'c7c6'],
+      ['dxc6', '3. dxc6.', 'd5c6'],
+      ['Nf6', '3\u2026 Nf6.', 'g8f6'],
+      ['cxb7', '4. cxb7.', 'c6b7'],
+      ['Ne4', '4\u2026 Ne4.', 'f6e4'],
     ] as const) {
       await playTyped(page, text, spoken, on)
     }
@@ -239,7 +249,7 @@ test.describe('workspace accessibility contract', () => {
     await page.keyboard.press('Enter')
 
     await expect(page.locator('.board .piece[data-square="a8"]')).toBeVisible()
-    await settled(page, 'a8')
+    await settled(page, 'b7a8')
     await expect(boardAlt(page, 'placement'), 'the promoted queen is stated by name').toContainText('a8 white queen')
     await expect(boardAlt(page, 'summary')).toContainText('Last move 5. bxa8 promoting to queen.')
   })
@@ -247,7 +257,7 @@ test.describe('workspace accessibility contract', () => {
   test('follows the board back through history and into the live position', async ({ page }) => {
     // Given a played move, when history is browsed with the keyboard, then the text board follows and move entry is gated with a reason.
     await openWorkspace(page)
-    await playTyped(page, 'e4', '1. e4.', 'e4')
+    await playTyped(page, 'e4', '1. e4.', 'e2e4')
 
     await page.getByRole('heading', { level: 1 }).click()
     await page.keyboard.press('ArrowLeft')
@@ -338,12 +348,16 @@ test.describe('workspace accessibility contract', () => {
   })
 
   /* --------------------------------------------------------- A11Y-06 zoom */
+  /* 200% browser zoom is exactly a halved CSS-pixel viewport. The phone row sits
+     at the 320 CSS px floor WCAG 1.4.10 defines for reflow rather than at a
+     literal 188px halving of a 375px screen: four 44px targets cannot fit in
+     188px, and A11Y-02 is not traded away to win a reflow number. */
   for (const viewport of [
-    { name: '1280x800 at 200%', width: 640, height: 400 },
-    { name: '375x812 at 200%', width: 320, height: 406 },
+    { name: '1280x800 zoomed to 200%', width: 640, height: 400 },
+    { name: 'the WCAG 1.4.10 reflow floor of 320 CSS px', width: 320, height: 406 },
   ]) {
     test(`keeps content and function at ${viewport.name}`, async ({ page }) => {
-      // Given 200% zoom expressed as its CSS-pixel equivalent, when the workspace reflows, then nothing is lost and a move still lands.
+      // Given a zoomed viewport, when the workspace reflows, then nothing is lost and a move still lands.
       await page.setViewportSize({ width: viewport.width, height: viewport.height })
       await openWorkspace(page)
 
@@ -355,7 +369,7 @@ test.describe('workspace accessibility contract', () => {
       await expect(page.getByRole('navigation', { name: 'Workspace' })).toBeVisible()
       await expect(page.getByRole('contentinfo')).toBeVisible()
 
-      await playTyped(page, 'd4', '1. d4.', 'd4')
+      await playTyped(page, 'd4', '1. d4.', 'd2d4')
       const panel = await page.locator('[data-shell="board-console"]').boundingBox()
       expect(panel?.width ?? 0, 'the console fits the zoomed viewport').toBeLessThanOrEqual(viewport.width)
     })
@@ -366,7 +380,7 @@ test.describe('workspace accessibility contract', () => {
     // Given the board states todo 13 shaped, when the accessible surface exists alongside them, then each one still publishes its own geometry.
     await openWorkspace(page, '/study')
     await startExplore(page)
-    await playTyped(page, 'e4', '1. e4.', 'e4')
+    await playTyped(page, 'e4', '1. e4.', 'e2e4')
     await type(page, 'e7')
 
     const cues = await page.locator('.board .hl').evaluateAll((nodes) =>
@@ -415,7 +429,7 @@ test.describe('workspace accessibility contract', () => {
       }
 
       await expect(page.getByRole('link', { name: 'Skip to the board' })).toBeInViewport()
-      await playTyped(page, 'e4', '1. e4.', 'e4')
+      await playTyped(page, 'e4', '1. e4.', 'e2e4')
       await expect(page.locator('.board .hl.last'), 'the last-move cue survives').toHaveCount(2)
     })
   })
