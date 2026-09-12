@@ -194,7 +194,11 @@ export function GamesPanel({ snap, replaying, selfPlay, sessionKey, controller }
 
   return (
     <>
-      <Surface label="Master game library">
+      {/* The region is named "Game library", not "Master game library": `getByLabel`
+          matches accessible names by substring, and `tests/smoke.spec.ts` (outside this
+          task's fence) resolves the picker with `getByLabel('Master game')`. A region
+          whose name contained that string would make that locator ambiguous. */}
+      <Surface label="Game library">
         <Field label="Search games" description="Matches player, opening, theme, era, and either colour.">
           {(control) => (
             <input
