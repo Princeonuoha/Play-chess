@@ -83,7 +83,7 @@ test('capture pre-redesign production behavior, geometry, console, and visual ba
     const geometryPath = join(evidenceDir, `geometry-${viewport.name}.json`)
     await page.screenshot({ path: screenshot, fullPage: true })
     const geometry = {
-      intro: await measuredBox(page, 'header + div.rounded-2xl'),
+      intro: await measuredBox(page, 'header + div.rounded-\\[var\\(--radius-xl\\)\\]'),
       board: await measuredBox(page, '.board'),
       tabs: await measuredBox(page, '[data-nav-safe-area="true"]'),
       header: await measuredBox(page, 'header'),
@@ -142,9 +142,9 @@ test('capture pre-redesign production behavior, geometry, console, and visual ba
   await promotionChoices.first().click()
   await expect(page.locator('.piece[data-square="b8"]')).toBeVisible()
 
-  const engineBadge = page.locator('header > span.rounded-full')
+  const engineBadge = page.locator('header > span.rounded-\\[var\\(--radius-pill\\)\\]')
   await expect(engineBadge).not.toHaveText('loading engine…', { timeout: 15_000 })
-  const enginePresentation = { selector: 'header > span.rounded-full', visibleText: (await engineBadge.textContent())?.trim() ?? '' }
+  const enginePresentation = { selector: 'header > span.rounded-\\[var\\(--radius-pill\\)\\]', visibleText: (await engineBadge.textContent())?.trim() ?? '' }
 
   // Chromium does not request a favicon for this document without a link tag. Fetching the conventional path records the existing missing asset as a known baseline defect.
   await page.evaluate(async () => {
