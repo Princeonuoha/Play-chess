@@ -43,9 +43,6 @@ const DEFERRALS = [
   { file: 'src/panels/PlayPanel.tsx', literal: 'text-[10px]', count: 2, owner: 'DESIGN.md 3.2; todo 14' },
   { file: 'src/panels/StudyPanel.tsx', literal: 'text-[10px]', count: 3, owner: 'DESIGN.md 3.2; todo 17' },
   { file: 'src/panels/StudyPanel.tsx', literal: 'text-[11px]', count: 2, owner: 'DESIGN.md 3.2; todo 17' },
-  { file: 'src/panels/TrainPanel.tsx', literal: 'text-[9px]', count: 1, owner: 'DESIGN.md 3.2; todo 15' },
-  { file: 'src/panels/TrainPanel.tsx', literal: 'text-[10px]', count: 1, owner: 'DESIGN.md 3.2; todo 15' },
-  { file: 'src/panels/TrainPanel.tsx', literal: 'text-[11px]', count: 5, owner: 'DESIGN.md 3.2; todo 15' },
   { file: 'src/workspace/WorkspaceChrome.tsx', literal: 'text-[11px]', count: 1, owner: 'DESIGN.md 3.2; todo 18' },
 ]
 
