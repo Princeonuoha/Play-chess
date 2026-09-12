@@ -52,13 +52,25 @@ export function WorkspaceNavigation() {
             key={route.path}
             to={route.path}
             className={({ isActive }) =>
-              'flex flex-1 items-center justify-center rounded-lg px-2 py-2.5 text-center text-sm font-semibold transition ' +
+              'flex flex-1 flex-col items-center justify-center gap-1 rounded-lg px-2 py-2 text-center text-sm transition ' +
               (isActive
-                ? 'bg-[var(--color-brass)] text-[#1a130a] shadow'
-                : 'text-[var(--color-muted)] hover:text-[var(--color-ink)]')
+                ? 'bg-[var(--color-brass)] font-extrabold text-[#1a130a] shadow'
+                : 'font-semibold text-[var(--color-muted)] hover:text-[var(--color-ink)]')
             }
           >
-            {route.label}
+            {({ isActive }) => (
+              <>
+                <span>{route.label}</span>
+                <span
+                  aria-hidden="true"
+                  data-nav-indicator={isActive ? 'active' : 'rest'}
+                  className={
+                    'h-0.5 w-6 rounded-full transition-colors duration-200 ' +
+                    (isActive ? 'bg-[#1a130a]' : 'bg-transparent')
+                  }
+                />
+              </>
+            )}
           </NavLink>
         ))}
       </nav>
