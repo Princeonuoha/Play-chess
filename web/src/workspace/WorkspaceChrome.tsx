@@ -45,14 +45,14 @@ export function NavBtn({ children, onClick, label }: { readonly children: ReactN
 
 export function WorkspaceNavigation() {
   return (
-    <div className="m-1.5 flex gap-1 rounded-xl bg-black/20 p-1">
+    <div className="m-1.5 flex gap-2 rounded-xl bg-black/20 p-1">
       <nav aria-label="Workspace" className="contents">
         {WORKSPACE_ROUTES.map((route) => (
           <NavLink
             key={route.path}
             to={route.path}
             className={({ isActive }) =>
-              'flex flex-1 flex-col items-center justify-center gap-1 rounded-lg px-2 py-2 text-center text-sm transition ' +
+              'flex min-h-11 min-w-11 flex-1 flex-col items-center justify-center gap-1 rounded-lg px-2 py-2 text-center text-sm transition ' +
               (isActive
                 ? 'bg-[var(--color-brass)] font-extrabold text-[#1a130a] shadow'
                 : 'font-semibold text-[var(--color-muted)] hover:text-[var(--color-ink)]')
