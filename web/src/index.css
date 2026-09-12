@@ -195,6 +195,105 @@ body {
   }
 }
 
+/* ---------------------------------------------------------------------------
+ * DESIGN.md 8.5 A11Y-08 / A11Y-09 / A11Y-12 — the two keyboard-first surfaces.
+ *
+ * Both follow the same rule: present in the accessibility tree at all times,
+ * absent from the visual composition until focus arrives. DESIGN.md 1.2 allows
+ * exactly one thing to compete with the board, so neither may be visible
+ * furniture; A11Y-03 forbids an invisible focus, so neither may stay hidden
+ * once it holds focus. Revealing on focus is the only state that satisfies
+ * both, and it costs the layout nothing: hidden they are absolutely positioned
+ * and 1px, revealed they are fixed, so neither ever displaces the board.
+ * ------------------------------------------------------------------------- */
+.ui-skiplink {
+  position: fixed;
+  left: var(--space-4);
+  top: var(--space-4);
+  z-index: var(--z-toast);
+  display: grid;
+  place-items: center;
+  min-height: var(--icon-target-min);
+  min-width: var(--icon-target-min);
+  padding: 0 var(--space-4);
+  border: 1px solid var(--border-brass);
+  border-radius: var(--radius-lg);
+  background: var(--surface-overlay);
+  color: var(--text-primary);
+  font: var(--type-body);
+  font-weight: 600;
+  text-decoration: none;
+  box-shadow: var(--depth-inset-hairline), var(--depth-overlay);
+  /* Parked above the viewport rather than removed, so it travels back on a
+     composited transform and is never a display toggle a reader can miss. */
+  transform: translateY(calc(-100% - var(--space-10)));
+  transition: transform var(--motion-fast) var(--motion-ease-out);
+}
+.ui-skiplink:focus {
+  transform: translateY(0);
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+/* The board console. Hidden exactly the way `.ui-sr-only` hides, so the two
+   mechanisms cannot drift; the revealed state then unwinds every one of those
+   declarations rather than fighting them. */
+.board-console {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+.board-console:focus-within {
+  position: fixed;
+  left: 50%;
+  bottom: max(var(--space-4), env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: var(--z-nav);
+  display: grid;
+  gap: var(--space-2);
+  width: min(440px, calc(100vw - var(--space-8)));
+  height: auto;
+  max-height: min(74dvh, 560px);
+  overflow: auto;
+  clip-path: none;
+  white-space: normal;
+  padding: var(--space-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  background: var(--surface-overlay);
+  box-shadow: var(--depth-inset-hairline), var(--depth-overlay);
+  color: var(--text-secondary);
+  font: var(--type-body-sm);
+}
+/* From the desktop breakpoint the console steps out of the board's column so
+   the position it is describing stays in view while it is being read. */
+@media (min-width: 1024px) {
+  .board-console:focus-within {
+    left: auto;
+    right: var(--space-4);
+    transform: none;
+  }
+}
+.board-console-title {
+  font: var(--type-heading);
+  color: var(--text-primary);
+}
+.board-console-note { color: var(--text-muted); }
+.board-console-list {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding-left: var(--space-5);
+  list-style: disc;
+  font-family: var(--type-font-numeric);
+}
+.board-console-form { display: grid; gap: var(--space-3); }
+
 /* ---- Board + eval bar + promotion + scoresheet (plain CSS, ported from the
    tested app so the board behaves identically). Every visual value below now
    resolves to a token declared above; the two frozen square fills are read

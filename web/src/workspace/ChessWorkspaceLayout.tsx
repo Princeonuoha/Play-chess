@@ -13,6 +13,7 @@ import {
   WORKSPACE_ROUTES,
 } from './WorkspaceChrome'
 import { WorkspaceGuide } from './WorkspaceGuide'
+import { BoardConsole } from './BoardConsole'
 import { EngineStatus, IconButton, ToastRegion, type ToastMessage, type ToastTone } from '../ui/primitives'
 import type { WorkspaceOutletContext } from './WorkspaceRoutes'
 
@@ -141,15 +142,29 @@ export function ChessWorkspaceLayout() {
 
   return (
     <div className="mx-auto flex min-h-full max-w-6xl flex-col gap-4 px-4 pb-6 pt-4 sm:gap-6 sm:px-6 lg:px-10">
+      {/* DESIGN.md 8.5 A11Y-12. First stop in the tab order, invisible until it
+          has focus, and it lands on the region that holds the board — so the
+          first thing a keyboard user reaches after taking it is the board
+          console, not four navigation links. */}
+      <a className="ui-skiplink" href="#workspace-main">
+        Skip to the board
+      </a>
       <WorkspaceHeader engineTag={snapshot?.engineTag} onHelp={openIntro} />
 
       {/* DESIGN.md 8.2: one column on a phone in board → status → nav → inspector
           order, two top-aligned columns from 1024 up. */}
       <main
+        id="workspace-main"
+        tabIndex={-1}
         data-shell="main"
-        className="grid items-start gap-4 sm:gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-x-10 xl:grid-cols-[minmax(0,1fr)_380px]"
+        className="grid items-start gap-4 focus:outline-none sm:gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-x-10 xl:grid-cols-[minmax(0,1fr)_380px]"
       >
         <div data-shell="board-column" className="flex flex-col items-center gap-2">
+          {/* DESIGN.md 8.5 A11Y-08 / A11Y-09. Ahead of the board in reading
+              order so a screen reader meets the position as text before it
+              meets an empty graphic, and so the move entry is the first thing
+              the skip link hands the keyboard. */}
+          <BoardConsole snapshot={snapshot} boardRef={boardRef} />
           <div className="flex w-full items-stretch justify-center gap-3">
             <div className="evalbar" title="Evaluation (White's perspective)">
               <div className="white" style={{ transform: `scaleY(${(snapshot?.evalFrac ?? 0.5).toFixed(3)})` }} />
