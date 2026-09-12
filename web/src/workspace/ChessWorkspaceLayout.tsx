@@ -7,11 +7,12 @@ import {
   type Promotion,
   type WorkspaceRoute,
   WorkspaceFooter,
+  WorkspaceHeader,
   WorkspaceIntro,
   WorkspaceNavigation,
   WORKSPACE_ROUTES,
 } from './WorkspaceChrome'
-import { Icon, IconButton } from '../ui/icons'
+import { IconButton } from '../ui/primitives'
 import type { WorkspaceOutletContext } from './WorkspaceRoutes'
 
 function difficulty(value: number): { readonly name: string; readonly elo: string } {
@@ -42,6 +43,8 @@ export function ChessWorkspaceLayout() {
       return true
     }
   })
+  /** Collapsed on arrival so the board leads the first screen (DESIGN.md 8.3). */
+  const [introExpanded, setIntroExpanded] = useState(false)
   const location = useLocation()
   const navigate = useNavigate()
 
@@ -90,6 +93,10 @@ export function ChessWorkspaceLayout() {
       localStorage.setItem('cwp_intro_seen', '1')
     } catch {}
   }
+  const openIntroExpanded = () => {
+    setShowIntro(true)
+    setIntroExpanded(true)
+  }
   const selectIntroRoute = (route: WorkspaceRoute) => {
     navigate(route.path)
     dismissIntro()
@@ -127,35 +134,35 @@ export function ChessWorkspaceLayout() {
   }
 
   return (
-    <div className="mx-auto flex min-h-full max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-10">
-      <header className="flex flex-wrap items-baseline gap-3">
-        <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
-          chesswithprince<span className="text-[color:var(--brass-base)]">.com</span>
-        </h1>
-        <span className="rounded-[var(--radius-pill)] border border-[color:var(--border-subtle)] bg-[var(--surface-inset)] px-3 py-1 font-[family-name:var(--type-font-numeric)] text-xs text-[color:var(--text-muted)]">
-          {snapshot?.engineTag ?? 'loading engine…'}
-        </span>
-        <button
-          onClick={() => setShowIntro(true)}
-          className="ml-auto grid min-h-[var(--icon-target-min)] min-w-[var(--icon-target-min)] place-items-center rounded-[var(--radius-pill)] border border-[color:var(--border-subtle)] bg-[var(--surface-inset)] text-[color:var(--text-muted)] transition hover:text-[color:var(--text-primary)]"
-          aria-label="How it works"
-          title="How it works"
-        >
-          <Icon name="help" />
-        </button>
-      </header>
+    <div className="mx-auto flex min-h-full max-w-6xl flex-col gap-4 px-4 pb-6 pt-4 sm:gap-6 sm:px-6 lg:px-10">
+      <WorkspaceHeader engineTag={snapshot?.engineTag} onHelp={openIntroExpanded} />
 
-      {showIntro && <WorkspaceIntro onDismiss={dismissIntro} onSelect={selectIntroRoute} />}
+      {showIntro && (
+        <WorkspaceIntro
+          expanded={introExpanded}
+          onExpandedChange={setIntroExpanded}
+          onDismiss={dismissIntro}
+          onSelect={selectIntroRoute}
+        />
+      )}
 
-      <main className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
-        <div className="flex flex-col items-center gap-2">
+      {/* DESIGN.md 8.2: one column on a phone in board → status → nav → inspector
+          order, two top-aligned columns from 1024 up. */}
+      <main
+        data-shell="main"
+        className="grid items-start gap-4 sm:gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-x-10 xl:grid-cols-[minmax(0,1fr)_380px]"
+      >
+        <div data-shell="board-column" className="flex flex-col items-center gap-2">
           <div className="flex w-full items-stretch justify-center gap-3">
             <div className="evalbar" title="Evaluation (White's perspective)">
               <div className="white" style={{ height: `${((snapshot?.evalFrac ?? 0.5) * 100).toFixed(1)}%` }} />
               <div className="mid" />
               <div className="num">{snapshot?.evalLabel ?? '0.0'}</div>
             </div>
-            <div className="flex min-w-0 flex-1 justify-center">
+            {/* DESIGN.md 8.2 caps the board at 560px on a tablet and 600px on a
+                desktop; capping the track lets `.board` keep owning its own
+                square sizing. */}
+            <div className="flex min-w-0 flex-1 justify-center sm:max-w-[560px] lg:max-w-[600px]">
               <div ref={boardRef} className="board" />
             </div>
           </div>
@@ -163,7 +170,7 @@ export function ChessWorkspaceLayout() {
             <div className="flex w-full max-w-[560px] items-center gap-1 rounded-[var(--radius-lg)] border border-[color:var(--border-subtle)] bg-[var(--canvas-sunken)] p-1">
               <IconButton icon="skip-back" onClick={() => controller.navFirst()} label="First move" />
               <IconButton icon="chevron-left" onClick={() => controller.navPrev()} label="Previous move" />
-              <div className="flex-1 text-center text-xs text-[color:var(--text-muted)]">
+              <div className="flex-1 text-center text-[color:var(--text-muted)] [font:var(--type-label)]">
                 {reviewPly === null ? (
                   <span>Live · move {Math.ceil(history.length / 2)} <span className="opacity-50">· use the arrow keys</span></span>
                 ) : (
@@ -179,16 +186,23 @@ export function ChessWorkspaceLayout() {
           )}
         </div>
 
-        <Card className="overflow-hidden">
-          <div className="border-b border-[color:var(--border-subtle)] bg-[var(--surface-inset)] p-4">
+        <Card shell="inspector" className="overflow-hidden">
+          <div
+            data-shell="status"
+            role="status"
+            className="border-b border-[color:var(--border-subtle)] bg-[var(--surface-inset)] p-4"
+          >
             <div className="flex items-center gap-2">
-              {snapshot?.thinking && <span className="inline-block h-3 w-3 animate-spin rounded-[var(--radius-pill)] border-2 border-[color:var(--brass-base)] border-r-transparent" />}
-              <div className="text-lg font-bold">{snapshot?.statusWho ?? 'Your move'}</div>
+              {snapshot?.thinking && <span className="ui-spinner" aria-hidden="true" />}
+              <div className="[font:var(--type-title)]">{snapshot?.statusWho ?? 'Your move'}</div>
             </div>
-            <div className="text-sm text-[color:var(--text-muted)]">{snapshot?.statusSub ?? 'White to play'}</div>
+            <div className="text-[color:var(--text-muted)] [font:var(--type-body-sm)]">{snapshot?.statusSub ?? 'White to play'}</div>
           </div>
           {snapshot?.banner && (
-            <div className="mx-4 mt-3 rounded-[var(--radius-sm)] border border-[color:var(--border-brass)] bg-[var(--surface-inset)] px-3 py-2.5 text-center text-sm font-semibold text-[color:var(--brass-base)]">
+            <div
+              role="status"
+              className="mx-4 mt-3 rounded-[var(--radius-sm)] border border-[color:var(--border-brass)] bg-[var(--surface-inset)] px-3 py-2.5 text-center text-[color:var(--brass-base)] [font:var(--type-heading)]"
+            >
               {snapshot.banner}
             </div>
           )}
