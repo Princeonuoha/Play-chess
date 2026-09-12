@@ -1,4 +1,5 @@
-import { useOutletContext } from 'react-router'
+import { useEffect, useRef } from 'react'
+import { useLocation, useOutletContext } from 'react-router'
 import type { ChessController, SetKey, Snapshot } from '../core/controller'
 import { GamesPanel } from '../panels/GamesPanel'
 import { PlayPanel } from '../panels/PlayPanel'
@@ -26,8 +27,22 @@ export type WorkspaceOutletContext = {
   readonly showToast: (message: string) => void
 }
 
+const INITIAL_HISTORY_ENTRY = 'default'
+
 function RouteHeading({ children }: { readonly children: string }) {
-  return <h2 className="sr-only">{children}</h2>
+  const heading = useRef<HTMLHeadingElement>(null)
+  const { key } = useLocation()
+
+  useEffect(() => {
+    if (key === INITIAL_HISTORY_ENTRY) return
+    heading.current?.focus()
+  }, [key])
+
+  return (
+    <h2 ref={heading} tabIndex={-1} data-route-heading={children} className="sr-only">
+      {children}
+    </h2>
+  )
 }
 
 export function PlayWorkspace() {
