@@ -14,7 +14,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "npm run test:e2e:baseline && npm run test:e2e:main && npm run test:e2e:showcase",
-    "test:e2e:baseline": "playwright test --project=baseline",
+    "test:e2e:baseline": "playwright test tests/baseline.spec.ts",
     "test:e2e:main": "playwright test --project=chromium",
     "test:e2e:showcase": "playwright test --config=playwright.showcase.config.ts",
     "react-doctor": "react-doctor --json --no-score -y > react-doctor-report.json",
