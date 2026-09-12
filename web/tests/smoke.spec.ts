@@ -60,12 +60,12 @@ test('P3 mode-model smoke', async ({ page }) => {
     // Given the Immortal Game; when auto-replay begins; then ten plies are visible within thirty seconds and replay stops.
     await page.getByRole('link', { name: 'Games', exact: true }).click()
     await page.getByLabel('Master game').selectOption({ label: 'The “Immortal Game” · 1851  (You: White)' })
-    await page.getByRole('button', { name: '▶ Watch this game' }).click()
+    await page.getByRole('button', { name: 'Watch this game' }).click()
     await expect
       .poll(() => page.locator('.tr-status').textContent(), { timeout: 30_000 })
       .toMatch(/· (?:[5-9]|[1-9]\d)[.…]/)
-    await page.getByRole('button', { name: '■ Stop replay' }).click()
-    await expect(page.getByRole('button', { name: '▶ Watch this game' })).toBeVisible()
+    await page.getByRole('button', { name: 'Stop replay' }).click()
+    await expect(page.getByRole('button', { name: 'Watch this game' })).toBeVisible()
   })
 
   await test.step('6. Analyze the position with three lines', async () => {
@@ -78,8 +78,8 @@ test('P3 mode-model smoke', async ({ page }) => {
   await test.step('7. Review a completed game and render grade labels', async () => {
     // Given the completed Immortal Game; when Review game runs; then React renders the completed review's graded move rows.
     await page.getByRole('link', { name: 'Games', exact: true }).click()
-    await page.getByRole('button', { name: '▶ Watch this game' }).click()
-    await expect(page.getByRole('button', { name: '■ Stop replay' })).toBeHidden({ timeout: 50_000 })
+    await page.getByRole('button', { name: 'Watch this game' }).click()
+    await expect(page.getByRole('button', { name: 'Stop replay' })).toBeHidden({ timeout: 50_000 })
     await page.getByRole('link', { name: 'Study', exact: true }).click()
     await page.getByRole('button', { name: 'Review game' }).click()
     await expect(page.getByRole('button', { name: 'Reviewing…' })).toBeVisible()
