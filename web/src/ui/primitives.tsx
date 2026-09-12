@@ -16,4 +16,4 @@ export { Btn, Field, GroupedSelect, Slider, type FieldControl, type Group } from
 export { Icon, IconButton, IconLabel, type IconName, type IconSize } from './icons'
 export { Surface, SegmentedNav, type SegmentItem } from './surfaces'
 export { EngineStatus, StatusNote, InlineFeedback, Loading, Empty, Error } from './feedback'
-export { DialogSurface, Toast, ToastRegion, type ToastMessage } from './overlays'
+export { DialogSurface, Toast, ToastRegion, type ToastMessage, type ToastTone } from './overlays'

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { type ChessController, GRADE_GLYPH, type MoveLabel, type ReviewItem, type Snapshot } from '../core/controller'
-import { Btn, Icon, InlineFeedback, SegmentedNav, Surface, type SegmentItem } from '../ui/primitives'
+import { Btn, Icon, InlineFeedback, SegmentedNav, Surface, type SegmentItem, type ToastTone } from '../ui/primitives'
 
 export interface StudyPanelProps {
   snap: Snapshot | null
@@ -10,7 +10,7 @@ export interface StudyPanelProps {
   /** Owned by `App`: the board scrubber's `canBrowse` guard reads it too. */
   exploring: boolean
   /** `App` owns the toast state; Copy PGN reports its result through this. */
-  showToast: (msg: string) => void
+  showToast: (msg: string, tone?: ToastTone) => void
   controller: ChessController
 }
 
@@ -113,19 +113,26 @@ export function StudyPanel({ snap, history, reviewPly, exploring, showToast, con
   const rows: { n: number; w: string; b: string }[] = []
   for (let i = 0; i < history.length; i += 2) rows.push({ n: i / 2 + 1, w: history[i] || '', b: history[i + 1] || '' })
 
+  /**
+   * The `window.prompt` last resort is DESIGN.md 8.7 accepted debt D-04. It is
+   * deliberately deferred a frame: a synchronous modal blocks the paint that
+   * commits the live-region text, so announcing first is what keeps the
+   * failure audible at all.
+   */
   const copyPGN = () => {
     const pgn = controller.getPGN()
     if (!pgn) {
       showToast('No moves to export yet')
       return
     }
+    const fallback = () => {
+      showToast('Couldn’t reach the clipboard — copy the PGN from the box that follows.', 'error')
+      requestAnimationFrame(() => window.prompt('Copy the PGN:', pgn))
+    }
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(pgn).then(
-        () => showToast('PGN copied to clipboard'),
-        () => window.prompt('Copy the PGN:', pgn),
-      )
+      navigator.clipboard.writeText(pgn).then(() => showToast('PGN copied to clipboard'), fallback)
     } else {
-      window.prompt('Copy the PGN:', pgn)
+      fallback()
     }
   }
 
@@ -316,7 +323,12 @@ export function StudyPanel({ snap, history, reviewPly, exploring, showToast, con
                     </tbody>
                   </table>
                 ) : (
-                  <p className="ui-field-desc p-3">No moves yet.</p>
+                  <div className="p-3">
+                    <InlineFeedback
+                      state="empty"
+                      message="No moves yet. Play a game, or replay one from Games, and the score is written here as it goes."
+                    />
+                  </div>
                 )}
               </div>
             </div>
@@ -365,7 +377,10 @@ export function StudyPanel({ snap, history, reviewPly, exploring, showToast, con
               ) : analysis.length ? (
                 <AnalysisLines lines={analysis} />
               ) : (
-                <p className="ui-field-desc">Run Analyze to rank the strongest moves here.</p>
+                <InlineFeedback
+                  state="empty"
+                  message="No lines yet. Run Analyze to rank the strongest moves in this position."
+                />
               )}
             </div>
 

@@ -724,6 +724,24 @@
   min-width: 0;
 }
 
+/* The workspace's docked position for the regions. Transparent to the pointer,
+   so neither an empty dock nor the full-width band beside a visible toast ever
+   intercepts a click meant for the board beneath it. */
+.ui-toastdock {
+  position: fixed;
+  inset-inline: 0;
+  bottom: var(--space-6);
+  z-index: var(--z-toast);
+  display: grid;
+  justify-items: center;
+  padding-inline: var(--space-4);
+  pointer-events: none;
+}
+
+.ui-toastdock .ui-toast {
+  pointer-events: auto;
+}
+
 .ui-toast {
   display: flex;
   align-items: center;

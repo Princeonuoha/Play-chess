@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router'
 import { ChessController, type Snapshot } from '../core/controller'
 import {
   Card,
+  engineState,
   PromotionDialog,
   type Promotion,
   type WorkspaceRoute,
@@ -12,8 +13,14 @@ import {
   WORKSPACE_ROUTES,
 } from './WorkspaceChrome'
 import { WorkspaceGuide } from './WorkspaceGuide'
-import { IconButton } from '../ui/primitives'
+import { EngineStatus, IconButton, ToastRegion, type ToastMessage, type ToastTone } from '../ui/primitives'
 import type { WorkspaceOutletContext } from './WorkspaceRoutes'
+
+/** Long enough to read a confirmation, short enough not to sit over the board. */
+const TOAST_DISMISS_MS = 2200
+
+/** Beyond three the stack stops being readable and starts being a wall. */
+const TOAST_STACK_MAX = 3
 
 function difficulty(value: number): { readonly name: string; readonly elo: string } {
   if (value >= 20) return { name: 'Maximum', elo: 'Max' }
@@ -31,8 +38,8 @@ export function ChessWorkspaceLayout() {
   const controllerRef = useRef<ChessController | null>(null)
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null)
   const [promotion, setPromotion] = useState<Promotion | null>(null)
-  const [toast, setToast] = useState('')
-  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [toasts, setToasts] = useState<readonly ToastMessage[]>([])
+  const toastSeq = useRef(0)
   const [sideChoice, setSideChoice] = useState<'white' | 'black' | 'random'>('white')
   const [elo, setElo] = useState(4)
   const [thinkTime, setThinkTime] = useState(1000)
@@ -96,11 +103,14 @@ export function ChessWorkspaceLayout() {
     navigate(route.path)
     dismissIntro()
   }
-  const showToast = (message: string) => {
-    setToast(message)
-    if (toastTimer.current) clearTimeout(toastTimer.current)
-    toastTimer.current = setTimeout(() => setToast(''), 2200)
-  }
+  const showToast = useCallback((message: string, tone: ToastTone = 'default') => {
+    toastSeq.current += 1
+    const entry: ToastMessage = { id: `toast-${toastSeq.current}`, text: message, tone }
+    setToasts((all) => [...all, entry].slice(-TOAST_STACK_MAX))
+  }, [])
+  const dismissToast = useCallback((id: string) => {
+    setToasts((all) => all.filter((toast) => toast.id !== id))
+  }, [])
 
   const selfPlay = snapshot?.selfPlay ?? false
   const replaying = snapshot?.replaying ?? false
@@ -109,6 +119,7 @@ export function ChessWorkspaceLayout() {
   const exploring = snapshot?.exploring ?? false
   const history = snapshot?.history ?? []
   const canBrowse = history.length > 0 && !selfPlay && !replaying && !exploring && !(snapshot?.thinking ?? false)
+  const engine = engineState(snapshot?.engineTag)
   const outletContext: WorkspaceOutletContext = {
     controller,
     snapshot,
@@ -184,6 +195,23 @@ export function ChessWorkspaceLayout() {
             </div>
             <div className="text-[color:var(--text-muted)] [font:var(--type-body-sm)]">{snapshot?.statusSub ?? 'White to play'}</div>
           </div>
+          {/* DESIGN.md 7.3 `EngineStatus`. Ready needs no block here — the
+              header pill already carries and announces it; the two states that
+              change what the board can do are the ones that earn the space. */}
+          {engine !== 'ready' && (
+            <div data-shell="engine-state" className="border-b border-[color:var(--border-subtle)] px-4 py-3">
+              <EngineStatus
+                state={engine}
+                announce={engine === 'error'}
+                detail={
+                  engine === 'error'
+                    ? 'Stockfish could not start, so the board will not reply to your moves.'
+                    : undefined
+                }
+                onRetry={engine === 'error' ? () => controller.boot() : undefined}
+              />
+            </div>
+          )}
           {snapshot?.banner && (
             <div
               role="status"
@@ -216,11 +244,9 @@ export function ChessWorkspaceLayout() {
           }}
         />
       )}
-      {toast && (
-        <div className="fixed bottom-7 left-1/2 z-[var(--z-toast)] -translate-x-1/2 rounded-[var(--radius-lg)] border border-[color:var(--border-brass)] bg-[color:var(--surface-1)] px-4 py-2.5 text-sm shadow-[var(--depth-floating)]">
-          {toast}
-        </div>
-      )}
+      <div className="ui-toastdock">
+        <ToastRegion toasts={toasts} onDismiss={dismissToast} autoDismissMs={TOAST_DISMISS_MS} />
+      </div>
     </div>
   )
 }

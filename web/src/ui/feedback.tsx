@@ -7,16 +7,23 @@ import { Icon } from './icons'
  * announced once; failure is `role="alert"` because it changes what the board
  * can do. Every tone pairs its colour with a word — the dot is never the
  * carrier.
+ *
+ * `announce` exists because the workspace shows engine readiness twice: the
+ * header pill is the product's global announcer, so a second instance repeats
+ * the state visually without claiming the live region a second time. Failure
+ * always announces — it is the one transition that costs the player a move.
  */
 export function EngineStatus({
   state,
   engine,
   detail,
+  announce = true,
   onRetry,
 }: {
   readonly state: 'ready' | 'loading' | 'error'
   readonly engine?: string
   readonly detail?: string
+  readonly announce?: boolean
   readonly onRetry?: () => void
 }) {
   if (state === 'error') {
@@ -39,7 +46,11 @@ export function EngineStatus({
   }
 
   return (
-    <p className="ui-engine" role="status" aria-busy={state === 'loading' ? true : undefined}>
+    <p
+      className="ui-engine"
+      role={announce ? 'status' : undefined}
+      aria-busy={state === 'loading' ? true : undefined}
+    >
       {state === 'loading' ? (
         <>
           <span className="ui-spinner" aria-hidden="true" />

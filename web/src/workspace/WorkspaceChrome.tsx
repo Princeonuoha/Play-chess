@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { NavLink } from 'react-router'
 import { pieceSVG } from '../core/pieces'
-import { Icon, IconButton, type IconName } from '../ui/primitives'
+import { Btn, DialogSurface, Icon, IconButton, type IconName } from '../ui/primitives'
 
 export type WorkspaceRoute = {
   readonly path: '/play' | '/openings' | '/games' | '/study'
@@ -18,6 +18,12 @@ export const WORKSPACE_ROUTES = [
 ] as const satisfies readonly WorkspaceRoute[]
 
 export type Promotion = { readonly from: string; readonly to: string; readonly color: string }
+
+/** The controller's engine tag, read as the three states DESIGN.md 7.3 names. */
+export function engineState(tag: string | undefined): 'loading' | 'ready' | 'error' {
+  if (tag === undefined || tag === 'loading engine…') return 'loading'
+  return tag === 'engine failed to load' ? 'error' : 'ready'
+}
 
 export function Card({
   children,
@@ -69,8 +75,8 @@ export function WorkspaceHeader({
   readonly onHelp: () => void
 }) {
   const tag = engineTag ?? 'loading engine…'
-  const loading = tag === 'loading engine…'
-  const failed = tag === 'engine failed to load'
+  const state = engineState(engineTag)
+  const loading = state === 'loading'
 
   return (
     <header data-shell="header" className="flex items-center gap-2 sm:gap-3">
@@ -86,7 +92,7 @@ export function WorkspaceHeader({
         {loading ? (
           <span className="ui-spinner" aria-hidden="true" />
         ) : (
-          <span className="ui-dot" data-tone={failed ? 'critical' : undefined} aria-hidden="true" />
+          <span className="ui-dot" data-tone={state === 'error' ? 'critical' : undefined} aria-hidden="true" />
         )}
         {/* A phone cannot hold the whole build string beside the wordmark and a
             44px control; the tag elides its source suffix there and stays whole
@@ -186,6 +192,15 @@ const PROMOTION_PIECES = [
   { piece: 'n', name: 'Knight' },
 ] as const
 
+/**
+ * DESIGN.md 7.3 `DialogSurface`, 8.5 A11Y-10.
+ *
+ * The title carries no dismiss row of its own (`dismiss="none"`) for two
+ * reasons: cancelling a promotion has a consequence — the pawn goes back to
+ * the square it came from — so the exit is worded rather than an ×, and the
+ * choices must stay the heading's immediate neighbour, which is the structure
+ * `tests/baseline.spec.ts` reads to count them.
+ */
 export function PromotionDialog({
   promotion,
   onCancel,
@@ -196,23 +211,26 @@ export function PromotionDialog({
   readonly onChoose: (piece: string) => void
 }) {
   return (
-    <div className="fixed inset-0 z-[var(--z-dialog)] grid place-items-center bg-[var(--canvas-scrim)]" onClick={onCancel}>
-      <div className="rounded-[var(--radius-xl)] border border-[color:var(--border-subtle)] bg-[color:var(--surface-1)] p-4 text-center shadow-[var(--depth-overlay)]" onClick={(event) => event.stopPropagation()}>
-        <h3 className="mb-3 text-sm font-semibold text-[color:var(--text-muted)]">Promote to</h3>
-        <div className="flex gap-2">
-          {PROMOTION_PIECES.map(({ piece, name }) => (
-            <button
-              key={piece}
-              onClick={() => onChoose(piece)}
-              aria-label={`Promote to ${name}`}
-              title={`Promote to ${name}`}
-              className="grid h-16 w-16 min-h-[var(--icon-target-min)] min-w-[var(--icon-target-min)] place-items-center rounded-[var(--radius-lg)] border border-[color:var(--border-subtle)] bg-[var(--surface-inset)] hover:border-[color:var(--brass-base)]"
-              dangerouslySetInnerHTML={{ __html: pieceSVG(piece, promotion.color) }}
-              style={{ padding: 8 }}
-            />
-          ))}
-        </div>
+    <DialogSurface open title="Promote to" titleAs="h3" dismiss="none" onClose={onCancel}>
+      <div className="ui-dialog-row">
+        {PROMOTION_PIECES.map(({ piece, name }, index) => (
+          <button
+            key={piece}
+            type="button"
+            data-dialog-autofocus={index === 0 ? true : undefined}
+            onClick={() => onChoose(piece)}
+            aria-label={`Promote to ${name}`}
+            className="grid h-16 w-16 min-h-[var(--icon-target-min)] min-w-[var(--icon-target-min)] place-items-center rounded-[var(--radius-lg)] border border-[color:var(--border-subtle)] bg-[var(--surface-inset)] p-2 hover:border-[color:var(--brass-base)]"
+            dangerouslySetInnerHTML={{ __html: pieceSVG(piece, promotion.color) }}
+          />
+        ))}
       </div>
-    </div>
+      <p className="ui-dialog-body">
+        Your pawn reaches {promotion.to} and becomes the piece you choose. Cancel returns it to {promotion.from}.
+      </p>
+      <Btn icon="close" onClick={onCancel}>
+        Cancel promotion
+      </Btn>
+    </DialogSurface>
   )
 }

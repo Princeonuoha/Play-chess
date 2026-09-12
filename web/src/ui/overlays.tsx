@@ -42,16 +42,30 @@ function wrapTab(node: HTMLDialogElement, event: React.KeyboardEvent<HTMLDialogE
 export function DialogSurface({
   open,
   title,
+  titleAs: Heading = 'h2',
   description,
   onClose,
+  dismiss = 'head',
   dismissLabel = 'Close dialog',
   backdropClosable = true,
   children,
 }: {
   readonly open: boolean
   readonly title: string
+  /**
+   * The dialog's own heading level. A dialog opened from inside a route's
+   * `<h2>` section reads as that section's subordinate, so it may declare
+   * `h3` rather than restart the document outline at `h2`.
+   */
+  readonly titleAs?: 'h2' | 'h3'
   readonly description?: string
   readonly onClose: () => void
+  /**
+   * `head` pairs the title with the dismiss `IconButton`. `none` hands the
+   * dismiss duty to the caller, for a dialog whose exit has a consequence
+   * worth wording (`Cancel promotion`) rather than a bare ×.
+   */
+  readonly dismiss?: 'head' | 'none'
   readonly dismissLabel?: string
   readonly backdropClosable?: boolean
   readonly children?: ReactNode
@@ -72,6 +86,21 @@ export function DialogSurface({
     if (!open && node.open) node.close()
   }, [open])
 
+  /**
+   * A caller that closes by unmounting — a promotion choice resolves the move
+   * and the dialog stops existing — removes the element from the top layer
+   * without the `close` event ever firing, which would strand focus on the
+   * body. Restoring here as well keeps DESIGN.md 8.5 A11Y-10 true for that
+   * route out too; the two paths are mutually exclusive, so focus is never
+   * moved twice.
+   */
+  useEffect(
+    () => () => {
+      if (dialog.current?.open === true) invoker.current?.focus()
+    },
+    [],
+  )
+
   if (typeof document === 'undefined') return null
 
   return createPortal(
@@ -90,12 +119,18 @@ export function DialogSurface({
         if (dialog.current !== null) wrapTab(dialog.current, event)
       }}
     >
-      <div className="ui-dialog-head">
-        <h2 className="ui-dialog-title" id={titleId}>
+      {dismiss === 'head' ? (
+        <div className="ui-dialog-head">
+          <Heading className="ui-dialog-title" id={titleId}>
+            {title}
+          </Heading>
+          <IconButton icon="close" label={dismissLabel} onClick={onClose} />
+        </div>
+      ) : (
+        <Heading className="ui-dialog-title" id={titleId}>
           {title}
-        </h2>
-        <IconButton icon="close" label={dismissLabel} onClick={onClose} />
-      </div>
+        </Heading>
+      )}
       {description !== undefined && <p className="ui-dialog-body">{description}</p>}
       {children}
     </dialog>,
@@ -103,17 +138,24 @@ export function DialogSurface({
   )
 }
 
+export type ToastTone = 'default' | 'error'
+
 export type ToastMessage = {
   readonly id: string
   readonly text: string
-  readonly tone?: 'default' | 'error'
+  readonly tone?: ToastTone
 }
 
 /**
- * DESIGN.md 7.3 `Toast`. The region is permanent so the live region exists
- * before the first message does; a toast never takes focus, and its countdown
- * pauses while the pointer or the keyboard is inside it so a dismiss target
- * cannot vanish from under the user.
+ * DESIGN.md 7.3 `Toast` / 8.5 A11Y-07. Politeness is a property of the region,
+ * not of a message, so the two politenesses are two permanent regions and a
+ * message is rendered into the one its tone earns: routine confirmations wait
+ * their turn, a failure interrupts. Both exist before the first message does,
+ * because a live region created at announcement time is not announced.
+ *
+ * A toast never takes focus. Its countdown pauses while the pointer or the
+ * keyboard is inside either lane, so a dismiss target cannot vanish from under
+ * the user.
  */
 export function ToastRegion({
   toasts,
@@ -134,20 +176,34 @@ export function ToastRegion({
     return () => window.clearTimeout(timer)
   }, [autoDismissMs, paused, toasts, onDismiss])
 
-  return (
+  const hold = {
+    onPointerEnter: () => setPaused(true),
+    onPointerLeave: () => setPaused(false),
+    onFocusCapture: () => setPaused(true),
+    onBlurCapture: () => setPaused(false),
+  }
+
+  const lane = (politeness: 'polite' | 'assertive') => (
     <div
       className="ui-toastregion"
-      aria-live="polite"
+      data-toast-lane={politeness}
+      aria-live={politeness}
       aria-atomic="false"
-      onPointerEnter={() => setPaused(true)}
-      onPointerLeave={() => setPaused(false)}
-      onFocusCapture={() => setPaused(true)}
-      onBlurCapture={() => setPaused(false)}
+      {...hold}
     >
-      {toasts.map((toast) => (
-        <Toast key={toast.id} toast={toast} dismissLabel={dismissLabel} onDismiss={onDismiss} />
-      ))}
+      {toasts
+        .filter((toast) => (toast.tone === 'error' ? politeness === 'assertive' : politeness === 'polite'))
+        .map((toast) => (
+          <Toast key={toast.id} toast={toast} dismissLabel={dismissLabel} onDismiss={onDismiss} />
+        ))}
     </div>
+  )
+
+  return (
+    <>
+      {lane('polite')}
+      {lane('assertive')}
+    </>
   )
 }
 

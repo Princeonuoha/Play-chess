@@ -1,12 +1,13 @@
 import { useEffect, useRef } from 'react'
-import { useLocation, useOutletContext } from 'react-router'
+import { useLocation, useNavigate, useOutletContext } from 'react-router'
 import type { ChessController, SetKey, Snapshot } from '../core/controller'
 import { GamesPanel } from '../panels/GamesPanel'
 import { PlayPanel } from '../panels/PlayPanel'
 import { StudyPanel } from '../panels/StudyPanel'
 import { TrainPanel } from '../panels/TrainPanel'
 import { IconLabel } from '../ui/icons'
-import { Loading } from '../ui/primitives'
+import { Empty, Loading, type ToastTone } from '../ui/primitives'
+import { WORKSPACE_ROUTES } from './WorkspaceChrome'
 import { RouteHint } from './WorkspaceGuide'
 
 type SideChoice = 'white' | 'black' | 'random'
@@ -27,7 +28,7 @@ export type WorkspaceOutletContext = {
   readonly reviewPly: number | null
   readonly exploring: boolean
   readonly history: string[]
-  readonly showToast: (message: string) => void
+  readonly showToast: (message: string, tone?: ToastTone) => void
 }
 
 const INITIAL_HISTORY_ENTRY = 'default'
@@ -152,5 +153,15 @@ export function StudyWorkspace() {
 }
 
 export function UnknownWorkspace() {
-  return <RouteHeading>Workspace not found</RouteHeading>
+  const navigate = useNavigate()
+  return (
+    <>
+      <RouteHeading>Workspace not found</RouteHeading>
+      <Empty
+        message="That address is not one of the four workspaces. Your board and your game are untouched — pick up where you left off in Play."
+        actionLabel="Go to Play"
+        onAction={() => navigate(WORKSPACE_ROUTES[0].path)}
+      />
+    </>
+  )
 }
