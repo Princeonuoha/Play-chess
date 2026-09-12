@@ -218,13 +218,15 @@ export function readIntent(game: Chess, selected: string | null, raw: string): I
   }
 
   const notated = text.replace(/[!?\s]/g, '').replace(/0/g, 'O')
+  /* Check, mate and the promotion piece are all decorations on the same move:
+     `bxa8`, `bxa8=Q` and `bxa8=N` are one instruction as far as the board is
+     concerned, because the piece is chosen in the promotion dialog. Comparing
+     the undecorated forms is what lets a player type what they would say. */
+  const bare = (san: string) => san.replace(/[+#]/g, '').replace(/=[QRBNqrbn]/, '')
+  const target = bare(notated)
   const verbose = game.moves({ verbose: true }) as Move[]
   const direct = verbose.find(
-    (move) =>
-      move.san === notated ||
-      move.san.replace(/[+#]/g, '') === notated.replace(/[+#]/g, '') ||
-      move.lan === word ||
-      `${move.from}${move.to}` === word,
+    (move) => move.san === notated || bare(move.san) === target || move.lan === word || `${move.from}${move.to}` === word,
   )
   if (direct) return { kind: 'move', move: direct }
 

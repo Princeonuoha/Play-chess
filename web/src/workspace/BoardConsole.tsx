@@ -68,41 +68,71 @@ function alreadySelected(board: HTMLElement, square: string): boolean {
 }
 
 /**
- * Plays `from`→`to` as the board's own tap-then-tap gesture.
+ * Sends the board the first half of a tap-then-tap gesture: pick this piece up.
  *
  * The controller captures the pointer on `pointerdown` so a real drag keeps
  * receiving events after the finger leaves the piece. A typed move has no
  * device behind it, and `setPointerCapture` throws `NotFoundError` for a
  * pointer id nothing owns — which would escape as an uncaught page error. The
  * capture is therefore stubbed on that one element for the two synchronous
- * dispatches of the gesture and handed straight back.
+ * dispatches of the gesture and handed straight back. The matching `pointerup`
+ * ends the gesture the controller thinks is a drag, so the piece is put back on
+ * its square and nothing is left mid-drag.
+ */
+function tapPiece(board: HTMLElement, square: string): boolean {
+  const at = centreOf(board, square)
+  const layer = board.querySelector<HTMLElement>('.piece-layer')
+  const piece = board.querySelector<HTMLElement>(`.piece[data-square="${square}"]`)
+  if (at === null || layer === null || piece === null) return false
+
+  const own = Object.getOwnPropertyDescriptor(piece, 'setPointerCapture')
+  Object.defineProperty(piece, 'setPointerCapture', { value: () => {}, configurable: true, writable: true })
+  try {
+    piece.dispatchEvent(pointerAt('pointerdown', at))
+    layer.dispatchEvent(pointerAt('pointerup', at))
+  } finally {
+    if (own === undefined) Reflect.deleteProperty(piece, 'setPointerCapture')
+    else Object.defineProperty(piece, 'setPointerCapture', own)
+  }
+  return true
+}
+
+/**
+ * Selects a square on the real board, so a typed selection lights the same ring
+ * and the same destination dots a tapped one does. A player using a magnifier
+ * types and sees; the two surfaces never show different selections.
+ *
+ * The board refuses input while a piece is still travelling, and it refuses it
+ * silently — which for this surface would mean a screen-reader user typing into
+ * nothing. The controller's own selection ring is therefore read back as the
+ * receipt: no ring, no selection, and the caller has something to say.
+ */
+export function selectThroughBoard(board: HTMLElement, square: string): boolean {
+  if (alreadySelected(board, square)) return true
+  return tapPiece(board, square) && alreadySelected(board, square)
+}
+
+/** Drops a typed selection by tapping the held piece again, which is how the board toggles it off. */
+export function clearThroughBoard(board: HTMLElement | null, square: string | null): void {
+  if (board !== null && square !== null && alreadySelected(board, square)) tapPiece(board, square)
+}
+
+/**
+ * Plays `from`→`to` as the board's own tap-then-tap gesture.
  *
  * The release tap is sent to the piece layer rather than to a piece, so
  * `closest('.piece')` is null there and the controller reads it as "tapped a
  * destination" — which is exactly how a capture works by pointer too.
  */
 export function playThroughBoard(board: HTMLElement, from: string, to: string): boolean {
-  const start = centreOf(board, from)
   const end = centreOf(board, to)
   const layer = board.querySelector<HTMLElement>('.piece-layer')
-  const piece = board.querySelector<HTMLElement>(`.piece[data-square="${from}"]`)
-  if (start === null || end === null || layer === null || piece === null) return false
-
-  if (!alreadySelected(board, from)) {
-    const own = Object.getOwnPropertyDescriptor(piece, 'setPointerCapture')
-    Object.defineProperty(piece, 'setPointerCapture', { value: () => {}, configurable: true, writable: true })
-    try {
-      piece.dispatchEvent(pointerAt('pointerdown', start))
-      layer.dispatchEvent(pointerAt('pointerup', start))
-    } finally {
-      if (own === undefined) Reflect.deleteProperty(piece, 'setPointerCapture')
-      else Object.defineProperty(piece, 'setPointerCapture', own)
-    }
-  }
-
+  if (end === null || layer === null || !selectThroughBoard(board, from)) return false
   layer.dispatchEvent(pointerAt('pointerdown', end))
   return true
 }
+
+const BUSY = 'The board is still finishing the last move. Try again in a moment.'
 
 const INSTRUCTIONS =
   'Type a square such as e2 to pick a piece up and hear where it can go, then type the destination. ' +
@@ -161,6 +191,7 @@ export function BoardConsole({
     }
     const intent = readIntent(board.game, selected, entry)
     if (intent.kind === 'clear') {
+      clearThroughBoard(node, selected)
       setSelected(null)
       setEntry('')
       setAnnouncement('Selection cleared.')
@@ -172,6 +203,11 @@ export function BoardConsole({
     }
     if (intent.kind === 'select') {
       const cell = board.game.get(intent.square as Square)
+      clearThroughBoard(node, selected)
+      if (!selectThroughBoard(node, intent.square)) {
+        setAnnouncement(BUSY)
+        return
+      }
       setSelected(intent.square)
       setEntry('')
       setAnnouncement(
@@ -183,7 +219,7 @@ export function BoardConsole({
     }
     setEntry('')
     if (!playThroughBoard(node, intent.move.from, intent.move.to)) {
-      setAnnouncement('The board is not ready for that move yet.')
+      setAnnouncement(BUSY)
       return
     }
     setSelected(null)
@@ -200,6 +236,7 @@ export function BoardConsole({
            selection without leaving the field. */
         if (event.key === 'Escape' && selected !== null) {
           event.preventDefault()
+          clearThroughBoard(boardRef.current, selected)
           setSelected(null)
           setAnnouncement('Selection cleared.')
         }
