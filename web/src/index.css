@@ -32,7 +32,7 @@
   --board-square-ivory: #eeeed2;
   --board-square-green: #769656;
   --board-coord-on-ivory: #3d4f2c;
-  --board-coord-on-green: #26331a;
+  --board-coord-on-green: #1b2412;
   --board-rim: #0a0f14;
   --board-select: color-mix(in oklab, var(--brass-base) 40%, transparent);
   --board-last: color-mix(in oklab, var(--brass-base) 20%, transparent);

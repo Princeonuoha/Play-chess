@@ -96,7 +96,7 @@ Everything drawn *on* the board is a separate, changeable token:
 | Token | Value | Use |
 | --- | --- | --- |
 | `--board-coord-on-ivory` | `#3d4f2c` | Rank/file coordinate ink on an ivory square. Measured 7.5:1 against `#eeeed2` at full opacity. |
-| `--board-coord-on-green` | `#26331a` | Rank/file coordinate ink on a green square. Measured 4.6:1 against `#769656` at full opacity. |
+| `--board-coord-on-green` | `#1b2412` | Rank/file coordinate ink on a green square. Measured 4.8:1 against `#769656` at full opacity. |
 | `--board-rim` | `#0a0f14` | 1px board frame. |
 | `--board-select` | `color-mix(in oklab, var(--brass-base) 40%, transparent)` | Selected-square wash. |
 | `--board-last` | `color-mix(in oklab, var(--brass-base) 20%, transparent)` | Last-move wash. |
@@ -592,7 +592,7 @@ the validator fails.
 | `--brass-base` on `--canvas-base` | 7.2:1 | ≥4.5:1 (text) / ≥3:1 (UI edges) |
 | `--text-on-brass` on `--brass-base` | 7.2:1 | ≥4.5:1 |
 | `--board-coord-on-ivory` on `--board-square-ivory` | 7.5:1 | ≥4.5:1 |
-| `--board-coord-on-green` on `--board-square-green` | 4.6:1 | ≥4.5:1 |
+| `--board-coord-on-green` on `--board-square-green` | 4.8:1 | ≥4.5:1 |
 
 A contrast script re-computes this table in todo 9 and fails the build on any regression.
 
