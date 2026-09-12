@@ -9,7 +9,7 @@ worktree `/Users/prince.onuoha/work/tmp/chess-stockfish-worktrees/frontend-visua
 | --- | --- |
 | The one icon family (local typed SVG, no dependency) | `web/src/ui/icons.tsx` — `Icon`, `IconButton`, `IconLabel`, `IconName`, `IconSize`, 14 marks |
 | Icon gate | `web/scripts/verify-icons.mjs`, wired as `npm run verify:icons` and into `verify:design` **and `build`** |
-| Contract record | `DESIGN.md` 5.1 (family chosen + module path) and 5.4 (the three surviving domain glyphs, by site) |
+| Contract record | `DESIGN.md` 5.1 (family chosen + module path) and 5.4 (the surviving domain glyphs, by site) |
 
 `web/src/workspace/WorkspaceChrome.tsx`'s todo-7 `NavIcon` was absorbed into the module rather than
 duplicated: the navigation artwork is byte-identical, now sourced from `ICON_ARTWORK`, and the
@@ -36,7 +36,9 @@ onboarding cards draw the same mark as the destination they link to.
 
 Kept as text under DESIGN.md 5.4, now rendered in `--type-font-numeric` and `aria-hidden` where the
 spelled grade is already visible: `★` Best, `✓` Good / book move, `✗` off book, `?!`, `?`, `??`.
-The gate allows exactly `U+2605`, `U+2713`, `U+2717` and nothing else.
+The gate allows exactly `U+2605`, `U+2713`, `U+2717` and nothing else. `StudyPanel`'s duplicate
+`LABEL_ICON` map was deleted in favour of `GRADE_GLYPH` from `web/src/core/controller.ts`, so the
+documented exception now has exactly one declaration feeding both the board badge and the panel.
 
 ## Runtime proof (`before/report.json` vs `after/report.json`)
 
@@ -65,8 +67,9 @@ at 1280 and 375 CSS px.
 
 ## Bundle impact (`bundle-delta.txt`)
 
-No dependency added. `+3,227 B` raw / `+622 B` gzip total (JS `+3,272 B` raw / `+630 B` gzip;
-CSS `-45 B` raw / `-8 B` gzip — the deleted `h-5 w-5` icon utilities).
+No dependency added. `+3,159 B` raw / `+586 B` gzip total (JS `+3,204 B` raw / `+594 B` gzip;
+CSS `-45 B` raw / `-8 B` gzip — the deleted `h-5 w-5` icon utilities). Measured against the
+pre-task build `54c1e82`.
 
 ## Gate failure proof (`icon-audit-failure-proof.txt`)
 
@@ -105,6 +108,8 @@ npx playwright test --project=chromium --no-deps \
   tests/routes.spec.ts tests/navigation.spec.ts tests/smoke.spec.ts
                                                 20 passed (routes 12, navigation 7, smoke 1)
 ```
+
+Run twice: once before and once after the `GRADE_GLYPH` dedupe, 20 passed both times.
 
 `baseline.spec.ts` and `showcase.spec.ts` were not run: another worker owns them, plus
 `playwright.config.ts` and `.github/workflows/ci.yml`, and the chromium project declares a
