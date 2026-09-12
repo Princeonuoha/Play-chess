@@ -50,6 +50,55 @@ const SAFE_AREA_TRACK = {
   scrollMarginBottom: 'env(safe-area-inset-bottom)',
 } as const
 
+const NAV_ICON_ARTWORK = {
+  '/play': (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M10.2 8.4 16 12l-5.8 3.6Z" />
+    </>
+  ),
+  '/openings': (
+    <>
+      <path d="M12 7.2V20" />
+      <path d="M3 17.4V4.2h4.8A4.2 4.2 0 0 1 12 7.2a4.2 4.2 0 0 1 4.2-3H21v13.2h-5.4A3.6 3.6 0 0 0 12 20a3.6 3.6 0 0 0-3.6-2.6Z" />
+    </>
+  ),
+  '/games': (
+    <>
+      <path d="M6.6 9.2H5.1a2.4 2.4 0 0 1 0-4.8h1.5" />
+      <path d="M17.4 9.2h1.5a2.4 2.4 0 0 0 0-4.8h-1.5" />
+      <path d="M4.8 20.4h14.4" />
+      <path d="M10.2 14.4v2.3c0 1.1-1.4 1.6-2.1 2.4a3 3 0 0 0-.6 1.3" />
+      <path d="M13.8 14.4v2.3c0 1.1 1.4 1.6 2.1 2.4a3 3 0 0 1 .6 1.3" />
+      <path d="M17.4 3.6H6.6v5.8a5.4 5.4 0 0 0 10.8 0Z" />
+    </>
+  ),
+  '/study': (
+    <>
+      <circle cx="10.8" cy="10.8" r="6.6" />
+      <path d="m20.4 20.4-4.9-4.9" />
+    </>
+  ),
+} satisfies Record<WorkspaceRoute['path'], ReactNode>
+
+function NavIcon({ path }: { readonly path: WorkspaceRoute['path'] }) {
+  return (
+    <svg
+      aria-hidden="true"
+      focusable="false"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.75}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-5 w-5 shrink-0"
+    >
+      {NAV_ICON_ARTWORK[path]}
+    </svg>
+  )
+}
+
 export function WorkspaceNavigation() {
   return (
     <div data-nav-safe-area="true" style={SAFE_AREA_TRACK} className="m-1.5 flex gap-2 rounded-xl bg-black/20 p-1">
@@ -59,7 +108,7 @@ export function WorkspaceNavigation() {
             key={route.path}
             to={route.path}
             className={({ isActive }) =>
-              'flex min-h-11 min-w-11 flex-1 flex-col items-center justify-center gap-1 rounded-lg px-2 py-2 text-center text-sm transition ' +
+              'flex min-h-11 min-w-11 flex-1 flex-col items-center justify-center gap-1 rounded-lg px-1 py-2 text-center text-xs transition sm:px-2 sm:text-sm ' +
               (isActive
                 ? 'bg-[var(--color-brass)] font-extrabold text-[#1a130a] shadow'
                 : 'font-semibold text-[var(--color-muted)] hover:text-[var(--color-ink)]')
@@ -67,6 +116,7 @@ export function WorkspaceNavigation() {
           >
             {({ isActive }) => (
               <>
+                <NavIcon path={route.path} />
                 <span>{route.label}</span>
                 <span
                   aria-hidden="true"
