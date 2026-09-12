@@ -15,7 +15,7 @@ const FOCUSABLE = 'button:not(:disabled), summary, [href], input:not(:disabled),
 /** The caller's marked target, or the first focusable thing inside it. */
 function initialFocus(node: HTMLDialogElement): HTMLElement | null {
   const marked = node.querySelector<HTMLElement>('[data-dialog-autofocus]')
-  if (marked === null) return null
+  if (marked === null) return node.querySelector<HTMLElement>(FOCUSABLE)
   return marked.matches(FOCUSABLE) ? marked : marked.querySelector<HTMLElement>(FOCUSABLE)
 }
 
@@ -37,6 +37,24 @@ function wrapTab(node: HTMLDialogElement, event: React.KeyboardEvent<HTMLDialogE
   if (document.activeElement !== edge) return
   event.preventDefault()
   ;(event.shiftKey ? stops[stops.length - 1] : stops[0]).focus()
+}
+
+/**
+ * DESIGN.md 8.5 A11Y-10 focus restoration.
+ *
+ * Not every dialog is opened by a control: the promotion dialog is raised by a
+ * pointer sequence on the board, so its invoker is the body — and `body.focus()`
+ * is a no-op, which would leave focus sitting on a dialog control that is about
+ * to be removed. Handing focus back to the document is the honest restoration
+ * for that case.
+ */
+function restoreFocus(invoker: HTMLElement | null): void {
+  if (invoker !== null && invoker !== document.body && invoker.isConnected) {
+    invoker.focus()
+    return
+  }
+  const active = document.activeElement
+  if (active instanceof HTMLElement) active.blur()
 }
 
 export function DialogSurface({
@@ -87,6 +105,39 @@ export function DialogSurface({
   }, [open])
 
   /**
+   * The trap's other half. `wrapTab` only covers the keyboard, and a dialog
+   * opened *by* a pointer sequence loses the focus it just took: the promotion
+   * dialog is raised while the board's `pointerdown` is still in flight, and
+   * the `mousedown` that follows runs the browser's own click focus-fixup,
+   * which finds nothing focusable under the pointer and drops focus on the
+   * body. While a modal is open there is no legitimate focus outside it, so
+   * any escape is pulled straight back.
+   */
+  useEffect(() => {
+    if (!open) return
+    let pending: number | undefined
+    const pullBack = () => {
+      window.clearTimeout(pending)
+      /* A focus transition dispatches `focusout` before the incoming target is
+         focused, so the check is deferred past the whole transition: acting
+         inside it would snatch focus back from the control just tabbed to. */
+      pending = window.setTimeout(() => {
+        const node = dialog.current
+        if (node === null || !node.open || !node.isConnected) return
+        if (node.contains(document.activeElement)) return
+        initialFocus(node)?.focus()
+      }, 0)
+    }
+    document.addEventListener('focusin', pullBack, true)
+    document.addEventListener('focusout', pullBack, true)
+    return () => {
+      window.clearTimeout(pending)
+      document.removeEventListener('focusin', pullBack, true)
+      document.removeEventListener('focusout', pullBack, true)
+    }
+  }, [open])
+
+  /**
    * A caller that closes by unmounting — a promotion choice resolves the move
    * and the dialog stops existing — removes the element from the top layer
    * without the `close` event ever firing, which would strand focus on the
@@ -96,7 +147,7 @@ export function DialogSurface({
    */
   useEffect(
     () => () => {
-      if (dialog.current?.open === true) invoker.current?.focus()
+      if (dialog.current?.open === true) restoreFocus(invoker.current)
     },
     [],
   )
@@ -109,7 +160,7 @@ export function DialogSurface({
       className="ui-dialog"
       aria-labelledby={titleId}
       onClose={() => {
-        invoker.current?.focus()
+        restoreFocus(invoker.current)
         onClose()
       }}
       onClick={(event) => {
