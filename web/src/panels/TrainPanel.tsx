@@ -111,8 +111,21 @@ const DISCLOSURE =
 
 /* ------------------------------------------------------------------ shared */
 
-/** The ECO code, name, and moves of one line — the same card in both phases. */
-function LineIdentity({ entry, label }: { readonly entry: OpeningEntry; readonly label: string }) {
+/**
+ * The ECO code, name, and — while browsing — the moves of one line. Training
+ * omits the moves on purpose: the line is the answer the session is asking for,
+ * so it waits behind the `Show the whole line` disclosure instead of sitting
+ * open above the board.
+ */
+function LineIdentity({
+  entry,
+  label,
+  moves = true,
+}: {
+  readonly entry: OpeningEntry
+  readonly label: string
+  readonly moves?: boolean
+}) {
   return (
     <>
       <div className="flex flex-wrap items-center gap-2">
@@ -122,7 +135,9 @@ function LineIdentity({ entry, label }: { readonly entry: OpeningEntry; readonly
         <span className="min-w-0 break-words font-bold [font:var(--type-heading)]">{entry.primary}</span>
       </div>
       <p className="break-words text-[color:var(--text-muted)] [font:var(--type-body-sm)]">{label}</p>
-      <p className="break-words text-[color:var(--text-primary)] [font:var(--type-numeric)]">{formatMoves(entry.moves)}</p>
+      {moves && (
+        <p className="break-words text-[color:var(--text-primary)] [font:var(--type-numeric)]">{formatMoves(entry.moves)}</p>
+      )}
     </>
   )
 }
@@ -339,7 +354,7 @@ function TrainingSessionView({
           </span>
           <span className="text-[color:var(--text-muted)] [font:var(--type-body-sm)]">You play {sideName(session.side)}</span>
         </div>
-        <LineIdentity entry={session.entry} label={session.label} />
+        <LineIdentity entry={session.entry} label={session.label} moves={false} />
       </Surface>
 
       <StatusNote slot={train} />
