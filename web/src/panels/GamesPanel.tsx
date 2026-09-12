@@ -195,7 +195,7 @@ export function GamesPanel({ snap, replaying, selfPlay, sessionKey, controller }
         ? { state: 'idle', message: 'Replay controls stay off until a master game is selected.' }
         : playingThrough
           ? { state: 'idle', message: `Playing through ${selectedName}. Play game move advances the score for you.` }
-          : { state: 'idle', message: undefined }
+          : { state: 'idle', message: 'Play game move stays off until Play through or a replay is running.' }
 
   return (
     <>
@@ -219,7 +219,7 @@ export function GamesPanel({ snap, replaying, selfPlay, sessionKey, controller }
           )}
         </Field>
 
-        <Field label="Browse by" description="Groups the picker below; searching groups by relevance instead.">
+        <Field label="Browse by">
           {(control) => (
             <select
               id={control.id}
@@ -286,6 +286,8 @@ export function GamesPanel({ snap, replaying, selfPlay, sessionKey, controller }
           <SelectedGame line={selected} />
         )}
 
+        <InlineFeedback state={feedback.state} message={feedback.message} skeletonRows={1} />
+
         {/* Stacked, not a two-up grid: "Watch this game" and "Play game move" both
             wrap to two lines in a 296px sidebar column, and DESIGN.md 3.3 does not
             allow a label to break where the full value has nowhere else to appear. */}
@@ -319,7 +321,6 @@ export function GamesPanel({ snap, replaying, selfPlay, sessionKey, controller }
           Show hint (highlight the next move)
         </label>
 
-        <InlineFeedback state={feedback.state} message={feedback.message} skeletonRows={1} />
       </Surface>
 
       {snap === null ? <Loading label="Preparing the master-game workspace…" rows={2} /> : <StatusNote slot={snap.games} />}

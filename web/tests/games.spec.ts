@@ -152,6 +152,9 @@ test.describe('master-game library and replay workspace', () => {
     await expect(context).toContainText('Romantic (1800s)')
     await expect(context).toContainText('White · Anderssen')
     await expect(context).toContainText('23 moves')
+    // DESIGN.md 7.2: a disabled control carries an adjacent explanation.
+    await expect(page.getByRole('button', { name: 'Play game move' })).toBeDisabled()
+    await expect(context).toContainText('Play game move stays off until Play through or a replay is running.')
     await expectContextMatchesPicker(page)
 
     await picker(page).selectOption({ label: RETI })
