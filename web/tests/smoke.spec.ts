@@ -59,7 +59,7 @@ test('P3 mode-model smoke', async ({ page }) => {
   await test.step('5. Auto-replay ten Immortal Game plies and stop', async () => {
     // Given the Immortal Game; when auto-replay begins; then ten plies are visible within thirty seconds and replay stops.
     await page.getByRole('link', { name: 'Games', exact: true }).click()
-    await page.getByLabel('Master game').selectOption({ label: 'The “Immortal Game” · 1851  (You: White)' })
+    await page.getByLabel('Master game', { exact: true }).selectOption({ label: 'The “Immortal Game” · 1851  (You: White)' })
     await page.getByRole('button', { name: 'Watch this game' }).click()
     await expect
       .poll(() => page.locator('.tr-status').textContent(), { timeout: 30_000 })

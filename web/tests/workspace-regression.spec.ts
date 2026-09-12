@@ -12,7 +12,7 @@ const UCI_STUB = `self.onmessage = (event) => {
 const ROUTES = [
   { path: '/play', name: 'Play', ready: (page: Page) => page.getByRole('button', { name: 'New game' }) },
   { path: '/openings', name: 'Openings', ready: (page: Page) => page.getByPlaceholder('name or ECO — e.g. Najdorf, Caro-Kann, B12') },
-  { path: '/games', name: 'Games', ready: (page: Page) => page.getByLabel('Master game') },
+  { path: '/games', name: 'Games', ready: (page: Page) => page.getByLabel('Master game', { exact: true }) },
   { path: '/study', name: 'Study', ready: (page: Page) => page.getByRole('group', { name: 'Study surface' }) },
 ] as const
 

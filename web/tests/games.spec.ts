@@ -26,7 +26,7 @@ function selectedGame(page: Page): Locator {
 }
 
 function picker(page: Page): Locator {
-  return page.getByLabel('Master game')
+  return page.getByLabel('Master game', { exact: true })
 }
 
 async function openGames(page: Page): Promise<void> {
