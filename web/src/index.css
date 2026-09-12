@@ -1,7 +1,7 @@
 @import "tailwindcss";
 /* The DESIGN.md Section 7 primitive cascade. It is imported here, not from
-   `ui/primitives.tsx`, so the product entry and the dev-only showcase can never
-   load one without the other. */
+   `ui/primitives.tsx`, so the product entry and the dev-only primitive gallery
+   can never load one without the other. */
 @import "./ui/primitives.css";
 
 /* ---------------------------------------------------------------------------

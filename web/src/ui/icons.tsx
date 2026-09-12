@@ -20,10 +20,9 @@
  * moves every icon at once and `scripts/verify-icons.mjs` can prove that no
  * second stroke width or size ever enters the product.
  *
- * `web/src/dev/pending.tsx` carries a dev-only stand-in with the same
- * `Icon`/`IconName` shape for the DESIGN.md 7.3 showcase; it is never imported
- * by product code and never reaches the production bundle. This module is the
- * real one.
+ * Todo 11 removed the dev-only stand-in that used to shadow this module: the
+ * DESIGN.md 7.3 gallery now draws its marks from here, so there has never been
+ * and can never be a second `Icon`.
  * ------------------------------------------------------------------------- */
 
 import type { ReactNode } from 'react'

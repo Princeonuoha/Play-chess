@@ -6,8 +6,9 @@
  *    DESIGN.md does not declare.
  * 2. Single source: no other stylesheet under `web/src` redeclares a DESIGN.md
  *    token, so the dev-only bridge todo 4 shipped cannot come back.
- * 3. Raw values: `showcase.css` declares no colour, no font size, and no
- *    margin/padding/gap that is not a DESIGN.md token.
+ * 3. Raw values: neither the gallery stylesheet nor the real primitive cascade
+ *    declares a colour, a font size, or a margin/padding/gap that is not a
+ *    DESIGN.md token.
  * 4. Production leak: the committed build carries no showcase identifier.
  * ------------------------------------------------------------------------- */
 
@@ -19,7 +20,8 @@ const read = (relative: string): string => readFileSync(fileURLToPath(new URL(re
 
 const DESIGN = read('../../../../DESIGN.md')
 const TOKENS_CSS = read('../../index.css')
-const SHOWCASE_CSS = read('../showcase.css')
+const GALLERY_CSS = read('../showcase.css')
+const PRIMITIVES_CSS = read('../../ui/primitives.css')
 const SRC = fileURLToPath(new URL('../../', import.meta.url))
 const DIST = fileURLToPath(new URL('../../../../dist/', import.meta.url))
 
@@ -157,11 +159,14 @@ describe('no second token source exists under web/src', () => {
   })
 })
 
-describe('showcase.css resolves every value to a token', () => {
-  const pairs = declarations(SHOWCASE_CSS)
+describe.each([
+  { name: 'showcase.css', css: GALLERY_CSS, floor: 100 },
+  { name: 'ui/primitives.css', css: PRIMITIVES_CSS, floor: 100 },
+])('$name resolves every value to a token', ({ css, floor }) => {
+  const pairs = declarations(css)
 
   it('parses the stylesheet it is asserting on', () => {
-    expect(pairs.length).toBeGreaterThan(100)
+    expect(pairs.length).toBeGreaterThan(floor)
   })
 
   it('declares no raw colour', () => {
@@ -185,13 +190,13 @@ describe('the showcase stays out of the production build', () => {
     'showcase',
     'sc-root',
     'sc-cell',
-    'sc-iconbtn',
-    'sc-statusnote-scaffold',
+    'sc-cell-body',
+    'WorkspaceNavPreview',
     'useControlGroups',
     'useFeedbackGroups',
     'Primitive showcase',
     'Tab from here',
-    'PENDING todo 11',
+    'PENDING todo 12',
   ]
 
   function distFiles(directory: string): readonly string[] {

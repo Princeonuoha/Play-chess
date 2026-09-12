@@ -9,7 +9,7 @@
  * `src/dev/__tests__/showcase-tokens.test.ts` both fail on a raw one.
  *
  * Imported once, by `../index.css`, so the product entry and the dev-only
- * showcase load exactly the same primitive cascade in exactly the same order.
+ * primitive gallery load exactly the same cascade in exactly the same order.
  * ------------------------------------------------------------------------- */
 
 /* ---- DESIGN.md 7.2 universal contract: focus is never removed, never
@@ -636,9 +636,16 @@
 /* 7.3 `DialogSurface` focus: the initial target must show the ring on open.
    `:focus-visible` does not match a programmatic focus after a pointer click,
    so the designated target opts into the plain `:focus` ring instead. */
-.ui-dialog [data-dialog-autofocus]:focus {
+.ui-dialog [data-dialog-autofocus]:focus,
+.ui-dialog [data-dialog-autofocus] :focus {
   outline: 2px solid var(--border-focus);
   outline-offset: 2px;
+}
+
+/* Lets a caller mark an initial focus target without adding a box to the
+   dialog's own grid. */
+.ui-contents {
+  display: contents;
 }
 
 .ui-dialog {

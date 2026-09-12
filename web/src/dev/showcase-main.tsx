@@ -9,9 +9,9 @@
  * `src/dev/__tests__/showcase-tokens.test.ts` asserts the built bundle is free
  * of every showcase identifier.
  *
- * It renders the DESIGN.md §7.3 primitive/state matrix from data, so todo 11
- * can swap the `./pending` stand-ins for real `web/src/ui/` primitives and
- * reuse this page unchanged as its acceptance gate.
+ * It renders the DESIGN.md §7.3 primitive/state matrix from data. Todo 11
+ * swapped the todo-4 stand-ins for the real `web/src/ui/` primitives, so every
+ * case below is now the shipping component rather than a sketch of one.
  * ------------------------------------------------------------------------- */
 
 import { StrictMode, useState } from 'react'
@@ -92,9 +92,8 @@ function Showcase() {
       <header className="sc-head">
         <h1 className="sc-title">Primitive showcase</h1>
         <p className="sc-lede">
-          Every primitive and state contracted in DESIGN.md §7.3, rendered against today&apos;s API plus dev-only
-          stand-ins for the primitives todo 11 has yet to build. Dev and test only — this page is not a build input
-          and never ships.
+          Every primitive and state contracted in DESIGN.md §7.3, rendered with the real components from
+          web/src/ui. Dev and test only — this page is not a build input and never ships.
         </p>
         <div className="sc-meta">
           <span className="sc-meta-chip">DESIGN.md §7.3</span>

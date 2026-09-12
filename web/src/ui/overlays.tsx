@@ -10,6 +10,15 @@ import { IconButton } from './icons'
  * state stays the single source of open-ness, and focus returns to whatever
  * invoked the dialog.
  */
+const FOCUSABLE = 'button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])'
+
+/** The caller's marked target, or the first focusable thing inside it. */
+function initialFocus(node: HTMLDialogElement): HTMLElement | null {
+  const marked = node.querySelector<HTMLElement>('[data-dialog-autofocus]')
+  if (marked === null) return null
+  return marked.matches(FOCUSABLE) ? marked : marked.querySelector<HTMLElement>(FOCUSABLE)
+}
+
 export function DialogSurface({
   open,
   title,
@@ -37,7 +46,7 @@ export function DialogSurface({
     if (open && !node.open) {
       invoker.current = document.activeElement as HTMLElement | null
       node.showModal()
-      node.querySelector<HTMLElement>('[data-dialog-autofocus]')?.focus()
+      initialFocus(node)?.focus()
       return
     }
     if (!open && node.open) {

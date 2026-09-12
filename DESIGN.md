@@ -321,9 +321,10 @@ tokens above rather than literals. `scripts/verify-icons.mjs` (`npm run verify:i
 build on a structural emoji or transport glyph in product source, on an `<svg>` authored outside the
 module, and on any second stroke width, size, or geometry grid.
 
-`web/src/dev/pending.tsx` holds a dev-only stand-in with the same `Icon`/`IconName` shape for the
-§7.3 showcase. It is never imported by product code and never reaches the production bundle; todo 11
-deletes it when the real primitives land.
+Todo 11 retired that stand-in. `web/src/dev/pending.tsx` now holds a single dev-only preview — the
+`WorkspaceNav` visuals the todo-12 shell redesign still owes — and it draws its marks from this
+module like everything else. Nothing under `web/src/dev/` is imported by product code or reaches the
+production bundle.
 
 ### 5.2 Prohibitions
 

@@ -49,8 +49,6 @@ const DEFERRALS = [
   { file: 'src/panels/TrainPanel.tsx', literal: 'text-[10px]', count: 1, owner: 'DESIGN.md 3.2; todo 15' },
   { file: 'src/panels/TrainPanel.tsx', literal: 'text-[11px]', count: 5, owner: 'DESIGN.md 3.2; todo 15' },
   { file: 'src/workspace/WorkspaceChrome.tsx', literal: 'text-[11px]', count: 1, owner: 'DESIGN.md 3.2; todo 18' },
-  { file: 'src/dev/showcase.css', literal: 'animation: sc-spin 900ms linear infinite', count: 1, owner: 'DESIGN.md 6.1 declares no indefinite-loop duration; todo 11 (loader primitive)' },
-  { file: 'src/dev/showcase.css', literal: 'animation: sc-shimmer 1600ms var(--motion-ease-standard) infinite alternate', count: 1, owner: 'DESIGN.md 6.1 declares no indefinite-loop duration; todo 11 (loader primitive)' },
 ]
 
 const NAMED_COLOURS =

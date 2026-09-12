@@ -1,6 +1,19 @@
 import { useState } from 'react'
-import { Btn, StatusNote } from '../ui/primitives'
-import { Icon, IconButton, ModalDialog, SegmentedNav, WorkspaceNav, type SegmentItem } from './pending'
+import {
+  Btn,
+  DialogSurface,
+  Empty,
+  EngineStatus,
+  Error,
+  InlineFeedback,
+  Loading,
+  SegmentedNav,
+  StatusNote,
+  ToastRegion,
+  type SegmentItem,
+  type ToastMessage,
+} from '../ui/primitives'
+import { WorkspaceNavPreview, type NavPreviewItem } from './pending'
 import { LONG_BODY, type ShowcaseGroup } from './case-types'
 
 const SUB_SURFACES: readonly SegmentItem[] = [
@@ -15,272 +28,212 @@ const DISABLED_SUB_SURFACES: readonly SegmentItem[] = [
   { id: 'explore', label: 'Explore' },
 ]
 
-const DESTINATIONS: readonly SegmentItem[] = [
-  { id: 'play', label: 'Play', icon: 'board' },
+const DESTINATIONS: readonly NavPreviewItem[] = [
+  { id: 'play', label: 'Play', icon: 'circle-play' },
   { id: 'openings', label: 'Openings', icon: 'book' },
   { id: 'games', label: 'Games', icon: 'trophy' },
   { id: 'study', label: 'Study', icon: 'search' },
 ]
 
-function InlineDialog({ id }: { id: string }) {
-  return (
-    <dialog className="sc-dialog" open aria-labelledby={id}>
-      <div className="sc-dialog-head">
-        <h3 className="sc-dialog-title" id={id}>
-          Promote to
-        </h3>
-        <IconButton icon="close" label="Cancel promotion" />
-      </div>
-      <div className="sc-dialog-row">
-        <Btn primary>Queen</Btn>
-        <Btn>Rook</Btn>
-        <Btn>Bishop</Btn>
-        <Btn>Knight</Btn>
-      </div>
-    </dialog>
-  )
+function DismissibleToast() {
+  const [toasts, setToasts] = useState<readonly ToastMessage[]>([
+    { id: 'pgn', text: 'PGN copied to your clipboard' },
+  ])
+  return <ToastRegion toasts={toasts} onDismiss={(id) => setToasts((all) => all.filter((t) => t.id !== id))} />
 }
 
-function ToastRegion({ message }: { message: string }) {
-  return (
-    <div className="sc-toastregion" aria-live="polite" data-sc-region="true">
-      <div className="sc-toast">
-        <Icon name="check" size="sm" />
-        <span>{message}</span>
-        <IconButton icon="close" label="Dismiss notification" />
-      </div>
-    </div>
-  )
-}
+const STATIC_TOAST = (id: string, text: string): readonly ToastMessage[] => [{ id, text }]
 
 export function useFeedbackGroups(): readonly ShowcaseGroup[] {
-  const [modalOpen, setModalOpen] = useState(false)
+  const [selected, setSelected] = useState('review')
+  const [dialogOpen, setDialogOpen] = useState(false)
 
   return [
     {
       name: 'SegmentedNav',
-      source: 'PENDING todo 11 — ad hoc tab strip in web/src/App.tsx:274',
-      pending: 'todo-11',
+      source: 'web/src/ui/surfaces.tsx',
       cases: [
-        { state: 'default', node: <SegmentedNav items={SUB_SURFACES} selectedId="review" /> },
-        { state: 'hover', node: <SegmentedNav items={SUB_SURFACES} selectedId="explore" /> },
-        { state: 'focus', seed: true, node: <SegmentedNav items={SUB_SURFACES} selectedId="analysis" /> },
-        { state: 'active', node: <SegmentedNav items={SUB_SURFACES} selectedId="review" /> },
-        { state: 'disabled', node: <SegmentedNav items={DISABLED_SUB_SURFACES} selectedId="analysis" /> },
+        { state: 'default', node: <SegmentedNav label="Sub-surface" items={SUB_SURFACES} selectedId={selected} onSelect={setSelected} controlsPanels /> },
+        { state: 'hover', node: <SegmentedNav label="Sub-surface, hover" items={SUB_SURFACES} selectedId="explore" /> },
+        { state: 'focus', seed: true, node: <SegmentedNav label="Sub-surface, focus" items={SUB_SURFACES} selectedId="analysis" /> },
+        { state: 'active', node: <SegmentedNav label="Sub-surface, active" items={SUB_SURFACES} selectedId="review" /> },
+        { state: 'disabled', node: <SegmentedNav label="Sub-surface, disabled" items={DISABLED_SUB_SURFACES} selectedId="analysis" /> },
       ],
     },
     {
       name: 'WorkspaceNav',
-      source: 'PENDING todo 7 / 11 — routed nav is not built yet',
-      pending: 'todo-7',
+      source: 'PENDING todo 12 — routed nav ships in web/src/workspace/WorkspaceChrome.tsx and is rebuilt on SegmentedNav by the shell redesign',
+      pending: 'todo-12',
       cases: [
-        { state: 'default', node: <WorkspaceNav items={DESTINATIONS} currentId="play" /> },
-        { state: 'hover', node: <WorkspaceNav items={DESTINATIONS} currentId="study" /> },
-        { state: 'focus', seed: true, node: <WorkspaceNav items={DESTINATIONS} currentId="openings" /> },
-        { state: 'active', node: <WorkspaceNav items={DESTINATIONS} currentId="play" /> },
-        { state: 'loading', node: <WorkspaceNav items={DESTINATIONS} currentId="play" pendingId="games" /> },
+        { state: 'default', node: <WorkspaceNavPreview items={DESTINATIONS} currentId="play" /> },
+        { state: 'hover', node: <WorkspaceNavPreview items={DESTINATIONS} currentId="study" /> },
+        { state: 'focus', seed: true, node: <WorkspaceNavPreview items={DESTINATIONS} currentId="openings" /> },
+        { state: 'active', node: <WorkspaceNavPreview items={DESTINATIONS} currentId="play" /> },
+        { state: 'loading', node: <WorkspaceNavPreview items={DESTINATIONS} currentId="play" pendingId="games" /> },
       ],
     },
     {
       name: 'EngineStatus',
-      source: 'PENDING todo 11 — ad hoc chip in web/src/App.tsx:163',
-      pending: 'todo-11',
+      source: 'web/src/ui/feedback.tsx',
       cases: [
-        {
-          state: 'default',
-          node: (
-            <p className="sc-engine" role="status" data-sc-region="true">
-              <span className="sc-dot sc-dot--positive" aria-hidden="true" />
-              Ready · Stockfish 18 lite
-            </p>
-          ),
-        },
-        {
-          state: 'loading',
-          node: (
-            <p className="sc-engine" role="status" aria-busy="true" data-sc-region="true">
-              <span className="sc-spinner" aria-hidden="true" />
-              Loading engine…
-            </p>
-          ),
-        },
+        { state: 'default', node: <EngineStatus state="ready" engine="Stockfish 18 lite" /> },
+        { state: 'loading', node: <EngineStatus state="loading" /> },
         {
           state: 'error',
           node: (
-            <div className="sc-stack" role="alert" data-sc-region="true">
-              <p className="sc-engine">
-                <span className="sc-dot sc-dot--critical" aria-hidden="true" />
-                Engine failed
-              </p>
-              <p className="sc-contract">Stockfish could not start, so the board will not reply to your moves.</p>
-              <Btn>Retry</Btn>
-            </div>
+            <EngineStatus
+              state="error"
+              detail="Stockfish could not start, so the board will not reply to your moves."
+              onRetry={() => {}}
+            />
           ),
         },
       ],
     },
     {
       name: 'StatusNote',
-      source: 'web/src/ui/primitives.tsx:91',
+      source: 'web/src/ui/feedback.tsx',
       cases: [
         {
           state: 'default',
           node: (
-            <div className="sc-statusnote-scaffold" aria-live="polite" data-sc-region="true">
-              <StatusNote
-                slot={{
-                  statusHtml: '<span class="good">Book move — Nimzo-Indian Defence</span>',
-                  note: 'Black pins the knight on c3 and fights for e4 without committing a central pawn.',
-                }}
-              />
-            </div>
+            <StatusNote
+              slot={{
+                statusHtml: '<span class="good">Book move — Nimzo-Indian Defence</span>',
+                note: 'Black pins the knight on c3 and fights for e4 without committing a central pawn.',
+              }}
+            />
           ),
         },
         {
           state: 'error',
           node: (
-            <div className="sc-statusnote-scaffold sc-statusnote-scaffold--error" role="alert" data-sc-region="true">
-              <p className="sc-note-head">
-                <Icon name="alert" size="sm" className="sc-icon-mark--error" />
-                Error
-              </p>
-              <StatusNote
-                slot={{
-                  statusHtml: '<span class="bad">That move leaves the king in check</span>',
-                  note: 'Move the king, block the checking piece, or capture it before continuing.',
-                }}
-              />
-            </div>
+            <StatusNote
+              tone="error"
+              slot={{
+                statusHtml: '<span class="bad">That move leaves the king in check</span>',
+                note: 'Move the king, block the checking piece, or capture it before continuing.',
+              }}
+            />
           ),
         },
       ],
     },
     {
       name: 'InlineFeedback',
-      source: 'PENDING todo 11 — no implementation exists',
-      pending: 'todo-11',
+      source: 'web/src/ui/feedback.tsx',
       cases: [
-        { state: 'default', node: <div className="sc-feedback" aria-live="polite" data-sc-region="true" /> },
-        {
-          state: 'loading',
-          node: (
-            <div className="sc-feedback" aria-live="polite" aria-busy="true" data-sc-region="true">
-              <p className="sc-feedback-line">Analyzing move 14…</p>
-              <span className="sc-skeleton" aria-hidden="true" />
-              <span className="sc-skeleton" aria-hidden="true" />
-            </div>
-          ),
-        },
+        { state: 'default', node: <InlineFeedback /> },
+        { state: 'loading', node: <InlineFeedback state="loading" message="Analyzing move 14…" /> },
         {
           state: 'empty',
-          node: (
-            <div className="sc-feedback" aria-live="polite" data-sc-region="true">
-              <p className="sc-feedback-line">No game has been reviewed yet.</p>
-              <Btn>Review this game</Btn>
-            </div>
-          ),
+          node: <InlineFeedback state="empty" message="No game has been reviewed yet." action={<Btn>Review this game</Btn>} />,
         },
         {
           state: 'error',
           node: (
-            <div className="sc-feedback" role="alert" data-sc-region="true">
-              <p className="sc-feedback-line sc-feedback-line--error">
-                <Icon name="alert" size="sm" className="sc-icon-mark--error" />
-                Error — the review stopped at move 14 because Stockfish restarted.
-              </p>
-              <Btn>Retry review</Btn>
-            </div>
+            <InlineFeedback
+              state="error"
+              message="Error — the review stopped at move 14 because Stockfish restarted."
+              action={<Btn icon="retry">Retry review</Btn>}
+            />
           ),
         },
       ],
     },
     {
       name: 'DialogSurface',
-      source: 'PENDING todo 11 / 18 — ad hoc divs in web/src/App.tsx:176 and :369',
-      pending: 'todo-11',
+      source: 'web/src/ui/overlays.tsx',
       cases: [
-        { state: 'default', node: <InlineDialog id="sc-dialog-default" /> },
         {
-          state: 'focus',
+          state: 'default',
           node: (
             <>
-              <Btn primary onClick={() => setModalOpen(true)}>
+              <Btn primary onClick={() => setDialogOpen(true)}>
                 Open promotion dialog
               </Btn>
-              <ModalDialog
-                open={modalOpen}
+              <DialogSurface
+                open={dialogOpen}
                 title="Promote to"
-                body="Choose the piece your pawn becomes. Escape cancels and returns the pawn to its square."
-                onClose={() => setModalOpen(false)}
-              />
+                description="Choose the piece your pawn becomes. Escape cancels and returns the pawn to its square."
+                dismissLabel="Cancel promotion"
+                onClose={() => setDialogOpen(false)}
+              >
+                <div className="ui-dialog-row">
+                  <span className="ui-contents" data-dialog-autofocus>
+                    <Btn primary onClick={() => setDialogOpen(false)}>
+                      Queen
+                    </Btn>
+                  </span>
+                  <Btn onClick={() => setDialogOpen(false)}>Rook</Btn>
+                  <Btn onClick={() => setDialogOpen(false)}>Bishop</Btn>
+                  <Btn onClick={() => setDialogOpen(false)}>Knight</Btn>
+                </div>
+              </DialogSurface>
             </>
           ),
         },
-        { state: 'active', node: <InlineDialog id="sc-dialog-active" /> },
+        {
+          state: 'focus',
+          node: (
+            <Btn onClick={() => setDialogOpen(true)} className="sc-dialog-invoker">
+              Open dialog and return focus here
+            </Btn>
+          ),
+        },
+        {
+          state: 'active',
+          node: <Btn onClick={() => setDialogOpen(true)}>Open dialog to press a choice</Btn>,
+        },
       ],
     },
     {
       name: 'Toast',
-      source: 'PENDING todo 11 — ad hoc div in web/src/App.tsx:399',
-      pending: 'todo-11',
+      source: 'web/src/ui/overlays.tsx',
       cases: [
-        { state: 'default', node: <ToastRegion message="PGN copied to your clipboard" /> },
-        { state: 'focus', seed: true, node: <ToastRegion message="Game saved to your library" /> },
-        { state: 'active', node: <ToastRegion message="Board flipped — you are now playing black" /> },
-      ],
-    },
-    {
-      name: 'Loading',
-      source: 'PENDING todo 11 — no implementation exists',
-      pending: 'todo-11',
-      cases: [
+        { state: 'default', node: <DismissibleToast /> },
         {
-          state: 'loading',
-          node: (
-            <div className="sc-feedback" aria-busy="true" data-sc-region="true">
-              <p className="sc-feedback-line">Searching 3,214 master games…</p>
-              <span className="sc-skeleton" aria-hidden="true" />
-              <span className="sc-skeleton" aria-hidden="true" />
-              <span className="sc-skeleton" aria-hidden="true" />
-            </div>
-          ),
+          state: 'focus',
+          seed: true,
+          node: <ToastRegion toasts={STATIC_TOAST('saved', 'Game saved to your library')} onDismiss={() => {}} />,
+        },
+        {
+          state: 'active',
+          node: <ToastRegion toasts={STATIC_TOAST('flip', 'Board flipped — you are now playing black')} onDismiss={() => {}} />,
         },
       ],
     },
     {
+      name: 'Loading',
+      source: 'web/src/ui/feedback.tsx',
+      cases: [{ state: 'loading', node: <Loading label="Searching 3,214 master games…" /> }],
+    },
+    {
       name: 'Empty',
-      source: 'PENDING todo 11 — no implementation exists',
-      pending: 'todo-11',
+      source: 'web/src/ui/feedback.tsx',
       cases: [
         {
           state: 'empty',
           node: (
-            <div className="sc-state-block" data-sc-region="true">
-              <Icon name="inbox" size="lg" className="sc-icon-mark" />
-              <p>No master game matches these filters. Widen the era or clear the player name to see results.</p>
-              <Btn primary>Clear filters</Btn>
-            </div>
+            <Empty
+              message="No master game matches these filters. Widen the era or clear the player name to see results."
+              actionLabel="Clear filters"
+            />
           ),
         },
       ],
     },
     {
       name: 'Error',
-      source: 'PENDING todo 11 — no implementation exists',
-      pending: 'todo-11',
+      source: 'web/src/ui/feedback.tsx',
       cases: [
         {
           state: 'error',
           node: (
-            <div className="sc-state-block sc-state-block--error" role="alert" data-sc-region="true">
-              <Icon name="alert" size="lg" className="sc-icon-mark--error" />
-              <p>Error — the opening book could not be loaded, so training is unavailable.</p>
-              <Btn primary>Retry</Btn>
-              <details>
-                <summary>Technical detail</summary>
-                <span>{LONG_BODY}</span>
-              </details>
-            </div>
+            <Error
+              message="Error — the opening book could not be loaded, so training is unavailable."
+              detail={LONG_BODY}
+            />
           ),
         },
       ],
