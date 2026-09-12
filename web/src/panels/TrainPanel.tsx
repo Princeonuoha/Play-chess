@@ -114,7 +114,7 @@ function OpeningsExplorer({
 
   if (err)
     return (
-      <div className="grid gap-2 text-sm text-[var(--color-muted)]">
+      <div className="grid gap-2 text-sm text-[color:var(--text-muted)]">
         <div>Couldn’t load the opening database.</div>
         <Btn
           onClick={() => {
@@ -126,7 +126,7 @@ function OpeningsExplorer({
         </Btn>
       </div>
     )
-  if (!data) return <div className="py-6 text-center text-sm text-[var(--color-muted)]">Loading opening database…</div>
+  if (!data) return <div className="py-6 text-center text-sm text-[color:var(--text-muted)]">Loading opening database…</div>
 
   const startTrain = () => {
     if (!sel) return
@@ -152,7 +152,7 @@ function OpeningsExplorer({
           onChange={(e) => setQuery(e.target.value)}
           placeholder="name or ECO — e.g. Najdorf, Caro-Kann, B12"
           autoComplete="off"
-          className="w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 text-sm text-[var(--color-ink)] placeholder:text-[var(--color-muted)] focus:border-[var(--color-brass)] focus:outline-none"
+          className="w-full rounded-[var(--radius-lg)] border border-[color:var(--border-subtle)] bg-[var(--canvas-sunken)] px-3 py-2.5 text-sm text-[color:var(--text-primary)] placeholder:text-[color:var(--text-muted)] focus:border-[color:var(--brass-base)] focus:outline-none"
         />
       </Field>
 
@@ -160,31 +160,31 @@ function OpeningsExplorer({
       {!sel && (
         <>
           {query ? (
-            <div className="max-h-64 divide-y divide-white/5 overflow-auto rounded-xl border border-white/10">
+            <div className="max-h-64 divide-y divide-[color:var(--border-hairline)] overflow-auto rounded-[var(--radius-lg)] border border-[color:var(--border-subtle)]">
               {results.length ? (
                 results.map((e) => (
                   <button
                     key={e.name}
                     onClick={() => select(e)}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-left transition hover:bg-white/[0.05]"
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left transition hover:bg-[var(--surface-inset-hover)]"
                   >
-                    <span className="w-9 shrink-0 font-mono text-[11px] text-[var(--color-brass)]">{e.eco}</span>
-                    <span className="text-[13px]">{e.name}</span>
+                    <span className="w-9 shrink-0 font-[family-name:var(--type-font-numeric)] text-[11px] text-[color:var(--brass-base)]">{e.eco}</span>
+                    <span className="[font:var(--type-body-sm)]">{e.name}</span>
                   </button>
                 ))
               ) : (
-                <div className="p-3 text-sm italic text-[var(--color-muted)]">No openings match “{query}”.</div>
+                <div className="p-3 text-sm italic text-[color:var(--text-muted)]">No openings match “{query}”.</div>
               )}
             </div>
           ) : (
             <div>
-              <div className="mb-1.5 text-xs uppercase tracking-wide text-[var(--color-muted)]">Popular openings</div>
+              <div className="mb-1.5 text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Popular openings</div>
               <div className="flex flex-wrap gap-1.5">
                 {popular.map((e) => (
                   <button
                     key={e.primary}
                     onClick={() => select(e)}
-                    className="rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1.5 text-xs font-medium transition hover:border-[var(--color-brass)]/50 hover:bg-white/[0.06]"
+                    className="rounded-[var(--radius-sm)] border border-[color:var(--border-subtle)] bg-[var(--surface-inset)] px-2.5 py-1.5 text-xs font-medium transition hover:border-[color:var(--border-brass)] hover:bg-[var(--surface-inset-hover)]"
                   >
                     {e.primary}
                   </button>
@@ -202,35 +202,35 @@ function OpeningsExplorer({
             onClick={() => {
               setSel(null)
             }}
-            className="justify-self-start text-xs text-[var(--color-muted)] hover:text-[var(--color-ink)]"
+            className="justify-self-start text-xs text-[color:var(--text-muted)] hover:text-[color:var(--text-primary)]"
           >
             ‹ Back to list
           </button>
 
-          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+          <div className="rounded-[var(--radius-lg)] border border-[color:var(--border-subtle)] bg-[var(--surface-inset)] p-3">
             <div className="mb-1 flex items-center gap-2">
-              <span className="rounded-md border border-[var(--color-brass)]/40 px-1.5 py-0.5 font-mono text-[11px] font-bold text-[var(--color-brass)]">
+              <span className="rounded-[var(--radius-sm)] border border-[color:var(--border-brass)] px-1.5 py-0.5 font-[family-name:var(--type-font-numeric)] text-[11px] font-bold text-[color:var(--brass-base)]">
                 {sel.eco}
               </span>
               <span className="text-sm font-bold">{sel.primary}</span>
             </div>
-            <div className="text-xs text-[var(--color-muted)]">
+            <div className="text-xs text-[color:var(--text-muted)]">
               {sel.variation}
               {sel.subline ? ' › ' + sel.subline : ''}
             </div>
-            <div className="mt-2 font-mono text-[12px] leading-relaxed text-[var(--color-ink)]">{formatMoves(sel.moves)}</div>
+            <div className="mt-2 [font:var(--type-numeric)] text-[color:var(--text-primary)]">{formatMoves(sel.moves)}</div>
           </div>
 
           {/* Coach: themes + middle-game plans */}
           {coach ? (
-            <div className="grid gap-2 rounded-xl border border-white/10 bg-white/[0.02] p-3 text-[13px]">
-              <div className="leading-relaxed text-[var(--color-muted)]">
-                <b className="text-[var(--color-ink)]">Themes: </b>
+            <div className="grid gap-2 rounded-[var(--radius-lg)] border border-[color:var(--border-subtle)] bg-[var(--surface-inset)] p-3 [font:var(--type-body-sm)]">
+              <div className="leading-relaxed text-[color:var(--text-muted)]">
+                <b className="text-[color:var(--text-primary)]">Themes: </b>
                 {coach.themes}
               </div>
               <div>
-                <div className="mb-1 text-xs uppercase tracking-wide text-[var(--color-muted)]">Middle-game plans</div>
-                <ul className="grid list-disc gap-1 pl-5 text-[var(--color-muted)]">
+                <div className="mb-1 text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Middle-game plans</div>
+                <ul className="grid list-disc gap-1 pl-5 text-[color:var(--text-muted)]">
                   {coach.plans.map((p, i) => (
                     <li key={i} className="leading-relaxed">
                       {p}
@@ -240,7 +240,7 @@ function OpeningsExplorer({
               </div>
             </div>
           ) : (
-            <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3 text-[13px] leading-relaxed text-[var(--color-muted)]">
+            <div className="rounded-[var(--radius-lg)] border border-[color:var(--border-subtle)] bg-[var(--surface-inset)] p-3 [font:var(--type-body-sm)] text-[color:var(--text-muted)]">
               Step through the line on the board with the ◀ ▶ controls, then train it against Stockfish. Coaching notes
               are being written for more openings.
             </div>
@@ -249,7 +249,7 @@ function OpeningsExplorer({
           {/* Best moves & annotations to move 20 (suggested, not auto-played) */}
           <div className="grid gap-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs uppercase tracking-wide text-[var(--color-muted)]">Suggested line to move 20</span>
+              <span className="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Suggested line to move 20</span>
               <div className="flex gap-2">
                 {annotation && !annotation.running && (
                   <Btn onClick={() => ctrl.clearAnnotation()} className="min-h-0 flex-none px-3 py-1.5">
@@ -266,43 +266,43 @@ function OpeningsExplorer({
               </div>
             </div>
             {annotation?.running && (
-              <div className="flex items-center gap-2 text-sm text-[var(--color-muted)]">
-                <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-[var(--color-brass)] border-r-transparent" />
+              <div className="flex items-center gap-2 text-sm text-[color:var(--text-muted)]">
+                <span className="inline-block h-3 w-3 animate-spin rounded-[var(--radius-pill)] border-2 border-[color:var(--brass-base)] border-r-transparent" />
                 {annotation.progress}
               </div>
             )}
             {annotation && annotation.moves.length > 0 && (
-              <div className="max-h-80 divide-y divide-white/5 overflow-auto rounded-xl border border-white/10">
+              <div className="max-h-80 divide-y divide-[color:var(--border-hairline)] overflow-auto rounded-[var(--radius-lg)] border border-[color:var(--border-subtle)]">
                 {annotation.moves.map((m) => (
                   <div key={m.ply}>
                     {m.theoryEnd && (
-                      <div className="bg-[var(--color-brass)]/10 px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-[var(--color-brass)]">
+                      <div className="bg-[color:var(--brass-wash)] px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-[color:var(--brass-base)]">
                         Theory ends — Stockfish’s suggested moves from here
                       </div>
                     )}
                     <button
                       onClick={() => ctrl.gotoPly(m.ply)}
                       className={
-                        'flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] transition hover:bg-white/[0.04] ' +
-                        (reviewPly === m.ply ? 'bg-[var(--color-brass)]/10 ring-1 ring-inset ring-[var(--color-brass)]/40' : '')
+                        'flex w-full items-center gap-2 px-3 py-2 text-left [font:var(--type-body-sm)] transition hover:bg-[var(--surface-inset-hover)] ' +
+                        (reviewPly === m.ply ? 'bg-[color:var(--brass-wash)] ring-1 ring-inset ring-[color:var(--border-brass)]' : '')
                       }
                     >
-                      <span className="w-9 shrink-0 text-right font-mono text-xs text-[var(--color-muted)]">
+                      <span className="w-9 shrink-0 text-right font-[family-name:var(--type-font-numeric)] text-xs text-[color:var(--text-muted)]">
                         {m.moveNo}
                         {m.side === 'w' ? '.' : '…'}
                       </span>
-                      <span className="w-14 shrink-0 font-mono font-semibold">{m.san}</span>
+                      <span className="w-14 shrink-0 font-[family-name:var(--type-font-numeric)] font-semibold">{m.san}</span>
                       {!m.isBook && (
-                        <span className="shrink-0 rounded border border-white/10 px-1 py-0.5 text-[9px] uppercase text-[var(--color-muted)]">
+                        <span className="shrink-0 rounded-[var(--radius-xs)] border border-[color:var(--border-subtle)] px-1 py-0.5 text-[9px] uppercase text-[color:var(--text-muted)]">
                           suggested
                         </span>
                       )}
                       {m.betterSan && (
-                        <span className="shrink-0 font-mono text-[11px] text-[#e0bd7c]" title="Stockfish suggests this move instead">
+                        <span className="shrink-0 font-[family-name:var(--type-font-numeric)] text-[11px] text-[color:var(--status-caution)]" title="Stockfish suggests this move instead">
                           try {m.betterSan}
                         </span>
                       )}
-                      <span className="ml-auto shrink-0 font-mono text-xs text-[var(--color-muted)]">{m.evalWhite}</span>
+                      <span className="ml-auto shrink-0 font-[family-name:var(--type-font-numeric)] text-xs text-[color:var(--text-muted)]">{m.evalWhite}</span>
                     </button>
                   </div>
                 ))}
@@ -330,7 +330,7 @@ function OpeningsExplorer({
                 >
                   Train this line with hints
                 </Btn>
-                <div className="text-[11px] leading-relaxed text-[var(--color-muted)]">
+                <div className="text-[11px] leading-relaxed text-[color:var(--text-muted)]">
                   Evals are from White’s side. “try” flags where Stockfish suggests a different move; “suggested” marks
                   moves past the end of theory — these are recommendations, not played out by the engine. Tap a move to
                   see it, or “Train this line with hints” to play the suggested moves yourself (each one is highlighted).
@@ -341,15 +341,15 @@ function OpeningsExplorer({
 
           {/* Train controls */}
           <div>
-            <div className="mb-1.5 text-xs uppercase tracking-wide text-[var(--color-muted)]">Train as</div>
-            <div className="grid grid-cols-2 gap-1 rounded-xl border border-white/10 p-1">
+            <div className="mb-1.5 text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Train as</div>
+            <div className="grid grid-cols-2 gap-1 rounded-[var(--radius-lg)] border border-[color:var(--border-subtle)] p-1">
               {(['w', 'b'] as const).map((s) => (
                 <button
                   key={s}
                   onClick={() => flipSide(s)}
                   className={
-                    'min-h-10 rounded-lg text-sm font-semibold transition ' +
-                    (trainSide === s ? 'bg-[var(--color-brass)] text-[#1a130a]' : 'text-[var(--color-ink)] hover:bg-white/[0.05]')
+                    'min-h-10 rounded-[var(--radius-sm)] text-sm font-semibold transition ' +
+                    (trainSide === s ? 'bg-[color:var(--brass-base)] text-[color:var(--text-on-brass)]' : 'text-[color:var(--text-primary)] hover:bg-[var(--surface-inset-hover)]')
                   }
                 >
                   {s === 'w' ? 'White' : 'Black'}
@@ -368,7 +368,7 @@ function OpeningsExplorer({
           <Btn active={replaying && sessionKey === 'train'} onClick={() => ctrl.watchMovesOut(sel.moves, trainSide)}>
             {watchLabel}
           </Btn>
-          <label className="flex cursor-pointer items-center gap-2 text-xs text-[var(--color-muted)]">
+          <label className="flex cursor-pointer items-center gap-2 text-xs text-[color:var(--text-muted)]">
             <input
               type="checkbox"
               checked={hints}
@@ -376,7 +376,7 @@ function OpeningsExplorer({
                 setHints(e.target.checked)
                 ctrl.setHints('train', e.target.checked)
               }}
-              className="h-4 w-4 accent-[var(--color-brass)]"
+              className="h-4 w-4 accent-[color:var(--brass-base)]"
             />
             Show hint (highlight the book move)
           </label>
@@ -385,18 +385,18 @@ function OpeningsExplorer({
           {/* Variation index */}
           {siblings.length > 0 && (
             <div>
-              <div className="mb-1.5 text-xs uppercase tracking-wide text-[var(--color-muted)]">
+              <div className="mb-1.5 text-xs uppercase tracking-wide text-[color:var(--text-muted)]">
                 Variations in this opening
               </div>
-              <div className="max-h-48 divide-y divide-white/5 overflow-auto rounded-xl border border-white/10">
+              <div className="max-h-48 divide-y divide-[color:var(--border-hairline)] overflow-auto rounded-[var(--radius-lg)] border border-[color:var(--border-subtle)]">
                 {siblings.map((e) => (
                   <button
                     key={e.name}
                     onClick={() => select(e)}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-left transition hover:bg-white/[0.05]"
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left transition hover:bg-[var(--surface-inset-hover)]"
                   >
-                    <span className="w-9 shrink-0 font-mono text-[11px] text-[var(--color-brass)]">{e.eco}</span>
-                    <span className="text-[12px]">
+                    <span className="w-9 shrink-0 font-[family-name:var(--type-font-numeric)] text-[11px] text-[color:var(--brass-base)]">{e.eco}</span>
+                    <span className="[font:var(--type-body-sm)]">
                       {e.variation}
                       {e.subline ? ' › ' + e.subline : ''}
                     </span>

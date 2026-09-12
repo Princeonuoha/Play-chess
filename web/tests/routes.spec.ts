@@ -157,7 +157,7 @@ test.describe('routed persistent workspace', () => {
     expect(await boardState(page)).toBe(expectedBoard)
     await expect(setting(page, 'Difficulty')).toHaveValue('7')
     await expect(setting(page, 'Think time')).toHaveValue('1700')
-    await expect(page.getByRole('button', { name: 'black', exact: true })).toHaveClass(/bg-\[var\(--color-brass\)\]/)
+    await expect(page.getByRole('button', { name: 'black', exact: true })).toHaveClass(/bg-\[color:var\(--brass-base\)\]/)
 
     await navigateTo(page, 'Study')
     await expectBoardMount(page, mountMarker)

@@ -87,11 +87,11 @@ export function GamesPanel({ snap, replaying, selfPlay, sessionKey, controller }
           onChange={(e) => setSearch(e.target.value)}
           placeholder="player, opening, e.g. Fischer or Berlin"
           autoComplete="off"
-          className="w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 text-sm text-[var(--color-ink)] placeholder:text-[var(--color-muted)] focus:border-[var(--color-brass)] focus:outline-none"
+          className="w-full rounded-[var(--radius-lg)] border border-[color:var(--border-subtle)] bg-[var(--canvas-sunken)] px-3 py-2.5 text-sm text-[color:var(--text-primary)] placeholder:text-[color:var(--text-muted)] focus:border-[color:var(--brass-base)] focus:outline-none"
         />
       </Field>
       <Field label="Browse by">
-        <div className="grid grid-cols-4 gap-1 rounded-xl border border-white/10 p-1">
+        <div className="grid grid-cols-4 gap-1 rounded-[var(--radius-lg)] border border-[color:var(--border-subtle)] p-1">
           {(['opening', 'hero', 'theme', 'era'] as const).map((f) => (
             <button
               key={f}
@@ -100,10 +100,10 @@ export function GamesPanel({ snap, replaying, selfPlay, sessionKey, controller }
                 setSearch('')
               }}
               className={
-                'min-h-10 rounded-lg text-xs font-semibold transition ' +
+                'min-h-10 rounded-[var(--radius-sm)] text-xs font-semibold transition ' +
                 (facet === f && !search
-                  ? 'bg-[var(--color-brass)] text-[#1a130a]'
-                  : 'text-[var(--color-ink)] hover:bg-white/[0.05]')
+                  ? 'bg-[color:var(--brass-base)] text-[color:var(--text-on-brass)]'
+                  : 'text-[color:var(--text-primary)] hover:bg-[var(--surface-inset-hover)]')
               }
             >
               {f === 'hero' ? 'Player' : f[0].toUpperCase() + f.slice(1)}
@@ -119,7 +119,7 @@ export function GamesPanel({ snap, replaying, selfPlay, sessionKey, controller }
           emptyText={search ? `No games match “${search}”` : 'No games'}
         />
       </Field>
-      <div className="text-xs leading-relaxed text-[var(--color-muted)]" dangerouslySetInnerHTML={{ __html: gameMeta }} />
+      <div className="text-xs leading-relaxed text-[color:var(--text-muted)]" dangerouslySetInnerHTML={{ __html: gameMeta }} />
       <div className="grid grid-cols-2 gap-2">
         <Btn primary disabled={!gameSelValid} onClick={() => controller.startTrainer(gameSel, 'games', mgHints)}>
           Play through
@@ -131,7 +131,7 @@ export function GamesPanel({ snap, replaying, selfPlay, sessionKey, controller }
       <Btn active={replaying && sessionKey === 'games'} disabled={!gameSelValid} onClick={() => controller.watch(gameSel, 'games')}>
         {watchLabel}
       </Btn>
-      <label className="flex cursor-pointer items-center gap-2 text-xs text-[var(--color-muted)]">
+      <label className="flex cursor-pointer items-center gap-2 text-xs text-[color:var(--text-muted)]">
         <input
           type="checkbox"
           checked={mgHints}
@@ -139,7 +139,7 @@ export function GamesPanel({ snap, replaying, selfPlay, sessionKey, controller }
             setMgHints(e.target.checked)
             controller.setHints('games', e.target.checked)
           }}
-          className="h-4 w-4 accent-[var(--color-brass)]"
+          className="h-4 w-4 accent-[color:var(--brass-base)]"
         />
         Show hint (highlight the next move)
       </label>

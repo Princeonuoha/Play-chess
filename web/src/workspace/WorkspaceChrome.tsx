@@ -20,8 +20,8 @@ export function Card({ children, className = '' }: { readonly children: ReactNod
   return (
     <div
       className={
-        'rounded-2xl border border-white/10 bg-[var(--color-panel)]/80 backdrop-blur ' +
-        'shadow-[0_1px_0_0_rgba(255,255,255,0.05)_inset,0_18px_44px_-22px_rgba(0,0,0,0.75)] ' +
+        'rounded-[var(--radius-xl)] border border-[color:var(--border-subtle)] bg-[color:var(--surface-1)]/80 backdrop-blur ' +
+        'shadow-[var(--depth-inset-hairline),var(--depth-raised)] ' +
         className
       }
     >
@@ -36,7 +36,7 @@ export function NavBtn({ children, onClick, label }: { readonly children: ReactN
       onClick={onClick}
       aria-label={label}
       title={label}
-      className="grid h-9 min-w-9 place-items-center rounded-lg text-sm text-[var(--color-ink)] transition hover:bg-white/[0.06] active:scale-95"
+      className="grid h-9 min-w-9 place-items-center rounded-[var(--radius-sm)] text-sm text-[color:var(--text-primary)] transition hover:bg-[var(--surface-inset-hover)] active:scale-95"
     >
       {children}
     </button>
@@ -101,17 +101,17 @@ function NavIcon({ path }: { readonly path: WorkspaceRoute['path'] }) {
 
 export function WorkspaceNavigation() {
   return (
-    <div data-nav-safe-area="true" style={SAFE_AREA_TRACK} className="m-1.5 flex gap-2 rounded-xl bg-black/20 p-1">
+    <div data-nav-safe-area="true" style={SAFE_AREA_TRACK} className="m-1.5 flex gap-2 rounded-[var(--radius-lg)] bg-[var(--canvas-sunken)] p-1">
       <nav aria-label="Workspace" className="contents">
         {WORKSPACE_ROUTES.map((route) => (
           <NavLink
             key={route.path}
             to={route.path}
             className={({ isActive }) =>
-              'flex min-h-11 min-w-11 flex-1 flex-col items-center justify-center gap-1 rounded-lg px-1 py-2 text-center text-xs transition sm:px-2 sm:text-sm ' +
+              'flex min-h-11 min-w-11 flex-1 flex-col items-center justify-center gap-1 rounded-[var(--radius-sm)] px-1 py-2 text-center text-xs transition sm:px-2 sm:text-sm ' +
               (isActive
-                ? 'bg-[var(--color-brass)] font-extrabold text-[#1a130a] shadow'
-                : 'font-semibold text-[var(--color-muted)] hover:text-[var(--color-ink)]')
+                ? 'bg-[color:var(--brass-base)] font-extrabold text-[color:var(--text-on-brass)] shadow-[var(--depth-flat)]'
+                : 'font-semibold text-[color:var(--text-muted)] hover:text-[color:var(--text-primary)]')
             }
           >
             {({ isActive }) => (
@@ -122,8 +122,8 @@ export function WorkspaceNavigation() {
                   aria-hidden="true"
                   data-nav-indicator={isActive ? 'active' : 'rest'}
                   className={
-                    'h-0.5 w-6 rounded-full transition-colors duration-200 ' +
-                    (isActive ? 'bg-[#1a130a]' : 'bg-transparent')
+                    'h-0.5 w-6 rounded-[var(--radius-pill)] transition-colors duration-[var(--motion-base)] ' +
+                    (isActive ? 'bg-[color:var(--text-on-brass)]' : 'bg-transparent')
                   }
                 />
               </>
@@ -143,12 +143,12 @@ export function WorkspaceIntro({
   readonly onSelect: (route: WorkspaceRoute) => void
 }) {
   return (
-    <div className="rounded-2xl border border-[var(--color-brass)]/30 bg-[var(--color-panel)]/80 p-4 backdrop-blur sm:p-5">
+    <div className="rounded-[var(--radius-xl)] border border-[color:var(--border-brass)] bg-[color:var(--surface-1)]/80 p-4 backdrop-blur sm:p-5">
       <div className="mb-3 flex items-center justify-between gap-3">
         <h2 className="text-base font-bold sm:text-lg">Welcome — here's how it works</h2>
         <button
           onClick={onDismiss}
-          className="rounded-lg border border-white/10 px-3 py-1.5 text-xs font-semibold text-[var(--color-muted)] hover:text-[var(--color-ink)]"
+          className="rounded-[var(--radius-sm)] border border-[color:var(--border-subtle)] px-3 py-1.5 text-xs font-semibold text-[color:var(--text-muted)] hover:text-[color:var(--text-primary)]"
         >
           Got it
         </button>
@@ -163,18 +163,18 @@ export function WorkspaceIntro({
           <button
             key={route.path}
             onClick={() => onSelect(route)}
-            className="group rounded-xl border border-white/10 bg-white/[0.03] p-3 text-left transition hover:border-[var(--color-brass)]/50 hover:bg-white/[0.06] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-brass)]"
+            className="group rounded-[var(--radius-lg)] border border-[color:var(--border-subtle)] bg-[var(--surface-inset)] p-3 text-left transition hover:border-[color:var(--border-brass)] hover:bg-[var(--surface-inset-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--border-focus)]"
           >
-            <div className="mb-0.5 flex items-center gap-2 text-sm font-semibold text-[var(--color-brass)]">
+            <div className="mb-0.5 flex items-center gap-2 text-sm font-semibold text-[color:var(--brass-base)]">
               <span>{icon}</span>
               <span>{route.label}</span>
-              <span className="ml-auto text-[var(--color-muted)] transition group-hover:translate-x-0.5 group-hover:text-[var(--color-brass)]">→</span>
+              <span className="ml-auto text-[color:var(--text-muted)] transition group-hover:translate-x-0.5 group-hover:text-[color:var(--brass-base)]">→</span>
             </div>
-            <div className="text-xs leading-relaxed text-[var(--color-muted)]">{description}</div>
+            <div className="text-xs leading-relaxed text-[color:var(--text-muted)]">{description}</div>
           </button>
         ))}
       </div>
-      <div className="mt-3 text-[11px] text-[var(--color-muted)]">
+      <div className="mt-3 text-[11px] text-[color:var(--text-muted)]">
         Tap a card to jump straight in · use the ◀ ▶ buttons under the board (or your arrow keys) to step through any game.
       </div>
     </div>
@@ -183,18 +183,18 @@ export function WorkspaceIntro({
 
 export function WorkspaceFooter() {
   return (
-    <footer className="border-t border-white/10 pt-4 text-xs leading-relaxed text-[var(--color-muted)]">
-      Engine: <b className="text-[var(--color-ink)]">Stockfish 18</b> (WebAssembly, single-threaded lite build) running
+    <footer className="border-t border-[color:var(--border-subtle)] pt-4 text-xs leading-relaxed text-[color:var(--text-muted)]">
+      Engine: <b className="text-[color:var(--text-primary)]">Stockfish 18</b> (WebAssembly, single-threaded lite build) running
       in your browser —{' '}
-      <a className="text-[var(--color-brass)]/80" href="https://github.com/nmrugg/stockfish.js" target="_blank" rel="noopener">
+      <a className="text-[color:var(--text-link)]" href="https://github.com/nmrugg/stockfish.js" target="_blank" rel="noopener">
         stockfish.js
       </a>
       , licensed{' '}
-      <a className="text-[var(--color-brass)]/80" href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noopener">
+      <a className="text-[color:var(--text-link)]" href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noopener">
         GPLv3
       </a>
       . Rules by{' '}
-      <a className="text-[var(--color-brass)]/80" href="https://github.com/jhlywa/chess.js" target="_blank" rel="noopener">
+      <a className="text-[color:var(--text-link)]" href="https://github.com/jhlywa/chess.js" target="_blank" rel="noopener">
         chess.js
       </a>
       . Piece artwork is original SVG for this project. · React + Tailwind
@@ -212,15 +212,15 @@ export function PromotionDialog({
   readonly onChoose: (piece: string) => void
 }) {
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/60" onClick={onCancel}>
-      <div className="rounded-2xl border border-white/10 bg-[var(--color-panel)] p-4 text-center shadow-2xl" onClick={(event) => event.stopPropagation()}>
-        <h3 className="mb-3 text-sm font-semibold text-[var(--color-muted)]">Promote to</h3>
+    <div className="fixed inset-0 z-[var(--z-dialog)] grid place-items-center bg-[var(--canvas-scrim)]" onClick={onCancel}>
+      <div className="rounded-[var(--radius-xl)] border border-[color:var(--border-subtle)] bg-[color:var(--surface-1)] p-4 text-center shadow-[var(--depth-overlay)]" onClick={(event) => event.stopPropagation()}>
+        <h3 className="mb-3 text-sm font-semibold text-[color:var(--text-muted)]">Promote to</h3>
         <div className="flex gap-2">
           {['q', 'r', 'b', 'n'].map((piece) => (
             <button
               key={piece}
               onClick={() => onChoose(piece)}
-              className="grid h-16 w-16 place-items-center rounded-xl border border-white/10 bg-white/[0.03] hover:border-[var(--color-brass)]"
+              className="grid h-16 w-16 place-items-center rounded-[var(--radius-lg)] border border-[color:var(--border-subtle)] bg-[var(--surface-inset)] hover:border-[color:var(--brass-base)]"
               dangerouslySetInnerHTML={{ __html: pieceSVG(piece, promotion.color) }}
               style={{ padding: 8 }}
             />

@@ -130,14 +130,14 @@ export function ChessWorkspaceLayout() {
     <div className="mx-auto flex min-h-full max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-10">
       <header className="flex flex-wrap items-baseline gap-3">
         <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
-          chesswithprince<span className="text-[var(--color-brass)]">.com</span>
+          chesswithprince<span className="text-[color:var(--brass-base)]">.com</span>
         </h1>
-        <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 font-mono text-xs text-[var(--color-muted)]">
+        <span className="rounded-[var(--radius-pill)] border border-[color:var(--border-subtle)] bg-[var(--surface-inset)] px-3 py-1 font-[family-name:var(--type-font-numeric)] text-xs text-[color:var(--text-muted)]">
           {snapshot?.engineTag ?? 'loading engine…'}
         </span>
         <button
           onClick={() => setShowIntro(true)}
-          className="ml-auto grid h-8 w-8 place-items-center rounded-full border border-white/10 bg-white/[0.03] text-sm font-bold text-[var(--color-muted)] transition hover:text-[var(--color-ink)]"
+          className="ml-auto grid h-8 w-8 place-items-center rounded-[var(--radius-pill)] border border-[color:var(--border-subtle)] bg-[var(--surface-inset)] text-sm font-bold text-[color:var(--text-muted)] transition hover:text-[color:var(--text-primary)]"
           aria-label="How it works"
           title="How it works"
         >
@@ -160,14 +160,14 @@ export function ChessWorkspaceLayout() {
             </div>
           </div>
           {canBrowse && (
-            <div className="flex w-full max-w-[560px] items-center gap-1 rounded-xl border border-white/10 bg-black/20 p-1">
+            <div className="flex w-full max-w-[560px] items-center gap-1 rounded-[var(--radius-lg)] border border-[color:var(--border-subtle)] bg-[var(--canvas-sunken)] p-1">
               <NavBtn onClick={() => controller.navFirst()} label="First move">⏮</NavBtn>
               <NavBtn onClick={() => controller.navPrev()} label="Previous move">◀</NavBtn>
-              <div className="flex-1 text-center text-xs text-[var(--color-muted)]">
+              <div className="flex-1 text-center text-xs text-[color:var(--text-muted)]">
                 {reviewPly === null ? (
                   <span>Live · move {Math.ceil(history.length / 2)} <span className="opacity-50">· use ← →</span></span>
                 ) : (
-                  <span className="text-[var(--color-ink)]">
+                  <span className="text-[color:var(--text-primary)]">
                     Viewing move {Math.ceil((reviewPly + 1) / 2) || 0}
                     {reviewPly < 0 ? ' · start' : reviewPly % 2 === 0 ? ' (White)' : ' (Black)'} / {Math.ceil(history.length / 2)}
                   </span>
@@ -180,15 +180,15 @@ export function ChessWorkspaceLayout() {
         </div>
 
         <Card className="overflow-hidden">
-          <div className="border-b border-white/10 bg-white/[0.02] p-4">
+          <div className="border-b border-[color:var(--border-subtle)] bg-[var(--surface-inset)] p-4">
             <div className="flex items-center gap-2">
-              {snapshot?.thinking && <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-[var(--color-brass)] border-r-transparent" />}
+              {snapshot?.thinking && <span className="inline-block h-3 w-3 animate-spin rounded-[var(--radius-pill)] border-2 border-[color:var(--brass-base)] border-r-transparent" />}
               <div className="text-lg font-bold">{snapshot?.statusWho ?? 'Your move'}</div>
             </div>
-            <div className="text-sm text-[var(--color-muted)]">{snapshot?.statusSub ?? 'White to play'}</div>
+            <div className="text-sm text-[color:var(--text-muted)]">{snapshot?.statusSub ?? 'White to play'}</div>
           </div>
           {snapshot?.banner && (
-            <div className="mx-4 mt-3 rounded-lg border border-[var(--color-brass)]/50 bg-white/[0.03] px-3 py-2.5 text-center text-sm font-semibold text-[var(--color-brass)]">
+            <div className="mx-4 mt-3 rounded-[var(--radius-sm)] border border-[color:var(--border-brass)] bg-[var(--surface-inset)] px-3 py-2.5 text-center text-sm font-semibold text-[color:var(--brass-base)]">
               {snapshot.banner}
             </div>
           )}
@@ -215,7 +215,7 @@ export function ChessWorkspaceLayout() {
         />
       )}
       {toast && (
-        <div className="fixed bottom-7 left-1/2 z-[60] -translate-x-1/2 rounded-xl border border-[var(--color-brass)]/50 bg-[var(--color-panel)] px-4 py-2.5 text-sm shadow-2xl">
+        <div className="fixed bottom-7 left-1/2 z-[var(--z-toast)] -translate-x-1/2 rounded-[var(--radius-lg)] border border-[color:var(--border-brass)] bg-[color:var(--surface-1)] px-4 py-2.5 text-sm shadow-[var(--depth-floating)]">
           {toast}
         </div>
       )}

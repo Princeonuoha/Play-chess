@@ -55,16 +55,16 @@ export function PlayPanel({
         {finishLabel}
       </Btn>
       <Field label="Play as">
-        <div className="grid grid-cols-3 gap-1 rounded-xl border border-white/10 p-1">
+        <div className="grid grid-cols-3 gap-1 rounded-[var(--radius-lg)] border border-[color:var(--border-subtle)] p-1">
           {(['white', 'black', 'random'] as const).map((s) => (
             <button
               key={s}
               onClick={() => setSideChoice(s)}
               className={
-                'min-h-10 rounded-lg text-sm font-semibold capitalize transition ' +
+                'min-h-10 rounded-[var(--radius-sm)] text-sm font-semibold capitalize transition ' +
                 (sideChoice === s
-                  ? 'bg-[var(--color-brass)] text-[#1a130a]'
-                  : 'text-[var(--color-ink)] hover:bg-white/[0.05]')
+                  ? 'bg-[color:var(--brass-base)] text-[color:var(--text-on-brass)]'
+                  : 'text-[color:var(--text-primary)] hover:bg-[var(--surface-inset-hover)]')
               }
             >
               {s}
@@ -73,10 +73,10 @@ export function PlayPanel({
         </div>
       </Field>
       <label className="grid gap-2">
-        <span className="flex items-baseline justify-between text-xs uppercase tracking-wide text-[var(--color-muted)]">
+        <span className="flex items-baseline justify-between text-xs uppercase tracking-wide text-[color:var(--text-muted)]">
           Difficulty
-          <b className="font-semibold text-[var(--color-brass)]">
-            {diff.name} <span className="font-mono text-[10px] text-[var(--color-muted)]">~{diff.elo}</span>
+          <b className="font-semibold text-[color:var(--brass-base)]">
+            {diff.name} <span className="font-[family-name:var(--type-font-numeric)] text-[10px] text-[color:var(--text-muted)]">~{diff.elo}</span>
           </b>
         </span>
         <input
@@ -88,16 +88,16 @@ export function PlayPanel({
             const v = parseInt(e.target.value, 10)
             onSetElo(v)
           }}
-          className="accent-[var(--color-brass)]"
+          className="accent-[color:var(--brass-base)]"
         />
-        <span className="flex justify-between text-[10px] text-[var(--color-muted)]">
+        <span className="flex justify-between text-[10px] text-[color:var(--text-muted)]">
           <span>Beginner</span>
           <span>Maximum</span>
         </span>
       </label>
       <label className="grid gap-2">
-        <span className="flex justify-between text-xs uppercase tracking-wide text-[var(--color-muted)]">
-          Think time <b className="font-mono text-[var(--color-brass)]">{(tt / 1000).toFixed(1)} s</b>
+        <span className="flex justify-between text-xs uppercase tracking-wide text-[color:var(--text-muted)]">
+          Think time <b className="font-[family-name:var(--type-font-numeric)] text-[color:var(--brass-base)]">{(tt / 1000).toFixed(1)} s</b>
         </span>
         <input
           type="range"
@@ -109,7 +109,7 @@ export function PlayPanel({
             const v = parseInt(e.target.value, 10)
             onSetTt(v)
           }}
-          className="accent-[var(--color-brass)]"
+          className="accent-[color:var(--brass-base)]"
         />
       </label>
       <Btn active={selfPlay} onClick={() => controller.watchFullGame()}>

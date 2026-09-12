@@ -24,12 +24,12 @@ export function Btn({
       onClick={onClick}
       disabled={disabled}
       className={
-        'min-h-11 rounded-xl px-3 text-sm font-semibold transition select-none ' +
-        'active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-brass)] ' +
+        'min-h-11 rounded-[var(--radius-lg)] px-3 text-sm font-semibold transition select-none ' +
+        'active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--border-focus)] ' +
         'disabled:opacity-40 disabled:cursor-not-allowed ' +
         (brass
-          ? 'bg-[var(--color-brass)] text-[#1a130a] hover:bg-[var(--color-brass-2)] shadow-lg shadow-black/30'
-          : 'border border-white/10 bg-white/[0.03] text-[var(--color-ink)] hover:bg-white/[0.07]') +
+          ? 'bg-[color:var(--brass-base)] text-[color:var(--text-on-brass)] hover:bg-[color:var(--brass-lift)] shadow-[var(--depth-floating)]'
+          : 'border border-[color:var(--border-subtle)] bg-[var(--surface-inset)] text-[color:var(--text-primary)] hover:bg-[var(--surface-inset-hover)]') +
         ' ' +
         className
       }
@@ -42,7 +42,7 @@ export function Btn({
 export function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="grid gap-2">
-      <span className="text-xs uppercase tracking-wide text-[var(--color-muted)]">{label}</span>
+      <span className="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">{label}</span>
       {children}
     </label>
   )
@@ -68,7 +68,7 @@ export function GroupedSelect({
     <select
       value={value === '' ? '' : String(value)}
       onChange={(e) => onChange(parseInt(e.target.value, 10))}
-      className="w-full cursor-pointer rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 text-sm text-[var(--color-ink)] focus:border-[var(--color-brass)] focus:outline-none"
+      className="w-full cursor-pointer rounded-[var(--radius-lg)] border border-[color:var(--border-subtle)] bg-[var(--canvas-sunken)] px-3 py-2.5 text-sm text-[color:var(--text-primary)] focus:border-[color:var(--brass-base)] focus:outline-none"
     >
       {groups.length === 0 && (
         <option value="" disabled>
@@ -93,12 +93,12 @@ export function StatusNote({ slot }: { slot: { statusHtml: string; note: string 
     <>
       {slot.statusHtml && (
         <div
-          className="tr-status min-h-[18px] text-[13px] font-semibold leading-snug"
+          className="tr-status min-h-[18px] [font:var(--type-body-sm)]"
           dangerouslySetInnerHTML={{ __html: slot.statusHtml }}
         />
       )}
       {slot.note && (
-        <div className="mt-0.5 border-l-[3px] border-[var(--color-brass)] py-1.5 pl-3 text-[13px] leading-relaxed text-[var(--color-ink)]">
+        <div className="mt-0.5 border-l-[3px] border-[color:var(--brass-base)] py-1.5 pl-3 [font:var(--type-body-sm)] text-[color:var(--text-primary)]">
           {slot.note}
         </div>
       )}

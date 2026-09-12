@@ -13,12 +13,19 @@ export interface StudyPanelProps {
   controller: ChessController
 }
 
+/**
+ * DESIGN.md §2.6 grade tokens. The ink is the status token lifted toward
+ * `--text-primary` because the raw hue misses §8.6's 4.5:1 floor against its
+ * own 20% fill; `scripts/verify-contrast.mjs` re-measures all five pairs.
+ * Written out in full because Tailwind only emits a rule for a class literal
+ * it can find in source — these may not be composed from the token name.
+ */
 const LABEL_STYLE: Record<MoveLabel, string> = {
-  Best: 'bg-[#7ea86a]/20 text-[#9fca88] border-[#7ea86a]/40',
-  Good: 'bg-[#5f9ea0]/20 text-[#8fc7c9] border-[#5f9ea0]/40',
-  Inaccuracy: 'bg-[#d6a95d]/20 text-[#e0bd7c] border-[#d6a95d]/40',
-  Mistake: 'bg-[#d08a3e]/20 text-[#e2a869] border-[#d08a3e]/45',
-  Blunder: 'bg-[#c0453f]/20 text-[#e08078] border-[#c0453f]/45',
+  Best: 'bg-[color:var(--status-best)]/20 text-[color:color-mix(in_oklab,var(--status-best)_65%,var(--text-primary))] border-[color:var(--status-best)]/40',
+  Good: 'bg-[color:var(--status-good)]/20 text-[color:color-mix(in_oklab,var(--status-good)_65%,var(--text-primary))] border-[color:var(--status-good)]/40',
+  Inaccuracy: 'bg-[color:var(--status-inaccuracy)]/20 text-[color:color-mix(in_oklab,var(--status-inaccuracy)_65%,var(--text-primary))] border-[color:var(--status-inaccuracy)]/40',
+  Mistake: 'bg-[color:var(--status-mistake)]/20 text-[color:color-mix(in_oklab,var(--status-mistake)_65%,var(--text-primary))] border-[color:var(--status-mistake)]/40',
+  Blunder: 'bg-[color:var(--status-blunder)]/20 text-[color:color-mix(in_oklab,var(--status-blunder)_65%,var(--text-primary))] border-[color:var(--status-blunder)]/40',
 }
 const LABEL_ICON: Record<MoveLabel, string> = {
   Best: '★',
@@ -92,9 +99,9 @@ export function StudyPanel({ snap, history, reviewPly, exploring, showToast, con
     <>
       {/* Explore board — play your own moves; engine analyses the line */}
       {exploring ? (
-        <div className="grid gap-2 rounded-2xl border border-[var(--color-brass)]/40 bg-white/[0.03] p-3">
+        <div className="grid gap-2 rounded-[var(--radius-xl)] border border-[color:var(--border-brass)] bg-[var(--surface-inset)] p-3">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-xs font-bold uppercase tracking-wide text-[var(--color-brass)]">
+            <span className="text-xs font-bold uppercase tracking-wide text-[color:var(--brass-base)]">
               Exploring — play any moves
             </span>
             <div className="flex gap-2">
@@ -110,13 +117,13 @@ export function StudyPanel({ snap, history, reviewPly, exploring, showToast, con
               </Btn>
             </div>
           </div>
-          <div className="font-mono text-[12px] leading-relaxed">
+          <div className="[font:var(--type-numeric)]">
             {exploreMoves.length ? (
-              <span className="text-[var(--color-ink)]">
+              <span className="text-[color:var(--text-primary)]">
                 Your line: {formatMovesFrom(exploreMoves, (snap?.exploreStartPly ?? -1) + 1)}
               </span>
             ) : (
-              <span className="text-[var(--color-muted)]">
+              <span className="text-[color:var(--text-muted)]">
                 Drag a piece to try a line for either side — Stockfish evaluates each position below.
               </span>
             )}
@@ -130,8 +137,8 @@ export function StudyPanel({ snap, history, reviewPly, exploring, showToast, con
                 </div>
               ))
             ) : (
-              <div className="flex items-center gap-2 text-xs text-[var(--color-muted)]">
-                <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-[var(--color-brass)] border-r-transparent" />
+              <div className="flex items-center gap-2 text-xs text-[color:var(--text-muted)]">
+                <span className="inline-block h-3 w-3 animate-spin rounded-[var(--radius-pill)] border-2 border-[color:var(--brass-base)] border-r-transparent" />
                 Stockfish is looking at the position…
               </div>
             )}
@@ -145,7 +152,7 @@ export function StudyPanel({ snap, history, reviewPly, exploring, showToast, con
 
       {/* Game review */}
       <div className="flex items-center justify-between">
-        <span className="text-xs uppercase tracking-wide text-[var(--color-muted)]">Game review</span>
+        <span className="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Game review</span>
         <div className="flex gap-2">
           {review && (
             <Btn onClick={() => controller.clearReview()} className="min-h-0 flex-none px-3 py-1.5">
@@ -164,15 +171,15 @@ export function StudyPanel({ snap, history, reviewPly, exploring, showToast, con
       </div>
 
       {!review && (
-        <div className="text-xs italic leading-relaxed text-[var(--color-muted)]">
+        <div className="text-xs italic leading-relaxed text-[color:var(--text-muted)]">
           Play or load a game, then “Review game”: Stockfish grades every move, shows the stronger move you
           missed, and — where your game followed a known line — tells you how the masters handled it.
         </div>
       )}
 
       {review?.running && (
-        <div className="flex items-center gap-2 text-sm text-[var(--color-muted)]">
-          <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-[var(--color-brass)] border-r-transparent" />
+        <div className="flex items-center gap-2 text-sm text-[color:var(--text-muted)]">
+          <span className="inline-block h-3 w-3 animate-spin rounded-[var(--radius-pill)] border-2 border-[color:var(--brass-base)] border-r-transparent" />
           {review.progress}
         </div>
       )}
@@ -181,22 +188,22 @@ export function StudyPanel({ snap, history, reviewPly, exploring, showToast, con
       {review?.story.map((s, i) => (
         <div
           key={i}
-          className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-[13px] leading-relaxed"
+          className="rounded-[var(--radius-lg)] border border-[color:var(--border-subtle)] bg-[var(--surface-inset)] p-3 [font:var(--type-body-sm)]"
         >
           <div className="mb-1 flex items-center gap-2">
             <span
               className={
-                'rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ' +
+                'rounded-[var(--radius-pill)] border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ' +
                 (s.kind === 'master'
-                  ? 'border-[var(--color-brass)]/50 text-[var(--color-brass)]'
-                  : 'border-white/15 text-[var(--color-muted)]')
+                  ? 'border-[color:var(--border-brass)] text-[color:var(--brass-base)]'
+                  : 'border-[color:var(--border-subtle)] text-[color:var(--text-muted)]')
               }
             >
               {s.kind === 'master' ? 'From the masters' : 'Opening'}
             </span>
             <span className="font-semibold">{s.title}</span>
           </div>
-          <div className="text-[var(--color-muted)]">{s.text}</div>
+          <div className="text-[color:var(--text-muted)]">{s.text}</div>
         </div>
       ))}
 
@@ -205,7 +212,7 @@ export function StudyPanel({ snap, history, reviewPly, exploring, showToast, con
         <>
           <div className="flex flex-wrap gap-1.5">
             {(['Best', 'Good', 'Inaccuracy', 'Mistake', 'Blunder'] as MoveLabel[]).map((l) => (
-              <span key={l} className={'rounded-md border px-1.5 py-0.5 text-[10px] font-bold ' + LABEL_STYLE[l]}>
+              <span key={l} className={'rounded-[var(--radius-sm)] border px-1.5 py-0.5 text-[10px] font-bold ' + LABEL_STYLE[l]}>
                 {LABEL_ICON[l]} {l}
               </span>
             ))}
@@ -221,51 +228,51 @@ export function StudyPanel({ snap, history, reviewPly, exploring, showToast, con
             const it = review.items.find((x) => x.ply === vp)
             if (!it) return null
             return (
-              <div className={'flex items-start gap-2 rounded-xl border p-3 text-[13px] leading-relaxed ' + LABEL_STYLE[it.label]}>
+              <div className={'flex items-start gap-2 rounded-[var(--radius-lg)] border p-3 [font:var(--type-body-sm)] ' + LABEL_STYLE[it.label]}>
                 <span className="mt-0.5 shrink-0 font-bold">{LABEL_ICON[it.label]}</span>
-                <span className="text-[var(--color-ink)]">{reviewComment(it)}</span>
-                <span className="ml-auto shrink-0 font-mono text-xs opacity-80">{it.evalWhite}</span>
+                <span className="text-[color:var(--text-primary)]">{reviewComment(it)}</span>
+                <span className="ml-auto shrink-0 font-[family-name:var(--type-font-numeric)] text-xs opacity-80">{it.evalWhite}</span>
               </div>
             )
           })()}
-          <div className="max-h-80 divide-y divide-white/5 overflow-auto rounded-xl border border-white/10">
+          <div className="max-h-80 divide-y divide-[color:var(--border-hairline)] overflow-auto rounded-[var(--radius-lg)] border border-[color:var(--border-subtle)]">
             {review.items.map((it) => (
               <button
                 key={it.ply}
                 onClick={() => controller.gotoPly(it.ply)}
                 className={
-                  'flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] transition hover:bg-white/[0.04] ' +
-                  (reviewPly === it.ply ? 'bg-[var(--color-brass)]/10 ring-1 ring-inset ring-[var(--color-brass)]/40' : '')
+                  'flex w-full items-center gap-2 px-3 py-2 text-left [font:var(--type-body-sm)] transition hover:bg-[var(--surface-inset-hover)] ' +
+                  (reviewPly === it.ply ? 'bg-[color:var(--brass-wash)] ring-1 ring-inset ring-[color:var(--border-brass)]' : '')
                 }
               >
-                <span className="w-9 shrink-0 text-right font-mono text-xs text-[var(--color-muted)]">
+                <span className="w-9 shrink-0 text-right font-[family-name:var(--type-font-numeric)] text-xs text-[color:var(--text-muted)]">
                   {it.moveNo}{it.side === 'w' ? '.' : '…'}
                 </span>
-                <span className="w-14 shrink-0 font-mono font-semibold">{it.san}</span>
+                <span className="w-14 shrink-0 font-[family-name:var(--type-font-numeric)] font-semibold">{it.san}</span>
                 <span
-                  className={'shrink-0 rounded-md border px-1.5 py-0.5 text-[10px] font-bold ' + LABEL_STYLE[it.label]}
+                  className={'shrink-0 rounded-[var(--radius-sm)] border px-1.5 py-0.5 text-[10px] font-bold ' + LABEL_STYLE[it.label]}
                   title={it.lossCp != null ? `-${(it.lossCp / 100).toFixed(1)} vs best` : 'Top engine move'}
                 >
                   {LABEL_ICON[it.label]} {it.label}
                 </span>
-                <span className="ml-auto shrink-0 font-mono text-xs text-[var(--color-muted)]">{it.evalWhite}</span>
+                <span className="ml-auto shrink-0 font-[family-name:var(--type-font-numeric)] text-xs text-[color:var(--text-muted)]">{it.evalWhite}</span>
                 {it.betterSan && (
-                  <span className="hidden shrink-0 font-mono text-[11px] text-[#9fca88] sm:inline">
+                  <span className="hidden shrink-0 font-[family-name:var(--type-font-numeric)] text-[11px] text-[color:var(--status-positive)] sm:inline">
                     ▸ {it.betterSan}
                   </span>
                 )}
               </button>
             ))}
           </div>
-          <div className="text-[11px] leading-relaxed text-[var(--color-muted)]">
+          <div className="text-[11px] leading-relaxed text-[color:var(--text-muted)]">
             Tap a move to see it on the board. “Better” shows the engine’s top move when you missed it.
           </div>
         </>
       )}
 
       {/* Position analysis */}
-      <div className="flex items-center justify-between border-t border-white/10 pt-3">
-        <span className="text-xs uppercase tracking-wide text-[var(--color-muted)]">Analyze position</span>
+      <div className="flex items-center justify-between border-t border-[color:var(--border-subtle)] pt-3">
+        <span className="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Analyze position</span>
         <Btn disabled={snap?.analyzing} onClick={() => controller.analyze()} className="min-h-0 flex-none px-3 py-1.5">
           {snap?.analyzing ? 'Analyzing…' : 'Analyze'}
         </Btn>
@@ -279,15 +286,15 @@ export function StudyPanel({ snap, history, reviewPly, exploring, showToast, con
             </div>
           ))
         ) : (
-          <div className="text-xs italic text-[var(--color-muted)]">
+          <div className="text-xs italic text-[color:var(--text-muted)]">
             Stockfish’s top moves in the current position (full strength).
           </div>
         )}
       </div>
 
       {/* Scoresheet */}
-      <div className="flex items-center justify-between border-t border-white/10 pt-3">
-        <span className="text-xs uppercase tracking-wide text-[var(--color-muted)]">Scoresheet</span>
+      <div className="flex items-center justify-between border-t border-[color:var(--border-subtle)] pt-3">
+        <span className="text-xs uppercase tracking-wide text-[color:var(--text-muted)]">Scoresheet</span>
         <Btn onClick={copyPGN} className="min-h-0 flex-none px-3 py-1.5">
           Copy PGN
         </Btn>
@@ -306,7 +313,7 @@ export function StudyPanel({ snap, history, reviewPly, exploring, showToast, con
             </tbody>
           </table>
         ) : (
-          <div className="p-3 text-sm italic text-[var(--color-muted)]">No moves yet.</div>
+          <div className="p-3 text-sm italic text-[color:var(--text-muted)]">No moves yet.</div>
         )}
       </div>
     </>
