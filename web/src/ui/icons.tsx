@@ -212,9 +212,10 @@ export function IconLabel({
 }
 
 /**
- * An icon-only control. DESIGN.md 5.2 forbids an unlabeled one and 7.3 puts the
- * hit area floor at `--icon-target-min` (44px), so the label is required and
- * the target is not negotiable at the call site.
+ * An icon-only control. DESIGN.md 5.2 forbids an unlabeled one, so the label is
+ * required at the call site; 7.3 puts the hit-area floor at
+ * `--icon-target-min` (44px), which `.ui-iconbtn` owns so no caller can opt out
+ * of it.
  */
 export function IconButton({
   icon,
@@ -236,13 +237,7 @@ export function IconButton({
       disabled={disabled}
       aria-label={label}
       title={label}
-      className={
-        'grid min-h-[var(--icon-target-min)] min-w-[var(--icon-target-min)] place-items-center rounded-[var(--radius-sm)] ' +
-        'text-[color:var(--text-primary)] transition hover:bg-[var(--surface-inset-hover)] active:scale-95 ' +
-        'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--border-focus)] ' +
-        'disabled:opacity-40 disabled:cursor-not-allowed ' +
-        className
-      }
+      className={`ui-iconbtn ${className}`.trim()}
     >
       <Icon name={icon} />
     </button>
