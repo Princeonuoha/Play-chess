@@ -1,12 +1,14 @@
 /* ---------------------------------------------------------------------------
- * The gate `showcase-tokens.css` and `showcase.css` promise in their headers.
+ * The gate `index.css` and `showcase.css` promise in their headers.
  *
- * 1. Drift: every token in the dev token bridge is transcribed verbatim from
- *    the DESIGN.md tables, and the bridge invents nothing DESIGN.md does not
- *    declare.
- * 2. Raw values: `showcase.css` declares no colour, no font size, and no
+ * 1. Drift: every token in `web/src/index.css` — the single token authority —
+ *    is transcribed verbatim from the DESIGN.md tables, and it invents nothing
+ *    DESIGN.md does not declare.
+ * 2. Single source: no other stylesheet under `web/src` redeclares a DESIGN.md
+ *    token, so the dev-only bridge todo 4 shipped cannot come back.
+ * 3. Raw values: `showcase.css` declares no colour, no font size, and no
  *    margin/padding/gap that is not a DESIGN.md token.
- * 3. Production leak: the committed build carries no showcase identifier.
+ * 4. Production leak: the committed build carries no showcase identifier.
  * ------------------------------------------------------------------------- */
 
 import { readFileSync, readdirSync, existsSync } from 'node:fs'
@@ -16,8 +18,9 @@ import { describe, expect, it } from 'vitest'
 const read = (relative: string): string => readFileSync(fileURLToPath(new URL(relative, import.meta.url)), 'utf8')
 
 const DESIGN = read('../../../../DESIGN.md')
-const TOKENS_CSS = read('../showcase-tokens.css')
+const TOKENS_CSS = read('../../index.css')
 const SHOWCASE_CSS = read('../showcase.css')
+const SRC = fileURLToPath(new URL('../../', import.meta.url))
 const DIST = fileURLToPath(new URL('../../../../dist/', import.meta.url))
 
 /** Whitespace is not semantic in any token value here, so `rgba(0,0,0,.25)` and `rgba(0, 0, 0, .25)` compare equal. */
@@ -68,8 +71,8 @@ function documentedTokens(): Map<string, string> {
 }
 
 function declaredTokens(css: string): Map<string, string> {
-  const block = stripComments(css).match(/:root\s*\{([\s\S]*?)\n\}/)
-  if (!block) throw new Error('showcase-tokens.css no longer declares a :root block')
+  const block = stripComments(css).match(/@theme\s+static\s*\{([\s\S]*?)\n\}/)
+  if (!block) throw new Error('index.css no longer declares an `@theme static` block')
   const tokens = new Map<string, string>()
   for (const declaration of block[1].matchAll(/(--[a-z0-9-]+)\s*:\s*([^;]+);/g)) {
     tokens.set(declaration[1], declaration[2].trim())
@@ -93,7 +96,7 @@ const RAW_COLOUR = [
 const SPACING_PROPERTY = /^(?:margin|padding|gap|row-gap|column-gap)(?:-(?:top|right|bottom|left|inline|block)(?:-(?:start|end))?)?$/
 const RAW_LENGTH = /\d+(?:\.\d+)?(?:px|rem|em|ch|vw|vh|%)/
 
-describe('showcase token bridge tracks DESIGN.md', () => {
+describe('index.css is the token authority and tracks DESIGN.md', () => {
   const documented = documentedTokens()
   const declared = declaredTokens(TOKENS_CSS)
 
@@ -122,8 +125,35 @@ describe('showcase token bridge tracks DESIGN.md', () => {
     const breakpointSize = designSection('3.2').match(/`--type-display`[^|]*\|[^|]*`([0-9.]+rem)`\s*≥768px/)
     if (!breakpointSize) throw new Error('DESIGN.md 3.2 no longer documents a ≥768px display size')
     const override = stripComments(TOKENS_CSS).match(/@media\s*\(min-width:\s*768px\)\s*\{[\s\S]*?:root\s*\{([\s\S]*?)\}/)
-    if (!override) throw new Error('showcase-tokens.css no longer declares the 768px :root override')
+    if (!override) throw new Error('index.css no longer declares the 768px :root override')
     expect(normalise(override[1])).toContain(normalise(`--type-display: 800 ${breakpointSize[1]}/1.15 var(--type-font-ui)`))
+  })
+})
+
+describe('no second token source exists under web/src', () => {
+  function stylesheets(directory: string): readonly string[] {
+    return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+      const path = `${directory}${entry.name}`
+      if (entry.isDirectory()) return stylesheets(`${path}/`)
+      return entry.name.endsWith('.css') ? [path] : []
+    })
+  }
+
+  it('deleted the dev-only token bridge todo 4 shipped', () => {
+    expect(existsSync(`${SRC}dev/showcase-tokens.css`)).toBe(false)
+  })
+
+  it('declares every DESIGN.md token in index.css and nowhere else', () => {
+    const owned = [...documentedTokens().keys()]
+    const offenders = stylesheets(SRC)
+      .filter((path) => path !== `${SRC}index.css`)
+      .flatMap((path) => {
+        const contents = stripComments(readFileSync(path, 'utf8'))
+        return owned
+          .filter((token) => new RegExp(`(^|[;{\\s])${token}\\s*:`).test(contents))
+          .map((token) => `${path.slice(SRC.length)}: ${token}`)
+      })
+    expect(offenders).toEqual([])
   })
 })
 

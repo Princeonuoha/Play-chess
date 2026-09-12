@@ -20,11 +20,9 @@ import { useControlGroups } from './cases-controls'
 import { useFeedbackGroups } from './cases-feedback'
 import type { ShowcaseCase, ShowcaseGroup } from './case-types'
 
-// Product cascade first (Tailwind + `@theme`), so `Btn`/`Field`/`GroupedSelect`/
-// `StatusNote` render exactly as they do in the app; then the DESIGN.md token
-// bridge and the showcase scaffolding layer on top.
+// `../index.css` is the single DESIGN.md token authority and the very file the
+// app loads, so the showcase proves the shipped cascade rather than a copy.
 import '../index.css'
-import './showcase-tokens.css'
 import './showcase.css'
 
 if (import.meta.env.PROD) {
