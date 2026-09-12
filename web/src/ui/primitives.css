@@ -1,0 +1,729 @@
+/* ---------------------------------------------------------------------------
+ * The DESIGN.md Section 7 primitive cascade (plan todo 11).
+ *
+ * Plain CSS rather than utility classes for one reason: the 7.3 contract is
+ * written in pseudo-elements this project cannot express as utilities —
+ * `::-webkit-slider-thumb`, `::backdrop`, the sliding segmented indicator, and
+ * the loader keyframes. Every value here resolves to a token declared in
+ * `../index.css`; `scripts/verify-token-compliance.mjs` and
+ * `src/dev/__tests__/showcase-tokens.test.ts` both fail on a raw one.
+ *
+ * Imported once, by `../index.css`, so the product entry and the dev-only
+ * showcase load exactly the same primitive cascade in exactly the same order.
+ * ------------------------------------------------------------------------- */
+
+/* ---- DESIGN.md 7.2 universal contract: focus is never removed, never
+     colour-change-only, and never clipped. ---- */
+.ui-btn:focus-visible,
+.ui-iconbtn:focus-visible,
+.ui-control:focus-visible,
+.ui-slider-input:focus-visible,
+.ui-surface--interactive:focus-visible,
+.ui-seg-item:focus-visible,
+.ui-disclosure:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+.ui-slider-input:focus-visible {
+  outline-offset: var(--space-1);
+}
+
+.ui-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ------------------------------------------------------------------- Btn 7.3 */
+
+.ui-btn {
+  display: inline-grid;
+  grid-auto-flow: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--icon-target-min);
+  padding: 0 var(--space-4);
+  border: 1px solid transparent;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--depth-flat);
+  font: var(--type-body);
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+  text-align: center;
+  transition: background-color var(--motion-fast) var(--motion-ease-out),
+    border-color var(--motion-fast) var(--motion-ease-out),
+    color var(--motion-fast) var(--motion-ease-out),
+    transform var(--motion-instant) var(--motion-ease-out);
+}
+
+.ui-btn--primary {
+  background: var(--brass-base);
+  color: var(--text-on-brass);
+}
+
+.ui-btn--primary:hover:not(:disabled) {
+  background: var(--brass-lift);
+}
+
+.ui-btn--secondary {
+  background: var(--surface-inset);
+  border-color: var(--border-subtle);
+  color: var(--text-primary);
+}
+
+.ui-btn--secondary:hover:not(:disabled) {
+  background: var(--surface-inset-hover);
+}
+
+.ui-btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.ui-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* 7.3 loading: the slot is reserved at rest for any button that can load, so
+   swapping the spinner in changes no geometry at all. */
+.ui-btn-lead {
+  display: grid;
+  place-items: center;
+  width: var(--icon-size-md);
+  height: var(--icon-size-md);
+}
+
+.ui-btn-label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* ------------------------------------------------------------ IconButton 7.3 */
+
+.ui-iconbtn {
+  display: grid;
+  place-items: center;
+  min-height: var(--icon-target-min);
+  min-width: var(--icon-target-min);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background-color var(--motion-fast) var(--motion-ease-out),
+    transform var(--motion-instant) var(--motion-ease-out);
+}
+
+.ui-iconbtn:hover:not(:disabled) {
+  background: var(--surface-inset-hover);
+}
+
+.ui-iconbtn:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.ui-iconbtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ------------------------------------------------- Field + GroupedSelect 7.3 */
+
+.ui-field {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.ui-field-label {
+  font: var(--type-label);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  transition: color var(--motion-fast) var(--motion-ease-out);
+}
+
+.ui-field-stack {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.ui-field:focus-within .ui-field-label {
+  color: var(--text-primary);
+}
+
+.ui-field[data-disabled='true'] {
+  opacity: 0.4;
+}
+
+.ui-field-desc {
+  font: var(--type-body-sm);
+  color: var(--text-muted);
+  max-width: var(--type-measure);
+  overflow-wrap: anywhere;
+}
+
+.ui-field-error {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  font: var(--type-body-sm);
+  color: var(--status-critical);
+  overflow-wrap: anywhere;
+}
+
+.ui-control {
+  width: 100%;
+  min-width: 0;
+  min-height: var(--icon-target-min);
+  padding: var(--space-2) var(--space-3);
+  background: var(--canvas-sunken);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  font: var(--type-body);
+  transition: border-color var(--motion-fast) var(--motion-ease-out);
+}
+
+.ui-control:hover:not(:disabled) {
+  border-color: var(--border-strong);
+}
+
+.ui-control:focus-visible {
+  border-color: var(--border-focus);
+}
+
+.ui-control[aria-invalid='true'] {
+  border-color: var(--status-critical);
+}
+
+.ui-control:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.ui-select {
+  cursor: pointer;
+}
+
+/* ---------------------------------------------------------------- Slider 7.3 */
+
+.ui-slider {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.ui-slider-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.ui-slider-value {
+  font: var(--type-numeric);
+  letter-spacing: 0.01em;
+  color: var(--text-muted);
+  transition: color var(--motion-fast) var(--motion-ease-out);
+}
+
+.ui-slider:has(.ui-slider-input:active) .ui-slider-value,
+.ui-slider:has(.ui-slider-input:focus-visible) .ui-slider-value {
+  color: var(--text-primary);
+}
+
+.ui-slider-input {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  min-height: var(--icon-target-min);
+  background: transparent;
+  cursor: pointer;
+}
+
+.ui-slider-input:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.ui-slider-input::-webkit-slider-runnable-track {
+  height: var(--space-2);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-subtle);
+  /* The filled portion is painted by a hard-stopped gradient at the committed
+     percentage, which the component writes to `--ui-slider-fill`. */
+  background: linear-gradient(
+    to right,
+    var(--brass-base) 0 var(--ui-slider-fill),
+    var(--canvas-sunken) var(--ui-slider-fill) 100%
+  );
+}
+
+.ui-slider-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  /* Centres the 20px thumb on the 8px track; derived from tokens, never a
+     measured offset. */
+  margin-top: calc((var(--space-2) - var(--icon-size-md)) / 2);
+  height: var(--icon-size-md);
+  width: var(--icon-size-md);
+  border-radius: var(--radius-pill);
+  background: var(--brass-base);
+  border: 2px solid var(--surface-2);
+  transition: transform var(--motion-instant) var(--motion-ease-out),
+    border-color var(--motion-fast) var(--motion-ease-out);
+}
+
+.ui-slider-input:hover:not(:disabled)::-webkit-slider-thumb {
+  border-color: var(--surface-3);
+  background: var(--brass-lift);
+}
+
+.ui-slider-input:active:not(:disabled)::-webkit-slider-thumb {
+  transform: scale(1.1);
+}
+
+/* ------------------------------------------------------------- Surface 7.3 */
+
+.ui-surface {
+  display: grid;
+  gap: var(--space-2);
+  align-content: start;
+  width: 100%;
+  min-width: 0;
+  padding: var(--space-4);
+  background: var(--surface-1);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--depth-raised), var(--depth-inset-hairline);
+}
+
+.ui-surface[data-tone='2'] {
+  background: var(--surface-2);
+}
+
+.ui-surface[data-tone='3'] {
+  background: var(--surface-3);
+}
+
+.ui-surface-title {
+  font: var(--type-heading);
+  letter-spacing: -0.005em;
+}
+
+.ui-surface-body {
+  font: var(--type-body-sm);
+  color: var(--text-secondary);
+  max-width: var(--type-measure);
+  overflow-wrap: anywhere;
+}
+
+.ui-surface--interactive {
+  cursor: pointer;
+  text-align: start;
+  transition: background-color var(--motion-fast) var(--motion-ease-out),
+    border-color var(--motion-fast) var(--motion-ease-out);
+}
+
+.ui-surface--interactive:hover {
+  background: var(--surface-2);
+  border-color: var(--border-brass);
+}
+
+.ui-surface--interactive[data-tone='2']:hover {
+  background: var(--surface-3);
+}
+
+/* ----------------------------------------- SegmentedNav / WorkspaceNav 7.3 */
+
+.ui-seg {
+  position: relative;
+  display: flex;
+  gap: var(--space-2);
+  width: 100%;
+  min-width: 0;
+  padding: var(--space-1);
+  background: var(--canvas-sunken);
+  border-radius: var(--radius-lg);
+}
+
+/* One element carries both the brass fill and the 2px mark, so selection
+   travels as a single object instead of blinking between items. */
+.ui-seg-indicator {
+  position: absolute;
+  top: var(--space-1);
+  bottom: var(--space-1);
+  left: var(--space-1);
+  width: calc(
+    (100% - var(--space-2) - (var(--ui-seg-count) - 1) * var(--space-2)) / var(--ui-seg-count)
+  );
+  border-radius: var(--radius-md);
+  background: var(--brass-base);
+  transform: translateX(calc(var(--ui-seg-index) * (100% + var(--space-2))));
+  transition: transform var(--motion-base) var(--motion-ease-standard);
+  pointer-events: none;
+}
+
+.ui-seg-indicator::after {
+  content: '';
+  position: absolute;
+  left: var(--space-3);
+  right: var(--space-3);
+  bottom: var(--space-1);
+  height: 2px;
+  border-radius: var(--radius-xs);
+  background: var(--text-on-brass);
+}
+
+.ui-seg-item {
+  position: relative;
+  z-index: var(--z-board-layer);
+  flex: 1 1 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--icon-target-min);
+  min-width: var(--icon-target-min);
+  padding: 0 var(--space-2);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-muted);
+  font: var(--type-body);
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color var(--motion-fast) var(--motion-ease-out);
+}
+
+.ui-seg-item:hover:not([aria-disabled='true']) {
+  color: var(--text-primary);
+}
+
+.ui-seg-item[data-selected='true'] {
+  color: var(--text-on-brass);
+  font-weight: 800;
+}
+
+.ui-seg-item[aria-disabled='true'] {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.ui-seg-label {
+  overflow-wrap: anywhere;
+}
+
+/* 7.3 WorkspaceNav loading: the pending destination keeps its label and grows
+   an indeterminate bar beneath it. */
+.ui-seg-item[data-pending='true']::after {
+  content: '';
+  position: absolute;
+  left: var(--space-3);
+  right: var(--space-3);
+  bottom: var(--space-1);
+  height: 2px;
+  border-radius: var(--radius-xs);
+  background: var(--brass-base);
+  transform-origin: left center;
+  animation: ui-indeterminate var(--motion-base) linear infinite alternate;
+}
+
+@keyframes ui-indeterminate {
+  from {
+    transform: scaleX(0.25);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/* ------------------------------------------------- EngineStatus + spinner 7.3 */
+
+.ui-engine {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--icon-target-min);
+  padding: var(--space-1) var(--space-3);
+  background: var(--surface-inset);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-pill);
+  font: var(--type-numeric);
+  letter-spacing: 0.01em;
+  color: var(--text-primary);
+}
+
+.ui-dot {
+  flex: 0 0 auto;
+  width: var(--space-2);
+  height: var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--status-positive);
+}
+
+.ui-dot[data-tone='critical'] {
+  background: var(--status-critical);
+}
+
+.ui-spinner {
+  flex: 0 0 auto;
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+  border-radius: var(--radius-pill);
+  border: 2px solid var(--brass-base);
+  border-right-color: transparent;
+  animation: ui-spin var(--motion-loop-spin) linear infinite;
+}
+
+@keyframes ui-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---------------------------------------------------------- StatusNote 7.3 */
+
+.ui-statusnote {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+  font: var(--type-body-sm);
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+
+.ui-statusnote-status {
+  font: var(--type-heading);
+  letter-spacing: -0.005em;
+  min-height: var(--space-5);
+}
+
+.ui-statusnote-note {
+  border-left: 3px solid var(--brass-base);
+  background: var(--brass-wash);
+  padding: var(--space-2) var(--space-3);
+}
+
+.ui-statusnote[data-tone='error'] {
+  color: var(--status-critical);
+}
+
+.ui-statusnote[data-tone='error'] .ui-statusnote-note {
+  border-left-color: var(--status-critical);
+  background: transparent;
+}
+
+.ui-statusnote-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font: var(--type-heading);
+  letter-spacing: -0.005em;
+  color: var(--status-critical);
+}
+
+/* ------------------------------ InlineFeedback / Loading / Empty / Error 7.3 */
+
+/* Reserved height, so a report appearing never shifts what is beneath it. */
+.ui-feedback {
+  display: grid;
+  gap: var(--space-2);
+  align-content: start;
+  width: 100%;
+  min-width: 0;
+  min-height: var(--space-10);
+  font: var(--type-body-sm);
+  color: var(--text-secondary);
+}
+
+.ui-feedback-line {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  max-width: var(--type-measure);
+  overflow-wrap: anywhere;
+}
+
+.ui-feedback-line[data-tone='error'] {
+  color: var(--status-critical);
+}
+
+.ui-feedback-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.ui-skeleton {
+  height: var(--space-3);
+  border-radius: var(--radius-xs);
+  background: var(--surface-2);
+  animation: ui-shimmer var(--motion-loop-shimmer) var(--motion-ease-standard) infinite alternate;
+}
+
+@keyframes ui-shimmer {
+  from {
+    opacity: 0.45;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.ui-stateblock {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-width: 0;
+  padding: var(--space-4);
+  text-align: center;
+  background: var(--canvas-sunken);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-lg);
+}
+
+.ui-stateblock-text {
+  font: var(--type-body-sm);
+  color: var(--text-secondary);
+  max-width: var(--type-measure);
+  overflow-wrap: anywhere;
+}
+
+.ui-stateblock[data-tone='error'] .ui-stateblock-text {
+  color: var(--status-critical);
+}
+
+.ui-mark {
+  color: var(--text-muted);
+}
+
+.ui-mark--error {
+  color: var(--status-critical);
+}
+
+.ui-details {
+  width: 100%;
+  text-align: start;
+  font: var(--type-numeric);
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+.ui-disclosure {
+  display: flex;
+  align-items: center;
+  min-height: var(--icon-target-min);
+  cursor: pointer;
+}
+
+/* ------------------------------------------------- DialogSurface + Toast 7.3 */
+
+/* 7.3 `DialogSurface` focus: the initial target must show the ring on open.
+   `:focus-visible` does not match a programmatic focus after a pointer click,
+   so the designated target opts into the plain `:focus` ring instead. */
+.ui-dialog [data-dialog-autofocus]:focus {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+.ui-dialog {
+  display: grid;
+  gap: var(--space-3);
+  width: min(92vw, 26rem);
+  max-width: 100%;
+  padding: var(--space-5);
+  background: var(--surface-overlay);
+  color: var(--text-primary);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--depth-overlay);
+  animation: ui-rise var(--motion-base) var(--motion-ease-out);
+}
+
+.ui-dialog::backdrop {
+  background: var(--canvas-scrim);
+}
+
+.ui-dialog-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.ui-dialog-title {
+  font: var(--type-title);
+  letter-spacing: -0.01em;
+}
+
+.ui-dialog-body {
+  font: var(--type-body-sm);
+  color: var(--text-secondary);
+  max-width: var(--type-measure);
+  overflow-wrap: anywhere;
+}
+
+.ui-dialog-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.ui-toastregion {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-width: 0;
+}
+
+.ui-toast {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  max-width: 100%;
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface-overlay);
+  border: 1px solid var(--brass-rim);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--depth-floating);
+  font: var(--type-body-sm);
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+  animation: ui-rise var(--motion-base) var(--motion-ease-out);
+}
+
+@keyframes ui-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ---- DESIGN.md 6.4: `../index.css` already collapses every duration; a
+     spinner additionally has to stop reading as a frozen ring, so its gap
+     closes into a determinate mark. ---- */
+@media (prefers-reduced-motion: reduce) {
+  .ui-spinner {
+    border-right-color: var(--brass-dim);
+  }
+}

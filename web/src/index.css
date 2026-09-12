@@ -1,4 +1,8 @@
 @import "tailwindcss";
+/* The DESIGN.md Section 7 primitive cascade. It is imported here, not from
+   `ui/primitives.tsx`, so the product entry and the dev-only showcase can never
+   load one without the other. */
+@import "./ui/primitives.css";
 
 /* ---------------------------------------------------------------------------
  * THE token authority. Every semantic visual value in this product is declared
@@ -150,6 +154,8 @@
   --motion-base: 200ms;
   --motion-slow: 320ms;
   --motion-piece: 180ms;
+  --motion-loop-spin: 900ms;
+  --motion-loop-shimmer: 1600ms;
   --motion-ease-out: cubic-bezier(0.2, 0.7, 0.3, 1);
   --motion-ease-in: cubic-bezier(0.4, 0.0, 1, 1);
   --motion-ease-standard: cubic-bezier(0.4, 0.0, 0.2, 1);

@@ -107,6 +107,35 @@ const ICON_ARTWORK = {
       <path d="m15.6 7.2 4.8 4.8-4.8 4.8" />
     </>
   ),
+  /* DESIGN.md 7.3 state marks. They live here, not at their call sites,
+     because `scripts/verify-icons.mjs` fails any `<svg>` authored outside this
+     module — so a primitive can never grow artwork of its own. */
+  alert: (
+    <>
+      <path d="M12 3.6 2.4 20.4h19.2Z" />
+      <path d="M12 10.2v4.2" />
+      <path d="M12 17.4h.01" />
+    </>
+  ),
+  check: <path d="m4.8 12.6 4.8 4.8 9.6-10.8" />,
+  close: (
+    <>
+      <path d="M6.6 6.6 17.4 17.4" />
+      <path d="M17.4 6.6 6.6 17.4" />
+    </>
+  ),
+  retry: (
+    <>
+      <path d="M20.4 12a8.4 8.4 0 1 1-2.46-5.94" />
+      <path d="M20.4 4.2v4.8h-4.8" />
+    </>
+  ),
+  inbox: (
+    <>
+      <path d="M21.6 13.8h-5.4l-1.8 2.4H9.6l-1.8-2.4H2.4" />
+      <path d="M6.06 5.28 2.4 13.8v4.2a1.8 1.8 0 0 0 1.8 1.8h15.6a1.8 1.8 0 0 0 1.8-1.8v-4.2l-3.66-8.52a1.8 1.8 0 0 0-1.65-1.08H7.71a1.8 1.8 0 0 0-1.65 1.08Z" />
+    </>
+  ),
 } as const satisfies Record<string, ReactNode>
 
 /** Every icon the product may draw. A name outside this union does not exist. */

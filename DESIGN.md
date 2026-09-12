@@ -373,6 +373,8 @@ is paired with the spelled word in the accessible name.
 | `--motion-base` | `200ms` | Dialog and toast entry, route content transition, segmented indicator. |
 | `--motion-slow` | `320ms` | Evaluation bar travel — slow enough to read as a measurement moving. |
 | `--motion-piece` | `180ms` | Piece travel between squares. Unchanged duration; the property changes (§6.3). |
+| `--motion-loop-spin` | `900ms` | One revolution of the indeterminate spinner (`EngineStatus` / `Btn` loading). |
+| `--motion-loop-shimmer` | `1600ms` | One skeleton shimmer cycle (`InlineFeedback` / `Loading`). |
 | `--motion-ease-out` | `cubic-bezier(0.2, 0.7, 0.3, 1)` | Default for entering and settling. |
 | `--motion-ease-in` | `cubic-bezier(0.4, 0.0, 1, 1)` | Exits. |
 | `--motion-ease-standard` | `cubic-bezier(0.4, 0.0, 0.2, 1)` | Continuous/positional change. |
