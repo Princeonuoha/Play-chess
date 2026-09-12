@@ -238,7 +238,7 @@ export function StudyPanel({ snap, history, reviewPly, exploring, showToast, con
             )}
 
             {/* 5. the better line the engine wanted instead */}
-            {viewed !== null && viewed.betterSan !== undefined && (
+            {viewed !== null && viewed.betterSan !== null && (
               <div data-study-block="better" className="flex items-center gap-2 [font:var(--type-body-sm)] text-[color:var(--text-muted)]">
                 <Icon name="arrow-right" size="sm" />
                 <span>Better line</span>
