@@ -1,4 +1,4 @@
-import { type ChessController, type MoveLabel, type ReviewItem, type Snapshot } from '../core/controller'
+import { type ChessController, GRADE_GLYPH, type MoveLabel, type ReviewItem, type Snapshot } from '../core/controller'
 import { Btn } from '../ui/primitives'
 import { Icon, IconLabel } from '../ui/icons'
 
@@ -28,14 +28,6 @@ const LABEL_STYLE: Record<MoveLabel, string> = {
   Mistake: 'bg-[color:var(--status-mistake)]/20 text-[color:color-mix(in_oklab,var(--status-mistake)_65%,var(--text-primary))] border-[color:var(--status-mistake)]/40',
   Blunder: 'bg-[color:var(--status-blunder)]/20 text-[color:color-mix(in_oklab,var(--status-blunder)_65%,var(--text-primary))] border-[color:var(--status-blunder)]/40',
 }
-const LABEL_ICON: Record<MoveLabel, string> = {
-  Best: '★',
-  Good: '✓',
-  Inaccuracy: '?!',
-  Mistake: '?',
-  Blunder: '??',
-}
-
 // Plain-language commentary for a reviewed move, e.g.
 // "12.c5 was a mistake. A better move was Qg5."
 function reviewComment(it: ReviewItem): string {
@@ -64,7 +56,7 @@ function formatMovesFrom(sans: string[], startPly: number): string {
 /**
  * The `Study` tab body: Explore, Game review, Analyze position, and the Scoresheet.
  *
- * `LABEL_STYLE` / `LABEL_ICON` / `reviewComment` / `formatMovesFrom` came out of
+ * `LABEL_STYLE` / `reviewComment` / `formatMovesFrom` came out of
  * `App.tsx` verbatim: they are read only here, and a panel importing them back from
  * `App.tsx` would be the circular import that `ui/primitives.tsx` exists to prevent.
  * The Study-tagged derived values from the P4 hook audit
@@ -217,7 +209,7 @@ export function StudyPanel({ snap, history, reviewPly, exploring, showToast, con
             {(['Best', 'Good', 'Inaccuracy', 'Mistake', 'Blunder'] as MoveLabel[]).map((l) => (
               <span key={l} className={'rounded-[var(--radius-sm)] border px-1.5 py-0.5 text-[10px] font-bold ' + LABEL_STYLE[l]}>
                 <span aria-hidden="true" className="font-[family-name:var(--type-font-numeric)]">
-                  {LABEL_ICON[l]}
+                  {GRADE_GLYPH[l]}
                 </span>{' '}
                 {l}
               </span>
@@ -238,7 +230,7 @@ export function StudyPanel({ snap, history, reviewPly, exploring, showToast, con
             return (
               <div className={'flex items-start gap-2 rounded-[var(--radius-lg)] border p-3 [font:var(--type-body-sm)] ' + LABEL_STYLE[it.label]}>
                 <span aria-hidden="true" className="mt-0.5 shrink-0 font-[family-name:var(--type-font-numeric)] font-bold">
-                  {LABEL_ICON[it.label]}
+                  {GRADE_GLYPH[it.label]}
                 </span>
                 <span className="text-[color:var(--text-primary)]">{reviewComment(it)}</span>
                 <span className="ml-auto shrink-0 font-[family-name:var(--type-font-numeric)] text-xs opacity-80">{it.evalWhite}</span>
@@ -264,7 +256,7 @@ export function StudyPanel({ snap, history, reviewPly, exploring, showToast, con
                   title={it.lossCp != null ? `-${(it.lossCp / 100).toFixed(1)} vs best` : 'Top engine move'}
                 >
                   <span aria-hidden="true" className="font-[family-name:var(--type-font-numeric)]">
-                    {LABEL_ICON[it.label]}
+                    {GRADE_GLYPH[it.label]}
                   </span>{' '}
                   {it.label}
                 </span>

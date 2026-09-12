@@ -353,12 +353,12 @@ are domain notation, not interface icons, and may remain as text. Each must:
 3. Never be the only distinguishing feature between two grades — the `--status-*` color and the word
    are both present.
 
-The surviving sites are exactly three, and `scripts/verify-icons.mjs` allows this set and no other
-character: `GRADE_GLYPH` in `web/src/core/controller.ts` (the on-board grade badge), `LABEL_ICON` in
-`web/src/panels/StudyPanel.tsx` (the review legend, the commentary card, and the per-move rows), and
-the `✓` / `✗` book-move marks in the trainer status line. Every one renders in
-`--type-font-numeric`, is `aria-hidden` where visible text already spells the grade, and is paired
-with the spelled word in the accessible name.
+The surviving sites are exactly one declaration, and `scripts/verify-icons.mjs` allows this set and
+no other character: `GRADE_GLYPH` in `web/src/core/controller.ts` feeds both the on-board grade
+badge and every `web/src/panels/StudyPanel.tsx` surface (the review legend, the commentary card, and
+the per-move rows), alongside the `✓` / `✗` book-move marks in the trainer status line. Every one
+renders in `--type-font-numeric`, is `aria-hidden` where visible text already spells the grade, and
+is paired with the spelled word in the accessible name.
 
 ---
 
