@@ -261,13 +261,18 @@ test.describe('workspace accessibility contract', () => {
     await openWorkspace(page)
     await playTyped(page, 'e4', '1. e4.', 'e2e4')
 
+    const previous = page.getByRole('button', { name: 'Previous move' })
     await expect(boardAlt(page, 'blocked')).toContainText('Stockfish is thinking.')
-    await expect(page.getByRole('button', { name: 'Previous move' })).toBeVisible()
-    await page.getByRole('heading', { level: 1 }).click()
+    await expect(previous).toBeVisible()
+    await expect(previous).toBeEnabled()
+    await previous.focus()
+    await expect(previous).toBeFocused()
     await page.keyboard.press('ArrowLeft')
     await expect(boardAlt(page, 'blocked')).toContainText('You are browsing an earlier move')
     expect(await placement(page), 'browsing shows the position before e4').toContain('e2 white pawn')
 
+    await expect(previous).toBeVisible()
+    await expect(previous).toBeEnabled()
     await page.keyboard.press('End')
     /* The stubbed engine answers `bestmove (none)`, so the turn stays with it —
        the gate is expected to change its reason, not to open. */
