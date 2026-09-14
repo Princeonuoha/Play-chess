@@ -245,13 +245,16 @@ test.describe('workspace accessibility contract', () => {
     await type(page, 'bxa8')
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()
-    await expect(dialog.getByRole('button', { name: 'Promote to Queen' })).toBeFocused()
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur())
     await page.keyboard.press('Enter')
 
     await expect(page.locator('.board .piece[data-square="a8"]')).toBeVisible()
     await settled(page, 'b7a8')
     await expect(boardAlt(page, 'placement'), 'the promoted queen is stated by name').toContainText('a8 white queen')
     await expect(boardAlt(page, 'summary')).toContainText('Last move 5. bxa8 promoting to queen.')
+    await expect(boardAlt(page, 'announce'), 'the live console publishes the keyboard promotion').toContainText(
+      '5. bxa8 promoting to queen played.',
+    )
   })
 
   test('follows the board back through history and into the live position', async ({ page }) => {

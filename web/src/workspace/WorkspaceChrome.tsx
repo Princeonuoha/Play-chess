@@ -211,7 +211,7 @@ export function PromotionDialog({
   readonly onChoose: (piece: string) => void
 }) {
   return (
-    <DialogSurface open title="Promote to" titleAs="h3" dismiss="none" onClose={onCancel}>
+    <DialogSurface open title="Promote to" titleAs="h3" dismiss="none" onClose={onCancel} onDefaultAction={() => onChoose('q')}>
       <div className="ui-dialog-row">
         {PROMOTION_PIECES.map(({ piece, name }, index) => (
           <button

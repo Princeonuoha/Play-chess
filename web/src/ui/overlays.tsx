@@ -76,6 +76,7 @@ export function DialogSurface({
   dismissLabel = 'Close dialog',
   backdropClosable = true,
   fallbackFocus,
+  onDefaultAction,
   children,
 }: {
   readonly open: boolean
@@ -97,6 +98,7 @@ export function DialogSurface({
   readonly dismissLabel?: string
   readonly backdropClosable?: boolean
   readonly fallbackFocus?: RefObject<HTMLElement>
+  readonly onDefaultAction?: () => void
   readonly children?: ReactNode
 }) {
   const dialog = useRef<HTMLDialogElement>(null)
@@ -148,6 +150,18 @@ export function DialogSurface({
       document.removeEventListener('focusout', pullBack, true)
     }
   }, [open])
+
+  useEffect(() => {
+    if (!open || onDefaultAction === undefined) return
+    const activateDefault = (event: KeyboardEvent) => {
+      const node = dialog.current
+      if (event.key !== 'Enter' || node === null || node.contains(document.activeElement)) return
+      event.preventDefault()
+      onDefaultAction()
+    }
+    document.addEventListener('keydown', activateDefault, true)
+    return () => document.removeEventListener('keydown', activateDefault, true)
+  }, [open, onDefaultAction])
 
   /**
    * A caller that closes by unmounting — a promotion choice resolves the move
