@@ -32,11 +32,42 @@ jobs:
         run: npm --prefix web run verify:no-devtools
       - name: Approved real-Chrome performance budget
         run: |
-          npm --prefix web run preview -- --host 127.0.0.1 --port 8000 > /tmp/vite-preview.log 2>&1 &
-          PREVIEW_PID=$!
-          trap 'kill $PREVIEW_PID' EXIT
-          sleep 2
+          # Launch Vite directly (not npm wrapper) to ensure clean process tree
+          node ./web/node_modules/vite/bin/vite.js preview --host 127.0.0.1 --port 8000 > /tmp/vite-preview.log 2>&1 &
+          VITE_PID=$!
+          
+          # Trap to ensure full cleanup on exit
+          trap 'pkill -P $VITE_PID 2>/dev/null || true; kill $VITE_PID 2>/dev/null || true; wait $VITE_PID 2>/dev/null || true' EXIT
+          
+          # Poll for readiness (max 30s)
+          READY=0
+          for i in {1..30}; do
+            if nc -z 127.0.0.1 8000 2>/dev/null; then
+              READY=1
+              break
+            fi
+            sleep 1
+          done
+          
+          if [ $READY -eq 0 ]; then
+            echo "::error::Vite preview failed to start on port 8000"
+            exit 1
+          fi
+          
           LIGHTHOUSE_ENFORCE_BUDGET=1 npm --prefix web run lighthouse:real-chrome
+          
+          # Explicitly terminate Vite process tree and wait for cleanup
+          pkill -P $VITE_PID 2>/dev/null || true
+          kill $VITE_PID 2>/dev/null || true
+          wait $VITE_PID 2>/dev/null || true
+          sleep 1
+          
+          # Verify port is free before Playwright
+          if nc -z 127.0.0.1 8000 2>/dev/null; then
+            echo "::error::Port 8000 still in use after Vite termination"
+            lsof -i :8000 || true
+            exit 1
+          fi
       - name: Drift check
         run: |
           if ! git diff --exit-code -- dist/; then
