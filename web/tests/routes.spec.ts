@@ -113,6 +113,21 @@ test.describe('routed persistent workspace', () => {
     await expectWorkspace(page, routes[3])
   })
 
+  for (const destination of routes.slice(0, 3)) {
+    test(`exits Explore when navigation leaves Study for ${destination.name}`, async ({ page }) => {
+      // Given Explore owns the shared board, when a sibling route opens, then it receives the normal game board rather than Explore state.
+      await page.goto('/study')
+      await dismissIntro(page)
+      await page.getByRole('button', { name: /Explore — play your own moves/ }).click()
+      await expect(page.getByText('Exploring — play any moves')).toBeVisible()
+
+      await navigateTo(page, destination.name)
+
+      await expectWorkspace(page, destination)
+      await expect(page.locator('.board .piece.mine'), 'only the player side remains movable outside Explore').toHaveCount(16)
+    })
+  }
+
   test('renders an unknown in-app path inside the application shell instead of a hard 404', async ({ page }) => {
     // Given an unknown client-side path, when it is requested, then the shared shell remains available for recovery.
     const response = await page.goto('/not-a-workspace')

@@ -88,8 +88,10 @@ export function ChessWorkspaceLayout() {
   useEffect(() => {
     const leftStudy = previousPath.current === '/study' && location.pathname !== '/study'
     previousPath.current = location.pathname
-    if (leftStudy && snapshot?.reviewPly != null) controller.resumeGame()
-  }, [controller, location.pathname, snapshot?.reviewPly])
+    if (!leftStudy) return
+    if (snapshot?.exploring) controller.exitExplore()
+    else if (snapshot?.reviewPly != null) controller.resumeGame()
+  }, [controller, location.pathname, snapshot?.exploring, snapshot?.reviewPly])
 
   const activeRoute = WORKSPACE_ROUTES.find((route) => route.path === location.pathname)
   useEffect(() => {
