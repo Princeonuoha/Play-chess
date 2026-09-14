@@ -27,16 +27,16 @@ const ROUTES = ['/play', '/openings', '/games', '/study'] as const
 /** DESIGN.md 8.5 A11Y-01 names WCAG 2.2 AA as the floor; best-practice is carried too. */
 const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice']
 
-const UCI_STUB = `self.onmessage = (event) => {
+const uciStub = (bestMoveDelayMs = 5): string => `self.onmessage = (event) => {
   const cmd = String(event.data || '')
   if (cmd === 'uci') self.postMessage('uciok')
   else if (cmd === 'isready') self.postMessage('readyok')
-  else if (cmd.slice(0, 2) === 'go') setTimeout(() => self.postMessage('bestmove (none)'), 5)
+  else if (cmd.slice(0, 2) === 'go') setTimeout(() => self.postMessage('bestmove (none)'), ${bestMoveDelayMs})
 }`
 
-async function stubEngine(page: Page): Promise<void> {
+async function stubEngine(page: Page, bestMoveDelayMs = 5): Promise<void> {
   await page.route('**/stockfish-18-lite-single.js*', (route) =>
-    route.fulfill({ status: 200, contentType: 'application/javascript', body: UCI_STUB }),
+    route.fulfill({ status: 200, contentType: 'application/javascript', body: uciStub(bestMoveDelayMs) }),
   )
 }
 
@@ -256,9 +256,13 @@ test.describe('workspace accessibility contract', () => {
 
   test('follows the board back through history and into the live position', async ({ page }) => {
     // Given a played move, when history is browsed with the keyboard, then the text board follows and move entry is gated with a reason.
+    await page.unroute('**/stockfish-18-lite-single.js*')
+    await stubEngine(page, 750)
     await openWorkspace(page)
     await playTyped(page, 'e4', '1. e4.', 'e2e4')
 
+    await expect(boardAlt(page, 'blocked')).toContainText('Stockfish is thinking.')
+    await expect(page.getByRole('button', { name: 'Previous move' })).toBeVisible()
     await page.getByRole('heading', { level: 1 }).click()
     await page.keyboard.press('ArrowLeft')
     await expect(boardAlt(page, 'blocked')).toContainText('You are browsing an earlier move')
