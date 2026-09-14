@@ -88,7 +88,7 @@ test.describe('workspace regression matrix', () => {
         await expect(page).toHaveScreenshot(`${route.name.toLowerCase()}-${viewport.name}.png`, {
           animations: 'disabled',
           caret: 'hide',
-          fullPage: true,
+          fullPage: false,
           maxDiffPixelRatio: visualSnapshotThreshold(),
           mask: [
             page.locator('.evalbar'),
