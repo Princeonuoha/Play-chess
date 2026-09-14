@@ -58,7 +58,7 @@ function restoreFocus(
 ): void {
   const active = document.activeElement
   if (node === null || !(active instanceof HTMLElement) || (!heldFocus && !node.contains(active))) return
-  const target = invoker !== null && invoker !== document.body && invoker.isConnected ? invoker : fallback
+  const target = invoker !== null && invoker !== document.body && invoker.isConnected ? invoker : heldFocus ? fallback : null
   if (target?.isConnected) {
     target.focus()
     return

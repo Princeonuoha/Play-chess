@@ -96,16 +96,15 @@ async function firstVisit(page: Page, viewport: { width: number; height: number 
 /**
  * A return visit: storage already carries the dismissal.
  *
- * The auto-opened guide has no invoking control, so it restores focus to the
- * stable workspace main landmark. Waiting for that queued close step makes
- * everything after it deterministic.
+ * A return visit starts only after the first-visit dialog has fully closed and
+ * focus has left its now-hidden controls.
  */
 async function returningVisit(page: Page, viewport: { width: number; height: number }): Promise<void> {
   await firstVisit(page, viewport)
   await dismissControl(page).click()
   await expect(dialog(page)).toBeHidden()
   await expect
-    .poll(() => page.getByRole('main').evaluate((main) => document.activeElement === main), {
+    .poll(() => page.evaluate(() => document.activeElement?.closest('dialog') === null), {
       message: 'focus must leave the hidden dialog after the guide closes',
     })
     .toBe(true)
