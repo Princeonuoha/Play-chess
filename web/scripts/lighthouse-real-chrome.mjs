@@ -19,10 +19,16 @@ const acceptedPerformanceFloors = {
   '/study': { mobile: 95, desktop: 74 },
 }
 const enforceBudget = process.env.LIGHTHOUSE_ENFORCE_BUDGET === '1'
-const chrome = await launch({
-  chromePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+
+// Build chrome launcher config: honor CHROME_PATH if set, otherwise let chrome-launcher discover
+const launchConfig = {
   chromeFlags: ['--headless=new', '--no-first-run', '--no-default-browser-check', '--no-proxy-server'],
-})
+}
+if (process.env.CHROME_PATH) {
+  launchConfig.chromePath = process.env.CHROME_PATH
+}
+
+const chrome = await launch(launchConfig)
 
 await mkdir(outputDirectory, { recursive: true })
 const results = []
