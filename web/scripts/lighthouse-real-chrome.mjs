@@ -12,6 +12,13 @@ const formFactors = [
   { name: 'desktop', screenEmulation: { mobile: false, width: 1350, height: 940, deviceScaleRatio: 1 } },
 ]
 const categoryIds = ['performance', 'accessibility', 'best-practices', 'seo']
+const acceptedPerformanceFloors = {
+  '/play': { mobile: 93, desktop: 76 },
+  '/openings': { mobile: 91, desktop: 72 },
+  '/games': { mobile: 95, desktop: 74 },
+  '/study': { mobile: 95, desktop: 74 },
+}
+const enforceBudget = process.env.LIGHTHOUSE_ENFORCE_BUDGET === '1'
 const chrome = await launch({
   chromePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
   chromeFlags: ['--headless=new', '--no-first-run', '--no-default-browser-check', '--no-proxy-server'],
@@ -52,3 +59,18 @@ try {
 }
 
 await writeFile(resolve(outputDirectory, 'summary.json'), `${JSON.stringify({ baseURL, samples, results }, null, 2)}\n`)
+
+if (enforceBudget) {
+  const failures = results.flatMap(({ route, formFactor, median }) => {
+    const floor = acceptedPerformanceFloors[route][formFactor]
+    const qualityFailures = categoryIds
+      .filter((category) => category !== 'performance' && median[category] !== 100)
+      .map((category) => `${route} ${formFactor} ${category}=${median[category]} (required 100)`)
+    return median.performance < floor
+      ? [...qualityFailures, `${route} ${formFactor} performance=${median.performance} (required ${floor})`]
+      : qualityFailures
+  })
+  if (failures.length > 0) {
+    throw new Error(`Real-Chrome quality budget failed:\n${failures.join('\n')}`)
+  }
+}

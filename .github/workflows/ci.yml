@@ -30,6 +30,13 @@ jobs:
         run: npm --prefix web run react-doctor
       - name: Production devtools leak scan
         run: npm --prefix web run verify:no-devtools
+      - name: Approved real-Chrome performance budget
+        run: |
+          npm --prefix web run preview -- --host 127.0.0.1 --port 8000 > /tmp/vite-preview.log 2>&1 &
+          PREVIEW_PID=$!
+          trap 'kill $PREVIEW_PID' EXIT
+          sleep 2
+          LIGHTHOUSE_ENFORCE_BUDGET=1 npm --prefix web run lighthouse:real-chrome
       - name: Drift check
         run: |
           if ! git diff --exit-code -- dist/; then
