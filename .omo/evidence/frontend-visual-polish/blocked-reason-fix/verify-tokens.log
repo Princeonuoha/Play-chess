@@ -1,0 +1,5 @@
+
+> verify:tokens
+> node scripts/verify-token-compliance.mjs
+
+token-compliance: PASS — 34 files, 100/100 DESIGN.md tokens declared once in src/index.css, 6 documented deferral(s).

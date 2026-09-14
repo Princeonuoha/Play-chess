@@ -1,0 +1,41 @@
+
+Running 1 test using 1 worker
+
+  ✘  1 [chromium] › tests/a11y.spec.ts:257:3 › workspace accessibility contract › follows the board back through history and into the live position (5.7s)
+
+
+  1) [chromium] › tests/a11y.spec.ts:257:3 › workspace accessibility contract › follows the board back through history and into the live position 
+
+    Error: expect(locator).toContainText(expected) failed
+
+    Locator: locator('[data-board-alt="blocked"]')
+    Expected substring: "You are browsing an earlier move"
+    Received string:    "It is not your move."
+    Timeout: 5000ms
+
+    Call log:
+      - Expect "toContainText" locator('[data-board-alt="blocked"]') with timeout 5000ms
+      - waiting for locator('[data-board-alt="blocked"]')
+        5 × locator resolved to <p data-board-alt="blocked">Stockfish is thinking.</p>
+          - unexpected value "Stockfish is thinking."
+        9 × locator resolved to <p data-board-alt="blocked">It is not your move.</p>
+          - unexpected value "It is not your move."
+
+
+      264 |     await page.getByRole('heading', { level: 1 }).click()
+      265 |     await page.keyboard.press('ArrowLeft')
+    > 266 |     await expect(boardAlt(page, 'blocked')).toContainText('You are browsing an earlier move')
+          |                                             ^
+      267 |     expect(await placement(page), 'browsing shows the position before e4').toContain('e2 white pawn')
+      268 |
+      269 |     await page.keyboard.press('End')
+        at /Users/prince.onuoha/work/tmp/chess-stockfish-worktrees/frontend-visual-polish/web/tests/a11y.spec.ts:266:45
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/a11y-workspace-accessibili-65e9d--and-into-the-live-position-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/a11y-workspace-accessibili-65e9d--and-into-the-live-position-chromium/error-context.md
+
+  1 failed
+    [chromium] › tests/a11y.spec.ts:257:3 › workspace accessibility contract › follows the board back through history and into the live position 

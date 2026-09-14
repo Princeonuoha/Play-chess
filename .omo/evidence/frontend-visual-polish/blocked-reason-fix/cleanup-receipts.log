@@ -1,0 +1,12 @@
+Cleanup receipt
+Task-owned listeners on port 8000:
+lsof: WARNING: can't stat() hfs file system /private/var/folders/zz/zyxvpxvq6csfxvn_n0000000000000/T/C44E4F7A-1796-4B03-B9F9-0CA23195E377
+      Output information may be incomplete.
+      assuming "dev=1000015" from mount table
+Task-owned Playwright/Vite/Chromium processes scoped to this worktree:
+Pre-existing processes intentionally untouched:
+lsof: WARNING: can't stat() hfs file system /private/var/folders/zz/zyxvpxvq6csfxvn_n0000000000000/T/C44E4F7A-1796-4B03-B9F9-0CA23195E377
+      Output information may be incomplete.
+      assuming "dev=1000015" from mount table
+COMMAND   PID          USER   FD   TYPE             DEVICE SIZE/OFF NODE NAME
+workerd 63813 prince.onuoha   13u  IPv4 0x52c8284b82d05cf5      0t0  TCP 127.0.0.1:9229 (LISTEN)

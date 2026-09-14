@@ -1,0 +1,4 @@
+
+> verify:no-devtools
+> if matches=$(find ../dist -type f -name '*.js' -exec grep -E -i -l 'react[-_]?scan|react[-_]?grab|react[-_]?doctor' {} +); then if [ -n "$matches" ]; then printf '%s\n' "$matches"; echo 'React audit tooling leaked into dist.' >&2; exit 1; fi; fi
+

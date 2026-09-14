@@ -1,0 +1,19 @@
+
+> build
+> npm run verify:icons && tsc --noEmit && vite build && node scripts/postbuild.mjs
+
+
+> verify:icons
+> node scripts/verify-icons.mjs
+
+verify-icons: PASS — 30 files, 19 icons from src/ui/icons.tsx, stroke var(--icon-stroke), grid 0 0 24 24, 3 documented DESIGN.md 5.4 glyph(s).
+vite v5.4.21 building for production...
+transforming...
+✓ 63 modules transformed.
+rendering chunks...
+computing gzip size...
+../dist/index.html                   3.80 kB │ gzip:   1.09 kB
+../dist/assets/index-Blaa2N3s.css   52.61 kB │ gzip:  10.51 kB
+../dist/assets/index-CpYKRVUi.js   353.58 kB │ gzip: 112.63 kB
+✓ built in 422ms
+postbuild: copied engine/ and _headers into dist/
