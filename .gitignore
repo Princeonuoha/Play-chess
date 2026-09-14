@@ -5,5 +5,8 @@ react-doctor-report.json
 .venv/
 web/node_modules/
 web/dist/
+web/playwright-report/
+web/test-results/
+.wrangler/
 # dist/ is the committed, deployable build output (wrangler serves it).
 .omo/
