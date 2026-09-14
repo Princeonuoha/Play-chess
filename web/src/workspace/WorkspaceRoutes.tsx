@@ -1,0 +1,167 @@
+import { useEffect, useRef } from 'react'
+import { useLocation, useNavigate, useOutletContext } from 'react-router'
+import type { ChessController, SetKey, Snapshot } from '../core/controller'
+import { GamesPanel } from '../panels/GamesPanel'
+import { PlayPanel } from '../panels/PlayPanel'
+import { StudyPanel } from '../panels/StudyPanel'
+import { TrainPanel } from '../panels/TrainPanel'
+import { IconLabel } from '../ui/icons'
+import { Empty, Loading, type ToastTone } from '../ui/primitives'
+import { WORKSPACE_ROUTES } from './WorkspaceChrome'
+import { RouteHint } from './WorkspaceGuide'
+
+type SideChoice = 'white' | 'black' | 'random'
+
+export type WorkspaceOutletContext = {
+  readonly controller: ChessController
+  readonly snapshot: Snapshot | null
+  readonly sideChoice: SideChoice
+  readonly setSideChoice: (side: SideChoice) => void
+  readonly elo: number
+  readonly setElo: (value: number) => void
+  readonly thinkTime: number
+  readonly setThinkTime: (value: number) => void
+  readonly difficulty: { readonly name: string; readonly elo: string }
+  readonly selfPlay: boolean
+  readonly replaying: boolean
+  readonly sessionKey: SetKey
+  readonly reviewPly: number | null
+  readonly exploring: boolean
+  readonly history: string[]
+  readonly showToast: (message: string, tone?: ToastTone) => void
+}
+
+const INITIAL_HISTORY_ENTRY = 'default'
+
+function RouteHeading({ children }: { readonly children: string }) {
+  const heading = useRef<HTMLHeadingElement>(null)
+  const { key } = useLocation()
+
+  useEffect(() => {
+    if (key === INITIAL_HISTORY_ENTRY) return
+    heading.current?.focus()
+  }, [key])
+
+  return (
+    <h2 ref={heading} tabIndex={-1} data-route-heading={children} className="sr-only">
+      {children}
+    </h2>
+  )
+}
+
+export function PlayWorkspace() {
+  const workspace = useOutletContext<WorkspaceOutletContext>()
+  return (
+    <>
+      <RouteHeading>Play</RouteHeading>
+      {workspace.history.length === 0 && (
+        <RouteHint route="Play" icon="circle-play">
+          No game is under way yet. Press New game, then drag a piece — or tap it and tap its square.
+        </RouteHint>
+      )}
+      <PlayPanel
+        snap={workspace.snapshot}
+        elo={workspace.elo}
+        tt={workspace.thinkTime}
+        sideChoice={workspace.sideChoice}
+        setSideChoice={workspace.setSideChoice}
+        diff={workspace.difficulty}
+        finishLabel={
+          workspace.selfPlay ? (
+            <IconLabel icon="stop">Stop</IconLabel>
+          ) : (
+            <IconLabel icon="play">Watch Stockfish finish this game</IconLabel>
+          )
+        }
+        fullLabel={
+          workspace.selfPlay ? <IconLabel icon="stop">Stop</IconLabel> : <IconLabel icon="play">Watch a full engine game</IconLabel>
+        }
+        onNewGame={() => workspace.controller.newGame(workspace.sideChoice)}
+        onFlip={() => workspace.controller.flip()}
+        onUndo={() => workspace.controller.undo()}
+        onSetElo={(value) => {
+          workspace.setElo(value)
+          workspace.controller.setEloSlider(value)
+        }}
+        onSetTt={(value) => {
+          workspace.setThinkTime(value)
+          workspace.controller.setThinkTime(value)
+        }}
+        controller={workspace.controller}
+      />
+    </>
+  )
+}
+
+export function OpeningsWorkspace() {
+  const workspace = useOutletContext<WorkspaceOutletContext>()
+  return (
+    <>
+      <RouteHeading>Openings</RouteHeading>
+      {workspace.snapshot === null ? (
+        <Loading label="Preparing the opening workspace…" rows={2} />
+      ) : (
+        <TrainPanel
+          snap={workspace.snapshot}
+          replaying={workspace.replaying}
+          selfPlay={workspace.selfPlay}
+          sessionKey={workspace.sessionKey}
+          reviewPly={workspace.reviewPly}
+          controller={workspace.controller}
+        />
+      )}
+    </>
+  )
+}
+
+export function GamesWorkspace() {
+  const workspace = useOutletContext<WorkspaceOutletContext>()
+  return (
+    <>
+      <RouteHeading>Games</RouteHeading>
+      <GamesPanel
+        snap={workspace.snapshot}
+        replaying={workspace.replaying}
+        selfPlay={workspace.selfPlay}
+        sessionKey={workspace.sessionKey}
+        controller={workspace.controller}
+      />
+    </>
+  )
+}
+
+export function StudyWorkspace() {
+  const workspace = useOutletContext<WorkspaceOutletContext>()
+  return (
+    <>
+      <RouteHeading>Study</RouteHeading>
+      {workspace.history.length === 0 && (
+        <RouteHint route="Study" icon="search">
+          There is nothing to review yet. Play a game, or replay one from Games, and Stockfish will grade every move.
+        </RouteHint>
+      )}
+      <StudyPanel
+        snap={workspace.snapshot}
+        history={workspace.history}
+        reviewPly={workspace.reviewPly}
+        exploring={workspace.exploring}
+        showToast={workspace.showToast}
+        controller={workspace.controller}
+      />
+    </>
+  )
+}
+
+export function UnknownWorkspace() {
+  const navigate = useNavigate()
+  return (
+    <>
+      <RouteHeading>Workspace not found</RouteHeading>
+      <Empty
+        message="That address is not one of the four workspaces. Your board and your game are untouched — pick up where you left off in Play."
+        actionLabel="Go to Play"
+        onAction={() => navigate(WORKSPACE_ROUTES[0].path)}
+      />
+    </>
+  )
+}

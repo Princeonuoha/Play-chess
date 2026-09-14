@@ -135,6 +135,12 @@ Stockfish.js is GPLv3. You're distributing it, so keep the license notice in the
 footer, don't strip the copyright header from the engine files, and be prepared to
 point at the source (linking to github.com/nmrugg/stockfish.js satisfies this).
 
+The self-hosted Archivo and IBM Plex Mono Latin subsets are licensed under the SIL
+Open Font License 1.1. Their copyright notices, complete licence text, and source /
+version record ship alongside the font files in [`web/public/fonts/`](web/public/fonts/)
+as [`OFL.txt`](web/public/fonts/OFL.txt) and
+[`PROVENANCE.md`](web/public/fonts/PROVENANCE.md), and are copied to `dist/fonts/`.
+
 The piece artwork in `index.html` is original SVG written for this project — no
 third-party asset licenses are involved.
 

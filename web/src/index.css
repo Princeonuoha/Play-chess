@@ -1,126 +1,494 @@
 @import "tailwindcss";
+/* The DESIGN.md Section 7 primitive cascade. It is imported here, not from
+   `ui/primitives.tsx`, so the product entry and the dev-only primitive gallery
+   can never load one without the other. */
+@import "./ui/primitives.css";
 
-@theme {
-  --color-bg: #0f151b;
-  --color-panel: #161d25;
-  --color-panel-2: #1b232d;
-  --color-line: #2a333f;
-  --color-ink: #e7ecf1;
-  --color-muted: #8c98a6;
-  --color-brass: #c69a52;
-  --color-brass-2: #d9ad60;
-  --color-board-l: #eeeed2;
-  --color-board-d: #769656;
-  --font-display: "Archivo", system-ui, -apple-system, sans-serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+/* ---------------------------------------------------------------------------
+ * THE token authority. Every semantic visual value in this product is declared
+ * exactly once, here, transcribed verbatim from the root `DESIGN.md` tables
+ * (Sections 2.1-2.8, 3.1-3.3, 4.1/4.2/4.4, 5.1, 6.1). Nothing else in
+ * `web/src` may declare a design token — `scripts/verify-token-compliance.mjs`
+ * fails the build if a second source appears, if a token drifts from
+ * DESIGN.md, or if a component reaches for a raw colour, font size, or
+ * transition duration instead of a token.
+ *
+ * `@theme static` (Tailwind v4) is used rather than a bare `:root` for two
+ * reasons DESIGN.md §2 requires: the tokens are exposed to Tailwind so
+ * arbitrary values like `bg-[var(--surface-1)]` resolve against the same
+ * declarations, and `static` guarantees every variable is emitted even when no
+ * named utility consumes it (the board cascade below reads many of them from
+ * plain CSS).
+ *
+ * Namespace note: `--radius-*` and `--text-*` are Tailwind namespaces. Because
+ * no component uses a named `rounded-*` / `text-<name>` size utility any more
+ * (every radius is written `rounded-[var(--radius-*)]`), the overrides here
+ * change no generated utility — they exist purely as the documented scale.
+ * ------------------------------------------------------------------------- */
+@theme static {
+  /* ---- DESIGN.md 2.1 Canvas family ---- */
+  --canvas-base: #0f151b;
+  --canvas-veil: color-mix(in oklab, var(--brass-base) 10%, transparent);
+  --canvas-sunken: rgba(0, 0, 0, 0.25);
+  --canvas-scrim: rgba(0, 0, 0, 0.60);
+
+  /* ---- DESIGN.md 2.2 Board family — the two square fills are FROZEN ---- */
+  --board-square-ivory: #eeeed2;
+  --board-square-green: #769656;
+  --board-coord-on-ivory: #3d4f2c;
+  --board-coord-on-green: #1b2412;
+  --board-rim: #0a0f14;
+  --board-select: color-mix(in oklab, var(--brass-base) 40%, transparent);
+  --board-last: color-mix(in oklab, var(--brass-base) 20%, transparent);
+  --board-dot: rgba(15, 21, 27, 0.40);
+  --board-check: var(--status-critical);
+
+  /* ---- DESIGN.md 2.3 Surface family ---- */
+  --surface-1: #161d25;
+  --surface-2: #1b232d;
+  --surface-3: #212a35;
+  --surface-inset: rgba(255, 255, 255, 0.03);
+  --surface-inset-hover: rgba(255, 255, 255, 0.07);
+  --surface-overlay: #1b232d;
+
+  /* ---- DESIGN.md 2.4 Brass family — the one accent ---- */
+  --brass-base: #c69a52;
+  --brass-lift: #d9ad60;
+  --brass-dim: #9c793d;
+  --brass-rim: color-mix(in oklab, var(--brass-base) 50%, transparent);
+  --brass-wash: color-mix(in oklab, var(--brass-base) 12%, transparent);
+  --text-on-brass: #1a130a;
+
+  /* ---- DESIGN.md 2.5 Text family ---- */
+  --text-primary: #e7ecf1;
+  --text-secondary: #c6ccd4;
+  --text-muted: #8c98a6;
+  --text-link: var(--brass-base);
+
+  /* ---- DESIGN.md 2.6 Status family ---- */
+  --status-positive: #7ea86a;
+  --status-info: #5f9ea0;
+  --status-caution: #d6a95d;
+  --status-warning: #d08a3e;
+  --status-critical: #c0453f;
+  /* TEXT ink for the critical family. `--status-critical` is a NON-text token —
+     3.37:1 on `--surface-1`, under the AA text floor — so every `color:` uses
+     this lift and the raw token stays on borders, fills, dots, and the check
+     square. Same "status toward --text-primary" lift the review grades use. */
+  --status-critical-ink: color-mix(in oklab, var(--status-critical) 55%, var(--text-primary));
+  --status-best: var(--status-positive);
+  --status-good: var(--status-info);
+  --status-inaccuracy: var(--status-caution);
+  --status-mistake: var(--status-warning);
+  --status-blunder: var(--status-critical);
+
+  /* ---- DESIGN.md 2.7 Border family ---- */
+  --border-hairline: rgba(255, 255, 255, 0.06);
+  --border-subtle: rgba(255, 255, 255, 0.10);
+  --border-strong: #2a333f;
+  --border-brass: var(--brass-rim);
+  --border-focus: var(--brass-base);
+
+  /* ---- DESIGN.md 2.8 Depth family ---- */
+  --depth-flat: none;
+  --depth-inset-hairline: inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
+  --depth-raised: 0 18px 44px -22px rgba(0, 0, 0, 0.75);
+  --depth-floating: 0 10px 30px rgba(0, 0, 0, 0.45);
+  --depth-overlay: 0 28px 70px -20px rgba(0, 0, 0, 0.85);
+  --depth-board: 0 24px 60px -24px rgba(0, 0, 0, 0.75);
+
+  /* ---- DESIGN.md 3.1 Families ---- */
+  --type-font-ui: "Archivo", system-ui, -apple-system, sans-serif;
+  --type-font-numeric: "IBM Plex Mono", ui-monospace, monospace;
+
+  /* ---- DESIGN.md 3.2 Scale, expressed as `font` shorthands so a component
+       cannot pick a size without also taking the documented weight and
+       line-height. Tracking is applied alongside by the consuming rule. ---- */
+  --type-display: 800 1.875rem/1.15 var(--type-font-ui);
+  --type-title: 700 1.25rem/1.25 var(--type-font-ui);
+  --type-heading: 700 1.0625rem/1.3 var(--type-font-ui);
+  --type-body: 500 0.875rem/1.55 var(--type-font-ui);
+  --type-body-sm: 500 0.8125rem/1.55 var(--type-font-ui);
+  --type-label: 600 0.75rem/1.35 var(--type-font-ui);
+  --type-numeric: 500 0.8125rem/1.45 var(--type-font-numeric);
+
+  /* ---- DESIGN.md 3.3 Measure ---- */
+  --type-measure: 68ch;
+
+  /* ---- DESIGN.md 4.1 Spacing (4px grid) ---- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* ---- DESIGN.md 4.2 Radius ---- */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-pill: 999px;
+  --radius-board: 14px;
+
+  /* ---- DESIGN.md 4.4 Z-index ---- */
+  --z-base: 0;
+  --z-board-layer: 2;
+  --z-board-badge: 3;
+  --z-board-drag: 5;
+  --z-sticky: 20;
+  --z-nav: 30;
+  --z-scrim: 40;
+  --z-dialog: 50;
+  --z-toast: 60;
+
+  /* ---- DESIGN.md 5.1 Icon system ---- */
+  --icon-size-sm: 16px;
+  --icon-size-md: 20px;
+  --icon-size-lg: 24px;
+  --icon-stroke: 1.75;
+  --icon-target-min: 44px;
+
+  /* ---- DESIGN.md 6.1 Motion ---- */
+  --motion-instant: 80ms;
+  --motion-fast: 140ms;
+  --motion-base: 200ms;
+  --motion-slow: 320ms;
+  --motion-piece: 180ms;
+  --motion-loop-spin: 900ms;
+  --motion-loop-shimmer: 1600ms;
+  --motion-ease-out: cubic-bezier(0.2, 0.7, 0.3, 1);
+  --motion-ease-in: cubic-bezier(0.4, 0.0, 1, 1);
+  --motion-ease-standard: cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
+/* DESIGN.md 3.2: the wordmark step grows at the tablet breakpoint. `@theme`
+   may not be nested in a media query, so the one responsive step in the scale
+   is re-declared here. This is the only permitted re-declaration of a token in
+   the product, and `verify-token-compliance.mjs` allows exactly this one. */
+@media (min-width: 768px) {
+  :root {
+    --type-display: 800 2.25rem/1.15 var(--type-font-ui);
+  }
 }
 
 html, body, #root { height: 100%; }
 body {
   margin: 0;
   background:
-    radial-gradient(1200px 600px at 85% -12%, color-mix(in oklab, var(--color-brass) 10%, transparent) 0, transparent 60%),
-    var(--color-bg);
-  color: var(--color-ink);
-  font-family: var(--font-display);
+    radial-gradient(1200px 600px at 85% -12%, var(--canvas-veil) 0, transparent 60%),
+    var(--canvas-base);
+  color: var(--text-primary);
+  font-family: var(--type-font-ui);
   -webkit-font-smoothing: antialiased;
 }
 
-/* ---- Board + eval bar + promotion + scoresheet (plain CSS, ported verbatim
-   from the tested app so the board behaves and looks identical). ---- */
-:root {
-  --light-sq: #eeeed2;
-  --dark-sq: #769656;
-  --brass: #c69a52;
-  --brass-dim: #9c793d;
-  --line: #2a333f;
-  --ink: #e7ecf1;
-  --muted: #8c98a6;
-  --panel: #161d25;
-  --panel-2: #1c242e;
-  --sel: #c69a5266;
-  --last: #c69a5233;
-  --dot: #0f151b66;
-  --check: #c0453f;
-  --shadow: 0 10px 30px rgba(0,0,0,.45);
+/* ---- DESIGN.md 6.4: the mandatory global reduced-motion path. Transitions
+   and animations become instant rather than absent, so no state change is ever
+   lost — a piece still repositions, the eval bar still moves, a dialog still
+   appears. ---- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
+/* ---------------------------------------------------------------------------
+ * DESIGN.md 8.5 A11Y-08 / A11Y-09 / A11Y-12 — the two keyboard-first surfaces.
+ *
+ * Both follow the same rule: present in the accessibility tree at all times,
+ * absent from the visual composition until focus arrives. DESIGN.md 1.2 allows
+ * exactly one thing to compete with the board, so neither may be visible
+ * furniture; A11Y-03 forbids an invisible focus, so neither may stay hidden
+ * once it holds focus. Revealing on focus is the only state that satisfies
+ * both, and it costs the layout nothing: hidden they are absolutely positioned
+ * and 1px, revealed they are fixed, so neither ever displaces the board.
+ * ------------------------------------------------------------------------- */
+.ui-skiplink {
+  position: fixed;
+  left: var(--space-4);
+  top: var(--space-4);
+  z-index: var(--z-toast);
+  display: grid;
+  place-items: center;
+  min-height: var(--icon-target-min);
+  min-width: var(--icon-target-min);
+  padding: 0 var(--space-4);
+  border: 1px solid var(--border-brass);
+  border-radius: var(--radius-lg);
+  background: var(--surface-overlay);
+  color: var(--text-primary);
+  font: var(--type-body);
+  font-weight: 600;
+  text-decoration: none;
+  box-shadow: var(--depth-inset-hairline), var(--depth-overlay);
+  /* Parked above the viewport rather than removed, so it travels back on a
+     composited transform and is never a display toggle a reader can miss. */
+  transform: translateY(calc(-100% - var(--space-10)));
+  transition: transform var(--motion-fast) var(--motion-ease-out);
+}
+.ui-skiplink:focus {
+  transform: translateY(0);
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+/* The board console. Hidden exactly the way `.ui-sr-only` hides, so the two
+   mechanisms cannot drift; the revealed state then unwinds every one of those
+   declarations rather than fighting them. */
+.board-console {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+.board-console:focus-within {
+  position: fixed;
+  left: 50%;
+  bottom: max(var(--space-4), env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: var(--z-nav);
+  display: grid;
+  gap: var(--space-2);
+  width: min(440px, calc(100vw - var(--space-8)));
+  height: auto;
+  max-height: min(74dvh, 560px);
+  overflow: auto;
+  clip-path: none;
+  white-space: normal;
+  padding: var(--space-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  background: var(--surface-overlay);
+  box-shadow: var(--depth-inset-hairline), var(--depth-overlay);
+  color: var(--text-secondary);
+  font: var(--type-body-sm);
+}
+/* From the desktop breakpoint the console steps out of the board's column so
+   the position it is describing stays in view while it is being read. */
+@media (min-width: 1024px) {
+  .board-console:focus-within {
+    left: auto;
+    right: var(--space-4);
+    transform: none;
+  }
+}
+.board-console-title {
+  font: var(--type-heading);
+  color: var(--text-primary);
+}
+.board-console-note { color: var(--text-muted); }
+.board-console-list {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding-left: var(--space-5);
+  list-style: disc;
+  font-family: var(--type-font-numeric);
+}
+.board-console-form { display: grid; gap: var(--space-3); }
+
+/* ---- Board + eval bar + promotion + scoresheet (plain CSS, ported from the
+   tested app so the board behaves identically). Every visual value below now
+   resolves to a token declared above; the two frozen square fills are read
+   straight from `--board-square-ivory` / `--board-square-green`. ---- */
+
+/* DESIGN.md 1.3: the board is framed like a physical tournament board — a deep
+   contact shadow onto the canvas, a hairline rim, an inset top highlight, and a
+   brass rim-light that appears only while the board is engaged (`.board::after`
+   below). §4.3 permits exactly one depth token plus `--depth-inset-hairline`. */
 .board {
   /* Square, and never bigger than its column, a sensible max, or the space
      left in the viewport once the header/scrubber are accounted for — so the
-     board always fits on screen without scrolling. */
+     board always fits on screen without scrolling. `aspect-ratio` plus a width
+     that depends on nothing async means the square is final at first paint and
+     engine boot cannot shift it. */
   width: min(100%, 600px, calc(100dvh - 200px));
   aspect-ratio: 1 / 1;
-  position: relative; border-radius: 14px; overflow: hidden;
-  box-shadow: 0 24px 60px -24px rgba(0,0,0,.75); border: 1px solid #0a0f14;
+  position: relative; border-radius: var(--radius-board); overflow: hidden;
+  box-shadow: var(--depth-board);
+  border: 1px solid var(--board-rim);
   touch-action: none; user-select: none;
 }
+/* The frame. `::before` is the permanent lit edge — the squares layer is opaque
+   and would bury an inset shadow declared on `.board` itself, so the bevel is
+   drawn above the squares. `::after` is the rim-light: a 1px `--brass-rim` edge
+   (§2.4 restraint rule 2 — a rim, never a fill) that fades in while a piece is
+   held, a square is selected, or focus is inside the board. Opacity only, so it
+   composites. Both sit under the dragged piece (`--z-board-drag`). */
+.board::before,
+.board::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  border-radius: inherit; z-index: var(--z-board-badge);
+}
+.board::before { box-shadow: var(--depth-inset-hairline), inset 0 -1px 0 0 var(--canvas-sunken); }
+.board::after {
+  border: 1px solid var(--brass-rim); opacity: 0;
+  transition: opacity var(--motion-fast) var(--motion-ease-out);
+}
+.board:focus-within::after,
+.board:has(.piece.drag)::after,
+.board:has(.hl.sel)::after { opacity: 1; }
 .board .squares { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(8,1fr); grid-template-rows: repeat(8,1fr); }
 .board .sq { position: relative; }
-.board .sq.light { background: var(--light-sq); }
-.board .sq.dark { background: var(--dark-sq); }
-.board .sq .coord { position: absolute; font-family: var(--font-mono); font-size: 10px; font-weight: 500; opacity: .65; pointer-events: none; }
-.board .sq .coord.file { right: 3px; bottom: 1px; }
-.board .sq .coord.rank { left: 3px; top: 1px; }
-.board .sq.light .coord { color: #769656; }
-.board .sq.dark .coord { color: #eeeed2; }
-.board .layer { position: absolute; inset: 0; pointer-events: none; }
-.board .hl { position: absolute; width: 12.5%; height: 12.5%; pointer-events: none; }
-.board .hl.last { background: var(--last); }
-.board .hl.sel { background: var(--sel); box-shadow: inset 0 0 0 2px var(--brass); }
-.board .hl.check { background: radial-gradient(circle at center, var(--check) 0, transparent 72%); }
-.board .hl.hint { box-shadow: inset 0 0 0 3px var(--brass); border-radius: 2px; }
-.board .dot { position: absolute; width: 12.5%; height: 12.5%; display: grid; place-items: center; pointer-events: none; }
-.board .dot i { width: 30%; height: 30%; border-radius: 50%; background: var(--dot); }
-.board .dot.cap i { width: 86%; height: 86%; background: transparent; border: 5px solid var(--dot); box-sizing: border-box; }
-.board .piece {
-  position: absolute; width: 12.5%; height: 12.5%; display: grid; place-items: center;
-  transition: left .18s cubic-bezier(.2,.7,.3,1), top .18s cubic-bezier(.2,.7,.3,1);
-  will-change: left, top; z-index: 2;
+.board .sq.light { background: var(--board-square-ivory); }
+.board .sq.dark { background: var(--board-square-green); }
+/* Coordinates are engraved at the `--type-label` floor (12px). DESIGN.md 3.2
+   permitted 10px here as a redundant duplicate; todo 13 declines the exception
+   so the board is readable at every breakpoint without leaning on the move
+   list. Numeric family, no tracking — these are data, not labels. */
+.board .sq .coord {
+  position: absolute; pointer-events: none;
+  font: var(--type-label); font-family: var(--type-font-numeric);
+  line-height: 1; letter-spacing: 0;
 }
-.board .piece.drag { transition: none; z-index: 5; cursor: grabbing; }
-.board .piece svg { width: 90%; height: 90%; filter: drop-shadow(0 2px 3px rgba(0,0,0,.5)); }
+.board .sq .coord.file { right: var(--space-1); bottom: var(--space-1); }
+.board .sq .coord.rank { left: var(--space-1); top: var(--space-1); }
+/* DESIGN.md 2.2 abandons the complementary-ink convention: engraved dark ink
+   reaches the §8.6 contrast floor on both square colours at full opacity. */
+.board .sq.light .coord { color: var(--board-coord-on-ivory); }
+.board .sq.dark .coord { color: var(--board-coord-on-green); }
+.board .layer { position: absolute; inset: 0; pointer-events: none; }
+
+/* ---- Board state cues — DESIGN.md 8.5 A11Y-05 ------------------------------
+   No board state is carried by hue alone. Each cue owns a distinct BORDER
+   GEOMETRY, so the five states stay mutually distinguishable when the board is
+   forced to greyscale or seen by a player who cannot separate brass from red:
+
+     last move  → two opposite corner brackets (`::before` / `::after`)
+     selected   → a closed SOLID ring
+     hint       → a closed DASHED ring
+     check      → a closed DOUBLE ring
+     review     → a typographic grade glyph (`.gb-badge`, below)
+
+   Every geometry is struck in `--board-rim`, the board's own ink, because brass
+   measures 2.2:1 against ivory and 1.3:1 against green — below the §8.6 3:1
+   floor for a UI edge, so a brass ring would vanish the moment hue is removed.
+   `--board-rim` measures 16:1 and 5.7:1 on the same two squares. Hue still does
+   its job through the washes beneath (`--board-select`, `--board-last`,
+   `--board-check`); it is simply never the only channel.
+
+   `border-style` is the machine-checkable signal: `tests/board.spec.ts` asserts
+   the shape, never the colour. --------------------------------------------- */
+.board .hl {
+  position: absolute; width: 12.5%; height: 12.5%; box-sizing: border-box;
+  pointer-events: none; border: 0 solid var(--board-rim); border-radius: var(--radius-xs);
+}
+.board .hl.last { background: var(--board-last); }
+/* Registration brackets on the from/to squares: an L at the top-left and an L
+   at the bottom-right. Asymmetric by construction, so it can never be mistaken
+   for the closed rings above even with colour removed. */
+.board .hl.last::before,
+.board .hl.last::after {
+  content: ''; position: absolute; width: 30%; height: 30%;
+  border: 3px solid var(--board-rim);
+}
+.board .hl.last::before { top: 0; left: 0; border-right-width: 0; border-bottom-width: 0; border-top-left-radius: var(--radius-xs); }
+.board .hl.last::after { right: 0; bottom: 0; border-left-width: 0; border-top-width: 0; border-bottom-right-radius: var(--radius-xs); }
+.board .hl.sel { background: var(--board-select); border-width: 3px; }
+.board .hl.hint { border-style: dashed; border-width: 3px; }
+.board .hl.check {
+  background: radial-gradient(circle at center, var(--board-check) 0, transparent 72%);
+  border-style: double; border-width: 6px;
+}
+.board .dot { position: absolute; width: 12.5%; height: 12.5%; display: grid; place-items: center; pointer-events: none; }
+.board .dot i { width: 30%; height: 30%; border-radius: 50%; background: var(--board-dot); }
+.board .dot.cap i { width: 86%; height: 86%; background: transparent; border: 5px solid var(--board-dot); box-sizing: border-box; }
+/* DESIGN.md 6.3: pieces travel on `transform`, never on `left`/`top`. The
+   controller writes `translate3d()` in board percentages (100% of a piece box
+   is exactly one square), so the duration and easing are unchanged and the
+   move is composited instead of relaid out. */
+.board .piece {
+  position: absolute; left: 0; top: 0; width: 12.5%; height: 12.5%;
+  display: grid; place-items: center;
+  transition: transform var(--motion-piece) var(--motion-ease-out);
+  will-change: transform; z-index: var(--z-board-layer);
+}
+.board .piece.drag { transition: none; z-index: var(--z-board-drag); cursor: grabbing; }
+.board .piece svg { width: 90%; height: 90%; filter: drop-shadow(0 2px 3px var(--canvas-scrim)); }
 .board .piece.mine { cursor: grab; }
 
-/* Game-review grade badge, pinned to the corner of the moved square */
-.board .gb { position: absolute; width: 12.5%; height: 12.5%; pointer-events: none; z-index: 3; }
+/* Game-review grade badge, pinned to the corner of the moved square. The glyph
+   is the non-color cue (DESIGN.md 5 / 8.5 A11Y-05): the grade is still readable
+   when the status hue is removed, so the fill only reinforces it. */
+.board .gb { position: absolute; width: 12.5%; height: 12.5%; pointer-events: none; z-index: var(--z-board-badge); }
 .board .gb .gb-badge {
-  position: absolute; top: 6%; right: 6%; min-width: 40%; height: 40%;
-  padding: 0 3px; border-radius: 999px; display: grid; place-items: center;
-  font-family: var(--font-display); font-size: min(2.6vmin, 15px); font-weight: 800; font-style: normal;
-  color: #fff; line-height: 1; box-shadow: 0 1px 4px rgba(0,0,0,.5); border: 1.5px solid rgba(255,255,255,.85);
+  position: absolute; top: 6%; right: 6%; min-width: 42%; height: 42%;
+  padding: 0 var(--space-1); border-radius: var(--radius-pill); display: grid; place-items: center;
+  font: var(--type-label); font-family: var(--type-font-ui); font-style: normal;
+  line-height: 1; letter-spacing: 0;
+  color: var(--text-primary); box-shadow: 0 1px 4px var(--canvas-scrim);
+  border: 1.5px solid color-mix(in oklab, var(--text-primary) 85%, transparent);
 }
-.board .gb .gb-best { background: #6f9f57; }
-.board .gb .gb-good { background: #5f9ea0; }
-.board .gb .gb-inaccuracy { background: #d0a63f; color: #201800; }
-.board .gb .gb-mistake { background: #d0803a; }
-.board .gb .gb-blunder { background: #c0453f; }
+.board .gb .gb-best { background: var(--status-best); }
+.board .gb .gb-good { background: var(--status-good); }
+.board .gb .gb-inaccuracy { background: var(--status-inaccuracy); color: var(--text-on-brass); }
+.board .gb .gb-mistake { background: var(--status-mistake); }
+.board .gb .gb-blunder { background: var(--status-blunder); }
 
+/* The evaluation instrument. DESIGN.md 6.3 forbids animating a layout property,
+   so the white share is a full-height plate scaled on its bottom edge rather
+   than a growing `height`. The readout rides in an opaque chip so it stays
+   legible over both the light plate and the dark field, whichever side of the
+   measurement it happens to sit on. */
 .evalbar {
-  width: 16px; border-radius: 8px; overflow: hidden; position: relative;
-  background: #11171d; border: 1px solid var(--line); align-self: stretch; min-height: 0;
+  width: var(--space-5); border-radius: var(--radius-sm); overflow: hidden; position: relative;
+  background: var(--canvas-base); border: 1px solid var(--border-strong); align-self: stretch; min-height: 0;
+  box-shadow: var(--depth-inset-hairline);
 }
-.evalbar .white { position: absolute; left: 0; right: 0; bottom: 0; background: #e7ecf1; transition: height .35s ease; height: 50%; }
+.evalbar .white {
+  position: absolute; inset: 0; background: var(--text-primary);
+  transform-origin: bottom; transform: scaleY(0.5); will-change: transform;
+  transition: transform var(--motion-slow) var(--motion-ease-standard);
+}
 .evalbar .mid { position: absolute; left: -1px; right: -1px; top: 50%; height: 1px; background: var(--brass-dim); opacity: .7; }
-.evalbar .num { position: absolute; left: 50%; transform: translateX(-50%) rotate(-90deg); top: 8px; font-family: var(--font-mono); font-size: 10px; color: #0f151b; font-weight: 600; letter-spacing: .5px; pointer-events: none; white-space: nowrap; }
+.evalbar .num {
+  position: absolute; left: 50%; top: var(--space-6);
+  transform: translateX(-50%) rotate(-90deg);
+  font: var(--type-label); font-family: var(--type-font-numeric);
+  line-height: 1; letter-spacing: 0;
+  color: var(--text-primary); background: var(--surface-overlay);
+  border: 1px solid var(--border-strong); border-radius: var(--radius-xs);
+  padding: 0 var(--space-1);
+  pointer-events: none; white-space: nowrap;
+}
 
 /* Trainer status colours + note + scoresheet + analysis */
-.tr-status .good { color: #7ea86a; }
-.tr-status .bad { color: #c0453f; }
-.tr-status .info { color: var(--brass); }
-.tr-status .path { display: block; margin-top: 4px; font-family: var(--font-mono); font-weight: 400; font-size: 11.5px; color: var(--muted); word-break: break-word; }
-.moves table { width: 100%; border-collapse: collapse; font-family: var(--font-mono); font-size: 13px; }
-.moves td { padding: 5px 8px; border-bottom: 1px solid #212933; }
-.moves td.n { color: var(--muted); width: 34px; text-align: right; padding-right: 10px; }
-.moves td.mv.w { color: var(--ink); }
-.moves td.mv.b { color: #c6ccd4; }
-.an-line { display: flex; gap: 10px; align-items: baseline; font-family: var(--font-mono); font-size: 12.5px; }
-.an-line .ev { flex: 0 0 auto; min-width: 50px; font-weight: 600; color: var(--brass); text-align: right; }
-.an-line.best .ev { color: #7ea86a; }
-.an-line .pv { color: var(--ink); word-break: break-word; line-height: 1.5; }
+.tr-status .good { color: var(--status-positive); }
+.tr-status .bad { color: var(--status-critical-ink); }
+.tr-status .info { color: var(--brass-base); }
+.tr-status .path { display: block; margin-top: var(--space-1); font-family: var(--type-font-numeric); font-weight: 400; font-size: 11.5px; color: var(--text-muted); word-break: break-word; }
+.moves table { width: 100%; border-collapse: collapse; font: var(--type-numeric); letter-spacing: .01em; }
+.moves td { padding: 5px 8px; border-bottom: 1px solid var(--border-hairline); }
+.moves td.n { color: var(--text-muted); width: 34px; text-align: right; padding-right: 10px; }
+.moves td.mv.w { color: var(--text-primary); }
+.moves td.mv.b { color: var(--text-secondary); }
+.an-line { display: flex; gap: var(--space-2); align-items: baseline; font: var(--type-numeric); letter-spacing: .01em; }
+.an-line .ev { flex: 0 0 auto; min-width: 50px; font-weight: 600; color: var(--brass-base); text-align: right; }
+.an-line.best .ev { color: var(--status-positive); }
+.an-line .pv { color: var(--text-primary); word-break: break-word; line-height: 1.5; }
 
 /* On phones the panel sits below the board, so let the board use a bit more
    vertical room (you can scroll to the controls). */
 @media (max-width: 900px) {
   .board { width: min(100%, calc(100dvh - 150px)); }
+}
+
+/* DESIGN.md 8.2 compact-board mode. On a short landscape viewport the board is
+   capped against the viewport height instead of the column width, with enough
+   reserved for the header, the evaluation bar's gutter, and the move browser,
+   so the whole board and the browser stay above the fold together. */
+@media (min-width: 901px) and (max-height: 799px) {
+  .board { width: min(100%, 600px, calc(100dvh - 240px)); }
 }

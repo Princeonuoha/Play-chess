@@ -4,13 +4,19 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "play-chess1",
   "compatibility_date": "2026-08-20",
+  "main": "worker/index.ts",
   "workers_dev": true,
   "observability": { "enabled": true },
 
   // Serve the built React app (Vite output). `npm --prefix web run build`
   // writes the app + Stockfish engine + `_headers` into dist/, which is
   // committed so `npx wrangler deploy` publishes it with no CI build step.
-  "assets": { "directory": "dist" },
+  "assets": {
+    "directory": "dist",
+    "binding": "ASSETS",
+    "not_found_handling": "404-page",
+    "run_worker_first": true
+  },
 
   // Attach the custom domain. Because chesswithprince.com is already a zone in
   // this Cloudflare account, `custom_domain: true` provisions the DNS record and

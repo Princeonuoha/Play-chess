@@ -57,6 +57,16 @@ export const GRADE_GLYPH: Record<MoveLabel, string> = {
   Blunder: '??',
 }
 
+/* DESIGN.md 8.5 A11Y-05. The shape each board state is drawn with, published on
+   the element so the cue is assertable without sampling a colour. The cascade
+   in `index.css` draws exactly these geometries. */
+export const BOARD_CUE = {
+  last: 'corner-brackets',
+  hint: 'ring-dashed',
+  sel: 'ring-solid',
+  check: 'ring-double',
+} as const
+
 export interface StoryLine {
   kind: 'opening' | 'master'
   title: string
@@ -111,6 +121,7 @@ export interface Snapshot {
   exploring: boolean
   exploreMoves: string[]
   exploreStartPly: number
+  selectedSquare: string | null
 }
 
 const FILES = 'abcdefgh'
@@ -267,6 +278,7 @@ export class ChessController {
       exploring: this.activeMode.kind === 'explore',
       exploreMoves: this.activeMode.kind === 'explore' ? [...this.activeMode.moves] : [],
       exploreStartPly: this.activeMode.kind === 'explore' ? this.activeMode.startPly : 0,
+      selectedSquare: this.selected,
     }
   }
 
@@ -287,6 +299,16 @@ export class ChessController {
     const x = this.orientation === 'white' ? f : 7 - f
     const y = this.orientation === 'white' ? 7 - r : r
     return { left: x * 12.5, top: y * 12.5 }
+  }
+  /* DESIGN.md 6.3 moves pieces on `transform`. A piece box is 12.5% of the
+     board, so a board-percentage offset becomes a piece-relative translate by
+     scaling it by 8 — `translate3d(100%, 0, 0)` is exactly one square right. */
+  private translate(el: HTMLElement, left: number, top: number) {
+    el.style.transform = `translate3d(${left * 8}%, ${top * 8}%, 0)`
+  }
+  private placePiece(el: HTMLElement, sq: string) {
+    const { left, top } = this.squareXY(sq)
+    this.translate(el, left, top)
   }
   private xyToSquare(px: number, py: number) {
     let x = Math.floor(px * 8)
@@ -349,9 +371,7 @@ export class ChessController {
         el.className = 'piece'
         el.dataset.square = cell.square
         el.dataset.color = cell.color
-        const { left, top } = this.squareXY(cell.square)
-        el.style.left = left + '%'
-        el.style.top = top + '%'
+        this.placePiece(el, cell.square)
         el.innerHTML = pieceSVG(cell.type, cell.color)
         const canGrab = this.activeMode.kind === 'explore'
           ? cell.color === p.turn() && !p.isGameOver()
@@ -368,10 +388,11 @@ export class ChessController {
 
   private renderHighlights() {
     this.elHl.innerHTML = ''
-    const add = (sq: string, cls: string) => {
+    const add = (sq: string, cls: keyof typeof BOARD_CUE) => {
       const { left, top } = this.squareXY(sq)
       const d = document.createElement('div')
       d.className = 'hl ' + cls
+      d.dataset.cue = BOARD_CUE[cls]
       d.style.left = left + '%'
       d.style.top = top + '%'
       this.elHl.appendChild(d)
@@ -400,6 +421,7 @@ export class ChessController {
         const { left, top } = this.squareXY(it.to)
         const cell = document.createElement('div')
         cell.className = 'gb'
+        cell.dataset.cue = 'grade-glyph'
         cell.style.left = left + '%'
         cell.style.top = top + '%'
         const pill = document.createElement('i')
@@ -467,10 +489,8 @@ export class ChessController {
       return
     }
     this.animating = true
-    const { left, top } = this.squareXY(toSq)
     requestAnimationFrame(() => {
-      el.style.left = left + '%'
-      el.style.top = top + '%'
+      this.placePiece(el, toSq)
     })
     let done = false
     const finish = () => {
@@ -970,8 +990,7 @@ export class ChessController {
     this.renderAll()
   }
 
-  // Watch button in a trainer/games set: replay a game, or play an opening out.
-  watch(idx: number, set: SetKey) {
+  togglePlayback(idx: number, set: SetKey) {
     if (this.activeMode.kind === 'selfPlay') {
       this.stopSelfPlay()
       return
@@ -996,7 +1015,7 @@ export class ChessController {
     if (!mv) return
     this.activeMode.ply++
     this.hintSquares = null
-    this.setTrStatus('good', '▸ ' + mv.san + (this.activeMode.line.result ? '' : ' — book.'))
+    this.setTrStatus('good', '• ' + mv.san + (this.activeMode.line.result ? '' : ' — book.'))
     this.showNoteFor(this.activeMode.ply - 1)
     this.applyMove(mv)
   }
@@ -1263,9 +1282,11 @@ export class ChessController {
     if (this.activeMode.kind === 'review') this.activeMode = { kind: 'idle' }
     this.viewGame = null
     this.reviewPly = null
+    // The grade badge reads `review.done`, so the result has to be in place
+    // before the board is repainted or the badge misses its own render.
+    this.review = { running: false, done: true, progress: '', items, story }
     this.renderPieces()
     this.renderHighlights()
-    this.review = { running: false, done: true, progress: '', items, story }
     this.emit()
   }
 
@@ -1785,12 +1806,14 @@ export class ChessController {
         this.selected = null
         this.renderHighlights()
         this.renderDots()
+        this.emit()
         return
       }
       if (pc.dataset.color !== mover) {
         this.selected = null
         this.renderHighlights()
         this.renderDots()
+        this.emit()
         return
       }
 
@@ -1799,11 +1822,13 @@ export class ChessController {
         this.selected = null
         this.renderHighlights()
         this.renderDots()
+        this.emit()
         return
       }
       this.selected = from
       this.renderHighlights()
       this.renderDots()
+      this.emit()
 
       const pr = pc.getBoundingClientRect()
       this.drag = {
@@ -1823,8 +1848,7 @@ export class ChessController {
       const rect = this.boardRect()
       const x = e.clientX - this.drag.offsetX - rect.left
       const y = e.clientY - this.drag.offsetY - rect.top
-      this.drag.el.style.left = (x / rect.width) * 100 - 6.25 + '%'
-      this.drag.el.style.top = (y / rect.height) * 100 - 6.25 + '%'
+      this.translate(this.drag.el, (x / rect.width) * 100 - 6.25, (y / rect.height) * 100 - 6.25)
     })
 
     this.elPieces.addEventListener('pointerup', (e) => {
@@ -1841,9 +1865,7 @@ export class ChessController {
         const r = this.tryHumanMove(d.from, to)
         if (r === true || r === 'promo') return
       }
-      const { left, top } = this.squareXY(d.from)
-      d.el.style.left = left + '%'
-      d.el.style.top = top + '%'
+      this.placePiece(d.el, d.from)
     })
   }
 }

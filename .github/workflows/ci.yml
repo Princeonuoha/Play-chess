@@ -3,10 +3,12 @@ name: CI
 on:
   push:
     paths:
+      - '.github/workflows/ci.yml'
       - 'web/**'
       - 'engine/**'
   pull_request:
     paths:
+      - '.github/workflows/ci.yml'
       - 'web/**'
       - 'engine/**'
 
@@ -24,6 +26,48 @@ jobs:
       - name: Test
         run: npm --prefix web test
       - run: npm --prefix web run build
+      - name: React Doctor
+        run: npm --prefix web run react-doctor
+      - name: Production devtools leak scan
+        run: npm --prefix web run verify:no-devtools
+      - name: Approved real-Chrome performance budget
+        run: |
+          # Launch Vite directly (not npm wrapper) to ensure clean process tree
+          node ./web/node_modules/vite/bin/vite.js preview --host 127.0.0.1 --port 8000 > /tmp/vite-preview.log 2>&1 &
+          VITE_PID=$!
+          
+          # Trap to ensure full cleanup on exit
+          trap 'pkill -P $VITE_PID 2>/dev/null || true; kill $VITE_PID 2>/dev/null || true; wait $VITE_PID 2>/dev/null || true' EXIT
+          
+          # Poll for readiness (max 30s)
+          READY=0
+          for i in {1..30}; do
+            if nc -z 127.0.0.1 8000 2>/dev/null; then
+              READY=1
+              break
+            fi
+            sleep 1
+          done
+          
+          if [ $READY -eq 0 ]; then
+            echo "::error::Vite preview failed to start on port 8000"
+            exit 1
+          fi
+          
+          LIGHTHOUSE_ENFORCE_BUDGET=1 npm --prefix web run lighthouse:real-chrome
+          
+          # Explicitly terminate Vite process tree and wait for cleanup
+          pkill -P $VITE_PID 2>/dev/null || true
+          kill $VITE_PID 2>/dev/null || true
+          wait $VITE_PID 2>/dev/null || true
+          sleep 1
+          
+          # Verify port is free before Playwright
+          if nc -z 127.0.0.1 8000 2>/dev/null; then
+            echo "::error::Port 8000 still in use after Vite termination"
+            lsof -i :8000 || true
+            exit 1
+          fi
       - name: Drift check
         run: |
           if ! git diff --exit-code -- dist/; then
@@ -32,5 +76,5 @@ jobs:
           fi
       # Run browser QA only after the build/drift gate: Playwright creates HTML
       # reports that Tailwind v4 would otherwise scan as source during Vite build.
-      - name: Playwright smoke test
+      - name: Complete Playwright suite
         run: npx playwright install --with-deps chromium && npm --prefix web run test:e2e

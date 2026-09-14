@@ -1,0 +1,190 @@
+/* ---------------------------------------------------------------------------
+ * DEV-ONLY styles for the primitive showcase (plan todo 4, retargeted by todo
+ * 11).
+ *
+ * Imported only by `showcase-main.tsx` (reachable only from the dev-only
+ * `web/showcase.html` entry), so none of this reaches the production bundle.
+ *
+ * This file styles the GALLERY ONLY — the page shell, the case grid, and the
+ * annotations around each case. The primitives themselves are now real and
+ * bring their own cascade from `../ui/primitives.css`, so the todo-4 `.sc-*`
+ * stand-in styles are gone: what the screenshots show is what the product
+ * ships.
+ *
+ * Every value resolves to a DESIGN.md token declared in `../index.css` —
+ * `src/dev/__tests__/showcase-tokens.test.ts` enforces that.
+ * ------------------------------------------------------------------------- */
+
+.sc-root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  padding: var(--space-6) var(--space-4) var(--space-12);
+  max-width: 1152px;
+  margin: 0 auto;
+  font: var(--type-body);
+  color: var(--text-primary);
+}
+
+.sc-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.sc-title {
+  font: var(--type-display);
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+.sc-lede {
+  font: var(--type-body-sm);
+  color: var(--text-secondary);
+  max-width: var(--type-measure);
+  margin: 0;
+}
+
+.sc-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.sc-meta-chip {
+  font: var(--type-numeric);
+  letter-spacing: 0.01em;
+  color: var(--text-muted);
+  background: var(--surface-inset);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-pill);
+  padding: var(--space-1) var(--space-3);
+}
+
+.sc-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.sc-group-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-3);
+  border-bottom: 1px solid var(--border-strong);
+  padding-bottom: var(--space-2);
+}
+
+.sc-group-name {
+  font: var(--type-title);
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+.sc-group-source {
+  font: var(--type-numeric);
+  color: var(--text-muted);
+  word-break: break-word;
+}
+
+.sc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+  gap: var(--space-4);
+}
+
+.sc-cell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-4);
+  background: var(--surface-1);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--depth-raised);
+}
+
+.sc-cell-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.sc-state {
+  font: var(--type-label);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.sc-pending {
+  font: var(--type-label);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-on-brass);
+  background: var(--brass-base);
+  border-radius: var(--radius-pill);
+  padding: 0 var(--space-2);
+}
+
+.sc-cell-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.sc-stack {
+  display: grid;
+  gap: var(--space-2);
+  width: 100%;
+  min-width: 0;
+}
+
+.sc-contract {
+  font: var(--type-body-sm);
+  color: var(--text-muted);
+  max-width: var(--type-measure);
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.sc-seed {
+  font: var(--type-label);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  background: var(--canvas-sunken);
+  border: 1px dashed var(--border-subtle);
+  border-radius: var(--radius-lg);
+  min-height: var(--icon-target-min);
+  min-width: var(--icon-target-min);
+  padding: 0 var(--space-3);
+  cursor: pointer;
+}
+
+.sc-seed:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+/* A probe wrapper must not become a box, or it would break the flex or grid
+   parent relationship of the primitive it is measuring. */
+.sc-contents {
+  display: contents;
+}
+
+.sc-variant {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.sc-variant[data-variant='high-contrast'] .sc-cell {
+  background: var(--canvas-base);
+  border-color: var(--border-strong);
+}

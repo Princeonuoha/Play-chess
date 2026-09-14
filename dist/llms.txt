@@ -1,0 +1,8 @@
+# chesswithprince.com
+
+An in-browser chess workspace for playing, studying openings, and replaying master games.
+
+- [Play](https://play.chesswithprince.com/play): Play chess against Stockfish.
+- [Openings](https://play.chesswithprince.com/openings): Drill opening lines.
+- [Games](https://play.chesswithprince.com/games): Replay master games.
+- [Study](https://play.chesswithprince.com/study): Review and analyze games.

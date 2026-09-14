@@ -1,7 +1,15 @@
 node_modules/
 .DS_Store
 *.log
+react-doctor-report.json
 .venv/
 web/node_modules/
 web/dist/
+web/playwright-report/
+web/test-results/
+.wrangler/
 # dist/ is the committed, deployable build output (wrangler serves it).
+.omo/
+# Test evidence directories (CI and local)
+web/playwright-report/.test-evidence-ci/
+web/playwright-report/.test-evidence-local/
