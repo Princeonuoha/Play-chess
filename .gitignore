@@ -6,3 +6,4 @@ react-doctor-report.json
 web/node_modules/
 web/dist/
 # dist/ is the committed, deployable build output (wrangler serves it).
+.omo/

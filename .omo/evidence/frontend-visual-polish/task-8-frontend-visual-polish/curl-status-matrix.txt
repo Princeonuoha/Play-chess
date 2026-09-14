@@ -1,8 +1,0 @@
-/play -> 200
-/openings -> 200
-/games -> 200
-/study -> 200
-/not-a-workspace -> 200
-/nope.js -> 404
-/assets/missing.css -> 404
-/assets/index-y7z5DHaS.js -> 200
