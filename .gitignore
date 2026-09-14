@@ -10,3 +10,6 @@ web/test-results/
 .wrangler/
 # dist/ is the committed, deployable build output (wrangler serves it).
 .omo/
+# Test evidence directories (CI and local)
+web/playwright-report/.test-evidence-ci/
+web/playwright-report/.test-evidence-local/
