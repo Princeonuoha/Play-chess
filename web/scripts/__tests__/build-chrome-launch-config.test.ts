@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildChromeLaunchConfig } from '../build-chrome-launch-config'
+import { buildChromeLaunchConfig } from '../build-chrome-launch-config.mjs'
 
 describe('Chrome executable discovery', () => {
   it('omits chromePath when CHROME_PATH is absent', () => {
