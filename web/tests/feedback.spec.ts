@@ -18,15 +18,21 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
-
-const evidenceDir =
-  '/Users/prince.onuoha/work/tmp/chess-stockfish/.omo/evidence/frontend-visual-polish/task-19-frontend-visual-polish/screens'
+import { getEvidenceDir } from '../src/evidence-path'
 
 const PHONE = { name: '375', width: 375, height: 812 } as const
 const DESKTOP = { name: '1280', width: 1280, height: 800 } as const
 const VIEWPORTS = [PHONE, DESKTOP] as const
 
 const PROMOTION_CHOICES = ['Promote to Queen', 'Promote to Rook', 'Promote to Bishop', 'Promote to Knight'] as const
+
+/**
+ * Get portable evidence directory for feedback screenshots.
+ * Returns task-19-specific subdirectory under evidence root.
+ */
+async function getEvidencePath(): Promise<string> {
+  return join(getEvidenceDir(), 'task-19-frontend-visual-polish', 'screens')
+}
 
 /**
  * White walks the a-pawn to b8 while Black shuffles a knight. Explore accepts
@@ -39,6 +45,7 @@ const TO_PROMOTION = [
 ] as const
 
 async function shot(page: Page, name: string): Promise<void> {
+  const evidenceDir = await getEvidencePath()
   await mkdir(evidenceDir, { recursive: true })
   await page.screenshot({ path: join(evidenceDir, `${name}.png`), fullPage: true })
 }
