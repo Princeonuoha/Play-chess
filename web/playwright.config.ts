@@ -7,6 +7,7 @@ export default defineConfig({
   timeout: 120_000,
   fullyParallel: false,
   reporter: [['html', { open: 'never' }], ['list']],
+  snapshotPathTemplate: '{dir}/{testFileBaseName}-snapshots/{arg}{ext}',
   use: {
     baseURL: externalBaseURL ?? 'http://127.0.0.1:8000',
     trace: 'on-first-retry',
