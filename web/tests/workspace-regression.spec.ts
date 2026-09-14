@@ -33,6 +33,7 @@ async function openWorkspace(page: Page, path: (typeof ROUTES)[number]['path']):
   await page.reload()
   const route = ROUTES.find((entry) => entry.path === path)
   if (route === undefined) throw new Error(`Unrecognised workspace route: ${path}`)
+  await expect(page.locator('header [role="status"]')).toContainText('Stockfish 18')
   await expect(route.ready(page)).toBeVisible()
 }
 
