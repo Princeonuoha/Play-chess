@@ -304,6 +304,39 @@ test.describe('empty and error states', () => {
     })
   }
 
+  for (const viewport of VIEWPORTS) {
+    test(`the /games no-result error announces itself without taking focus at ${viewport.name}px`, async ({ page }) => {
+      // Given the games search, when a query matches nothing, then the failure reaches a screen reader instead of only the eye.
+      await page.setViewportSize({ width: viewport.width, height: viewport.height })
+      await page.goto('/games')
+      await dismissIntro(page)
+
+      const search = page.getByPlaceholder('player, opening, e.g. Fischer or Berlin')
+      const picker = page.getByLabel('Master game', { exact: true })
+      await search.click()
+      await expect(search).toBeFocused()
+      await search.fill('zzzz-no-such-game')
+
+      const announced = page.getByRole('alert').filter({ hasText: 'No games match “zzzz-no-such-game”.' })
+      await expect(announced, 'a reachable error state must reach a screen reader').toHaveCount(1)
+      await expect(announced).toBeVisible()
+
+      await expect(picker).toHaveAttribute('aria-invalid', 'true')
+      const errorId = await picker.getAttribute('aria-errormessage')
+      expect(errorId, 'the invalid picker must point at a real error message').toBeTruthy()
+      await expect(
+        announced,
+        'the announcement and the aria-errormessage target must be one element, never two copies',
+      ).toHaveAttribute('id', errorId as string)
+
+      await expect(search, 'an announced error must not take focus').toBeFocused()
+
+      await search.fill('Fischer')
+      await expect(page.getByRole('alert').filter({ hasText: 'No games match' })).toHaveCount(0)
+      await expect(picker).not.toHaveAttribute('aria-invalid', 'true')
+    })
+  }
+
   test('a fresh Study route reports its empty regions instead of rendering blanks', async ({ page }) => {
     // Given a workspace with no game yet, when Study opens, then the scoresheet and the analysis both say what is missing.
     await page.setViewportSize({ width: DESKTOP.width, height: DESKTOP.height })

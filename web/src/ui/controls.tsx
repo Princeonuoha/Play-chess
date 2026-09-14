@@ -67,6 +67,13 @@ export type FieldControl = {
  * id, description, error, and disabled wiring the 7.3 row requires — the only
  * way to put `aria-invalid` and `aria-errormessage` on the control itself
  * rather than on a box around it.
+ *
+ * The error carries `role="alert"` as well as the `aria-errormessage` link.
+ * `aria-errormessage` is only read when the control it describes has focus, so
+ * on `/games` — where the error belongs to the picker but is raised by typing in
+ * the search box beside it — the link alone announced nothing. The live region
+ * is what makes it announce like every other error state in 7.3, and unlike a
+ * focus move it leaves the player's place in the form alone.
  */
 export function Field({
   label,
@@ -113,7 +120,7 @@ export function Field({
         </p>
       )}
       {error !== undefined && (
-        <p className="ui-field-error" id={errorId}>
+        <p className="ui-field-error" id={errorId} role="alert">
           <Icon name="alert" size="sm" />
           <span>{error}</span>
         </p>
