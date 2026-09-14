@@ -200,7 +200,7 @@ export function StudyPanel({ snap, history, reviewPly, exploring, showToast, con
                     <div className="flex flex-wrap items-center gap-2">
                       <span
                         className={
-                          'rounded-[var(--radius-pill)] border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ' +
+      'rounded-[var(--radius-pill)] border px-2 py-0.5 [font:var(--type-label)] ' +
                           (s.kind === 'master'
                             ? 'border-[color:var(--border-brass)] text-[color:var(--brass-base)]'
                             : 'border-[color:var(--border-subtle)] text-[color:var(--text-muted)]')
@@ -220,7 +220,7 @@ export function StudyPanel({ snap, history, reviewPly, exploring, showToast, con
             {graded.length > 0 && (
               <div data-study-block="legend" className="flex flex-wrap gap-1.5">
                 {(['Best', 'Good', 'Inaccuracy', 'Mistake', 'Blunder'] as MoveLabel[]).map((l) => (
-                  <span key={l} className={'rounded-[var(--radius-sm)] border px-1.5 py-0.5 text-[10px] font-bold ' + LABEL_STYLE[l]}>
+                <span key={l} className={'rounded-[var(--radius-sm)] border px-1.5 py-0.5 [font:var(--type-label)] ' + LABEL_STYLE[l]}>
                     <span aria-hidden="true" className="font-[family-name:var(--type-font-numeric)]">
                       {GRADE_GLYPH[l]}
                     </span>{' '}
@@ -278,7 +278,7 @@ export function StudyPanel({ snap, history, reviewPly, exploring, showToast, con
                       </span>
                       <span className="w-14 shrink-0 font-[family-name:var(--type-font-numeric)] font-semibold">{it.san}</span>
                       <span
-                        className={'shrink-0 rounded-[var(--radius-sm)] border px-1.5 py-0.5 text-[10px] font-bold ' + LABEL_STYLE[it.label]}
+                          className={'shrink-0 rounded-[var(--radius-sm)] border px-1.5 py-0.5 [font:var(--type-label)] ' + LABEL_STYLE[it.label]}
                         title={it.lossCp != null ? `-${(it.lossCp / 100).toFixed(1)} vs best` : 'Top engine move'}
                       >
                         <span aria-hidden="true" className="font-[family-name:var(--type-font-numeric)]">
@@ -288,7 +288,7 @@ export function StudyPanel({ snap, history, reviewPly, exploring, showToast, con
                       </span>
                       <span className="ml-auto shrink-0 font-[family-name:var(--type-font-numeric)] text-xs text-[color:var(--text-muted)]">{it.evalWhite}</span>
                       {it.betterSan && (
-                        <span className="hidden shrink-0 items-center gap-1 font-[family-name:var(--type-font-numeric)] text-[11px] text-[color:var(--status-positive)] sm:inline-flex">
+                          <span className="hidden shrink-0 items-center gap-1 text-[color:var(--status-positive)] [font:var(--type-label)] sm:inline-flex">
                           <Icon name="arrow-right" size="sm" />
                           <span className="sr-only">Better move:</span>
                           {it.betterSan}
@@ -297,7 +297,7 @@ export function StudyPanel({ snap, history, reviewPly, exploring, showToast, con
                     </button>
                   ))}
                 </div>
-                <p className="text-[11px] leading-relaxed text-[color:var(--text-muted)]">
+                          <p className="text-[color:var(--text-muted)] [font:var(--type-label)]">
                   Tap a move to see it on the board. “Better” shows the engine’s top move when you missed it.
                 </p>
               </div>

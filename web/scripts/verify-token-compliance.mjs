@@ -22,9 +22,8 @@
  *     hairline widths, and the `0.01ms` reduced-motion kill switch DESIGN.md
  *     §6.4 specifies verbatim
  *
- * DEFERRALS carries the sub-`--type-label` strings DESIGN.md §3.2 itself
- * defers. Each entry is matched by exact count, so a new violation fails and a
- * fixed one fails too — the list can only shrink.
+ * DEFERRALS carries only accepted design debt. Each entry is matched by exact
+ * count, so a new violation fails and a fixed one fails too.
  *
  * Usage: node scripts/verify-token-compliance.mjs [--json]
  * ------------------------------------------------------------------------- */
@@ -37,11 +36,8 @@ const DESIGN = readFileSync(`${WEB}../DESIGN.md`, 'utf8')
 const AUTHORITY = 'src/index.css'
 const ART_ALLOWLIST = ['src/core/pieces.ts']
 
-/** DESIGN.md 3.2 names these as defects and hands them to todos 12-14. */
 const DEFERRALS = [
   { file: 'src/index.css', literal: 'font-size: 11.5px', count: 1, owner: 'DESIGN.md 3.2 names `.tr-status .path`; todos 12-14' },
-  { file: 'src/panels/StudyPanel.tsx', literal: 'text-[10px]', count: 3, owner: 'DESIGN.md 3.2; todo 17' },
-  { file: 'src/panels/StudyPanel.tsx', literal: 'text-[11px]', count: 2, owner: 'DESIGN.md 3.2; todo 17' },
 ]
 
 const NAMED_COLOURS =
