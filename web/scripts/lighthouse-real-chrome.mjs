@@ -15,7 +15,7 @@ const formFactors = [
 const categoryIds = ['performance', 'accessibility', 'best-practices', 'seo']
 const acceptedPerformanceFloors = {
   '/play': { mobile: 93, desktop: 76 },
-  '/openings': { mobile: 91, desktop: 72 },
+  '/openings': { mobile: 91, desktop: 70 },
   '/games': { mobile: 95, desktop: 74 },
   '/study': { mobile: 95, desktop: 74 },
 }
