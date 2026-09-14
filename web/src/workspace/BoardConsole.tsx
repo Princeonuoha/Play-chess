@@ -156,6 +156,8 @@ export function BoardConsole({
   const lineKey = `${board.exploring ? 'x' : board.browsing ? 'b' : 'l'}:${line.join(' ')}`
   const seen = useRef<string | null>(null)
 
+  useEffect(() => setSelected(snapshot?.selectedSquare ?? null), [snapshot?.selectedSquare])
+
   /* Every position change clears the selection and states what changed. The
      visual board answers this with pieces; this is the same event in words. */
   useEffect(() => {

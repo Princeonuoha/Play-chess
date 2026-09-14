@@ -310,6 +310,18 @@ test.describe('workspace accessibility contract', () => {
     await expect(consoleEntry(page), 'focus never leaves the player').toBeFocused()
   })
 
+  test('clears the accessible selection when New game clears the controller selection', async ({ page }) => {
+    // Given the board console selected e2, when New game resets the controller at the same position, then the console no longer reports that stale square.
+    await openWorkspace(page)
+    await type(page, 'e2')
+    await expect(boardAlt(page, 'selection')).toContainText('Selected e2')
+
+    await page.getByRole('button', { name: 'New game' }).evaluate((button: HTMLButtonElement) => button.click())
+
+    await expect(page.locator('.board .hl.sel')).toHaveCount(0)
+    await expect(boardAlt(page, 'selection')).toHaveText('No square is selected.')
+  })
+
   test('refuses an illegal instruction with a reason instead of silence', async ({ page }) => {
     // Given a mistyped instruction, when it is submitted, then the console explains it and the board does not move.
     await openWorkspace(page)

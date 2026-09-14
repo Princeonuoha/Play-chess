@@ -121,6 +121,7 @@ export interface Snapshot {
   exploring: boolean
   exploreMoves: string[]
   exploreStartPly: number
+  selectedSquare: string | null
 }
 
 const FILES = 'abcdefgh'
@@ -277,6 +278,7 @@ export class ChessController {
       exploring: this.activeMode.kind === 'explore',
       exploreMoves: this.activeMode.kind === 'explore' ? [...this.activeMode.moves] : [],
       exploreStartPly: this.activeMode.kind === 'explore' ? this.activeMode.startPly : 0,
+      selectedSquare: this.selected,
     }
   }
 
@@ -1804,12 +1806,14 @@ export class ChessController {
         this.selected = null
         this.renderHighlights()
         this.renderDots()
+        this.emit()
         return
       }
       if (pc.dataset.color !== mover) {
         this.selected = null
         this.renderHighlights()
         this.renderDots()
+        this.emit()
         return
       }
 
@@ -1818,11 +1822,13 @@ export class ChessController {
         this.selected = null
         this.renderHighlights()
         this.renderDots()
+        this.emit()
         return
       }
       this.selected = from
       this.renderHighlights()
       this.renderDots()
+      this.emit()
 
       const pr = pc.getBoundingClientRect()
       this.drag = {
