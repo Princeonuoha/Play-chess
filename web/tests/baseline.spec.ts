@@ -1,11 +1,16 @@
 import { expect, test, type Page } from '@playwright/test'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
+import { getEvidenceDir } from '../src/evidence-path'
 
 // Todo 2's pre-redesign record is archival evidence. Current-state captures
 // deliberately live elsewhere so this spec cannot rewrite that history.
-const evidenceDir = '/Users/prince.onuoha/work/tmp/chess-stockfish/.omo/evidence/frontend-visual-polish/baseline-retarget/current-state'
-const manifestPath = join(evidenceDir, 'current-state-manifest.json')
+// Call getEvidenceDir() at test time, not at module load time, so env vars
+// set during Playwright test execution are visible.
+const getPath = (): string => getEvidenceDir()
+let evidenceDir: string
+
+const manifestPath = (): string => join(evidenceDir, 'current-state-manifest.json')
 const viewports = [
   { name: '375x812', width: 375, height: 812 },
   { name: '390x844', width: 390, height: 844 },
@@ -74,6 +79,9 @@ async function visitTab(page: Page, tab: (typeof tabs)[number]): Promise<void> {
 }
 
 test('capture current production behavior, geometry, console, and visual baselines', async ({ page, context }) => {
+  // Initialize evidenceDir now so env vars (CI, PLAYWRIGHT_EVIDENCE_DIR) are visible
+  evidenceDir = getPath()
+
   const consoleErrors: string[] = []
   const requestFailures: string[] = []
   const responseErrors: string[] = []
@@ -216,7 +224,7 @@ test('capture current production behavior, geometry, console, and visual baselin
   await writeFile(behaviorPath, `${JSON.stringify(behavior, null, 2)}\n`)
   await writeFile(consoleNetworkPath, `${JSON.stringify(consoleNetwork, null, 2)}\n`)
   await writeFile(
-    manifestPath,
+    manifestPath(),
     `${JSON.stringify(
       {
         generatedAgainst: 'production preview',
