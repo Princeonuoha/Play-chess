@@ -215,6 +215,23 @@ test.describe('study: guided review beside open analysis', () => {
     await expect(page.getByRole('button', { name: 'Back to final position' })).toBeVisible()
   })
 
+  test('keeps the shared board in view when Explore begins on desktop', async ({ page }) => {
+    // Given the desktop Study workspace, when Explore takes control of the shared board, then focus stays on the board instead of scrolling to the distant inspector action.
+    await page.setViewportSize({ width: 1280, height: 800 })
+    await openStudy(page)
+
+    await page.getByRole('button', { name: /Explore — play your own moves/ }).click()
+
+    await expect(page.getByText('Exploring — play any moves')).toBeVisible()
+    await expect(page.locator('[data-board-alt="entry"]')).toBeFocused()
+    const board = page.locator('.board')
+    await expect(board).toBeVisible()
+    const boardBox = await board.boundingBox()
+    expect(boardBox, 'the shared board should have a box').not.toBeNull()
+    expect(boardBox?.y ?? -1, 'the board remains partially visible in the desktop viewport').toBeLessThan(800)
+    expect((boardBox?.y ?? Infinity) + (boardBox?.height ?? 0), 'the board remains partially visible in the desktop viewport').toBeGreaterThan(0)
+  })
+
   test('drives the sub-navigation from the keyboard alone', async ({ page }) => {
     // Given focus on the sub-navigation, when only arrow and activation keys are used, then the surface changes.
     await openStudy(page)
