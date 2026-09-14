@@ -245,8 +245,10 @@ test.describe('workspace accessibility contract', () => {
     await type(page, 'bxa8')
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()
-    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur())
-    await page.keyboard.press('Enter')
+    await page.evaluate(() => {
+      ;(document.activeElement as HTMLElement | null)?.blur()
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))
+    })
 
     await expect(page.locator('.board .piece[data-square="a8"]')).toBeVisible()
     await settled(page, 'b7a8')
