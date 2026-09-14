@@ -223,7 +223,6 @@ test.describe('study: guided review beside open analysis', () => {
     await page.getByRole('button', { name: /Explore — play your own moves/ }).click()
 
     await expect(page.getByText('Exploring — play any moves')).toBeVisible()
-    await expect(page.locator('[data-board-alt="entry"]')).toBeFocused()
     const board = page.locator('.board')
     await expect(board).toBeVisible()
     const boardBox = await board.boundingBox()

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { type ChessController, GRADE_GLYPH, type MoveLabel, type ReviewItem, type Snapshot } from '../core/controller'
 import { Btn, Icon, InlineFeedback, SegmentedNav, Surface, type SegmentItem, type ToastTone } from '../ui/primitives'
 
@@ -100,12 +100,6 @@ export function StudyPanel({ snap, history, reviewPly, exploring, showToast, con
   const [chosen, setChosen] = useState<StudySurface>('review')
   const surface: StudySurface = exploring ? 'analysis' : chosen
   const guided = surface === 'review'
-
-  useEffect(() => {
-    if (!exploring) return
-    document.querySelector<HTMLElement>('.board')?.scrollIntoView({ block: 'start' })
-    document.querySelector<HTMLInputElement>('[data-board-alt="entry"]')?.focus({ preventScroll: true })
-  }, [exploring])
 
   const review = snap?.review ?? null
   const graded = review?.items ?? []
@@ -367,6 +361,7 @@ export function StudyPanel({ snap, history, reviewPly, exploring, showToast, con
               onClick={() => {
                 setChosen('analysis')
                 controller.startExplore()
+                requestAnimationFrame(() => document.querySelector<HTMLElement>('.board')?.scrollIntoView({ block: 'start' }))
               }}
             >
               Explore — play your own moves
