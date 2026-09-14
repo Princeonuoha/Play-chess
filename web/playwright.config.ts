@@ -2,12 +2,14 @@ import { defineConfig, devices } from '@playwright/test'
 
 const externalBaseURL = process.env.PLAYWRIGHT_BASE_URL
 
+export const SNAPSHOT_PATH_TEMPLATE = '{testDir}/{testFileName}-snapshots/{arg}{ext}'
+
 export default defineConfig({
   testDir: './tests',
   timeout: 120_000,
   fullyParallel: false,
   reporter: [['html', { open: 'never' }], ['list']],
-  snapshotPathTemplate: '{dir}/{testFileBaseName}-snapshots/{arg}{ext}',
+  snapshotPathTemplate: SNAPSHOT_PATH_TEMPLATE,
   use: {
     baseURL: externalBaseURL ?? 'http://127.0.0.1:8000',
     trace: 'on-first-retry',
