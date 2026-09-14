@@ -36,6 +36,7 @@ function difficulty(value: number): { readonly name: string; readonly elo: strin
 
 export function ChessWorkspaceLayout() {
   const boardRef = useRef<HTMLDivElement>(null)
+  const mainRef = useRef<HTMLElement>(null)
   const controllerRef = useRef<ChessController | null>(null)
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null)
   const [promotion, setPromotion] = useState<Promotion | null>(null)
@@ -159,6 +160,7 @@ export function ChessWorkspaceLayout() {
       {/* DESIGN.md 8.2: one column on a phone in board → status → nav → inspector
           order, two top-aligned columns from 1024 up. */}
       <main
+        ref={mainRef}
         id="workspace-main"
         tabIndex={-1}
         data-shell="main"
@@ -247,7 +249,7 @@ export function ChessWorkspaceLayout() {
 
       <WorkspaceFooter />
 
-      <WorkspaceGuide open={showIntro} onClose={dismissIntro} onSelect={selectIntroRoute} />
+      <WorkspaceGuide open={showIntro} onClose={dismissIntro} onSelect={selectIntroRoute} fallbackFocus={mainRef} />
 
       {promotion && (
         <PromotionDialog

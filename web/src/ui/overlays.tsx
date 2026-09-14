@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 import { IconButton } from './icons'
 
@@ -24,8 +24,8 @@ function initialFocus(node: HTMLDialogElement): HTMLElement | null {
  * one: Chromium hands focus to the browser's own chrome when `Tab` leaves the
  * last control in the dialog, which drops `document.activeElement` back to the
  * body for a keypress. Wrapping the two ends closes that gap in the primitive
- * so no caller has to. `Escape` is deliberately untouched — a trap without an
- * exit is the defect this is not allowed to introduce.
+ * so no caller has to. Escape is captured before Chromium drops focus to the
+ * body, then routed through the native close event like every other exit.
  */
 function wrapTab(node: HTMLDialogElement, event: React.KeyboardEvent<HTMLDialogElement>): void {
   if (event.key !== 'Tab') return
@@ -50,11 +50,17 @@ function wrapTab(node: HTMLDialogElement, event: React.KeyboardEvent<HTMLDialogE
  * `body.focus()` is a no-op that would leave focus on a hidden control. Handing
  * focus back to the document is the honest restoration for that case.
  */
-function restoreFocus(node: HTMLDialogElement | null, invoker: HTMLElement | null): void {
+function restoreFocus(
+  node: HTMLDialogElement | null,
+  invoker: HTMLElement | null,
+  fallback: HTMLElement | null,
+  heldFocus = false,
+): void {
   const active = document.activeElement
-  if (node === null || !(active instanceof HTMLElement) || !node.contains(active)) return
-  if (invoker !== null && invoker !== document.body && invoker.isConnected) {
-    invoker.focus()
+  if (node === null || !(active instanceof HTMLElement) || (!heldFocus && !node.contains(active))) return
+  const target = invoker !== null && invoker !== document.body && invoker.isConnected ? invoker : fallback
+  if (target?.isConnected) {
+    target.focus()
     return
   }
   active.blur()
@@ -69,6 +75,7 @@ export function DialogSurface({
   dismiss = 'head',
   dismissLabel = 'Close dialog',
   backdropClosable = true,
+  fallbackFocus,
   children,
 }: {
   readonly open: boolean
@@ -89,10 +96,12 @@ export function DialogSurface({
   readonly dismiss?: 'head' | 'none'
   readonly dismissLabel?: string
   readonly backdropClosable?: boolean
+  readonly fallbackFocus?: RefObject<HTMLElement>
   readonly children?: ReactNode
 }) {
   const dialog = useRef<HTMLDialogElement>(null)
   const invoker = useRef<HTMLElement | null>(null)
+  const restoreFromCancel = useRef(false)
   const titleId = useId()
 
   useEffect(() => {
@@ -150,9 +159,9 @@ export function DialogSurface({
    */
   useEffect(
     () => () => {
-      if (dialog.current?.open === true) restoreFocus(dialog.current, invoker.current)
+      if (dialog.current?.open === true) restoreFocus(dialog.current, invoker.current, fallbackFocus?.current ?? null)
     },
-    [],
+    [fallbackFocus],
   )
 
   if (typeof document === 'undefined') return null
@@ -162,15 +171,32 @@ export function DialogSurface({
       ref={dialog}
       className="ui-dialog"
       aria-labelledby={titleId}
+      onCancel={(event) => {
+        event.preventDefault()
+        restoreFromCancel.current = dialog.current?.contains(document.activeElement) === true
+        dialog.current?.close()
+      }}
       onClose={() => {
-        restoreFocus(dialog.current, invoker.current)
+        restoreFocus(dialog.current, invoker.current, fallbackFocus?.current ?? null, restoreFromCancel.current)
+        restoreFromCancel.current = false
         onClose()
       }}
       onClick={(event) => {
         if (backdropClosable && event.target === dialog.current) onClose()
       }}
       onKeyDown={(event) => {
-        if (dialog.current !== null) wrapTab(dialog.current, event)
+        if (dialog.current === null) return
+        if (event.key === 'Escape') {
+          event.preventDefault()
+          restoreFromCancel.current = dialog.current.contains(document.activeElement)
+          dialog.current.close()
+          window.setTimeout(() => {
+            restoreFocus(dialog.current, invoker.current, fallbackFocus?.current ?? null, restoreFromCancel.current)
+            restoreFromCancel.current = false
+          }, 0)
+          return
+        }
+        wrapTab(dialog.current, event)
       }}
     >
       {dismiss === 'head' ? (

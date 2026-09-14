@@ -27,6 +27,7 @@
  * still a named shell region for the geometry specs and the geometry script —
  * it moved out of the flow, it was not removed.
  * ------------------------------------------------------------------------- */
+import type { RefObject } from 'react'
 import { Btn, DialogSurface, Icon, Surface, type IconName } from '../ui/primitives'
 import { WORKSPACE_ROUTES, type WorkspaceRoute } from './WorkspaceChrome'
 
@@ -47,10 +48,12 @@ export function WorkspaceGuide({
   open,
   onClose,
   onSelect,
+  fallbackFocus,
 }: {
   readonly open: boolean
   readonly onClose: () => void
   readonly onSelect: (route: WorkspaceRoute) => void
+  readonly fallbackFocus: RefObject<HTMLElement>
 }) {
   return (
     <DialogSurface
@@ -59,6 +62,7 @@ export function WorkspaceGuide({
       description="One board, four workspaces. Your game follows you between them, so nothing is lost when you switch."
       dismissLabel="Close the guide"
       onClose={onClose}
+      fallbackFocus={fallbackFocus}
     >
       {/* The named first-visit region (DESIGN.md 8.3). It sits inside the
           dialog, so it is measured out of the document's flow. */}

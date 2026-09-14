@@ -96,17 +96,16 @@ async function firstVisit(page: Page, viewport: { width: number; height: number 
 /**
  * A return visit: storage already carries the dismissal.
  *
- * The auto-opened guide has no invoking control, so the platform restores focus
- * to the document — and it does so in a task queued by the close steps, not
- * synchronously. Waiting for that to land is what makes everything after it
- * deterministic: a control focused inside the gap has focus taken back off it.
+ * The auto-opened guide has no invoking control, so it restores focus to the
+ * stable workspace main landmark. Waiting for that queued close step makes
+ * everything after it deterministic.
  */
 async function returningVisit(page: Page, viewport: { width: number; height: number }): Promise<void> {
   await firstVisit(page, viewport)
   await dismissControl(page).click()
   await expect(dialog(page)).toBeHidden()
   await expect
-    .poll(() => page.evaluate(() => document.activeElement === document.body), {
+    .poll(() => page.getByRole('main').evaluate((main) => document.activeElement === main), {
       message: 'focus must leave the hidden dialog after the guide closes',
     })
     .toBe(true)
@@ -215,6 +214,16 @@ test.describe('first-visit workspace guide', () => {
     await page.keyboard.press('Escape')
     await expect(dialog(page)).toBeHidden()
     await expect(invoker, 'focus must return to the control that opened the guide').toBeFocused()
+  })
+
+  test('returns first-visit Escape focus to the workspace landmark', async ({ page }) => {
+    // Given the automatically opened first-visit guide has no control invoker, when Escape closes it, then focus returns to the stable workspace main landmark.
+    await firstVisit(page, PHONE)
+
+    await page.keyboard.press('Escape')
+
+    await expect(dialog(page)).toBeHidden()
+    await expect(page.getByRole('main'), 'automatic onboarding needs a valid return target').toBeFocused()
   })
 
   test('closes on a backdrop click and still returns focus to the invoker', async ({ page }) => {
