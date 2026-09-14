@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { visualSnapshotThreshold } from '../src/visual-snapshot-threshold'
 
 const PRE_REDESIGN_BOARD_TOP = 738
 const MOBILE_BOARD_TOP_MAX = 560
@@ -88,7 +89,7 @@ test.describe('workspace regression matrix', () => {
           animations: 'disabled',
           caret: 'hide',
           fullPage: true,
-          maxDiffPixelRatio: 0.01,
+          maxDiffPixelRatio: visualSnapshotThreshold(),
           mask: [
             page.locator('.evalbar'),
             page.locator('.an-line'),
