@@ -269,7 +269,7 @@ test.describe('workspace accessibility contract', () => {
     await expect(previous).toBeFocused()
     await page.keyboard.press('ArrowLeft')
     await expect(boardAlt(page, 'blocked')).toContainText('You are browsing an earlier move')
-    expect(await placement(page), 'browsing shows the position before e4').toContain('e2 white pawn')
+    await expect(boardAlt(page, 'placement'), 'browsing shows the position before e4').toContainText('e2 white pawn')
 
     await expect(previous).toBeVisible()
     await expect(previous).toBeEnabled()
@@ -277,7 +277,7 @@ test.describe('workspace accessibility contract', () => {
     /* The stubbed engine answers `bestmove (none)`, so the turn stays with it —
        the gate is expected to change its reason, not to open. */
     await expect(boardAlt(page, 'blocked')).toContainText('It is not your move.')
-    expect(await placement(page), 'the live position is back').toContain('Rank 4: e4 white pawn.')
+    await expect(boardAlt(page, 'placement'), 'the live position is back').toContainText('Rank 4: e4 white pawn.')
   })
 
   /* ------------------------------------- A11Y-09 a move without a pointer */
