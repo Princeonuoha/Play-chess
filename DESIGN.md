@@ -163,7 +163,8 @@ Status carries meaning, so every status token ships with a non-color partner (ic
 | `--status-info` | `#5f9ea0` | Good-but-not-best, informational. | Info icon + word. |
 | `--status-caution` | `#d6a95d` | Inaccuracy, degraded state. | Caution icon + word. |
 | `--status-warning` | `#d08a3e` | Mistake. | Warning icon + word. |
-| `--status-critical` | `#c0453f` | Blunder, check, hard failure. | Error icon + word. |
+| `--status-critical` | `#c0453f` | Blunder, check, hard failure. **Non-text only** — borders, fills, dots, board check. | Error icon + word. |
+| `--status-critical-ink` | `color-mix(in oklab, var(--status-critical) 55%, var(--text-primary))` | The critical family's **text** ink. Every `color:` in the critical family uses this. | Error icon + word. |
 | `--status-best` | `var(--status-positive)` | Review grade `Best`. | Annotation glyph, documented §5.4. |
 | `--status-good` | `var(--status-info)` | Review grade `Good`. | Annotation glyph. |
 | `--status-inaccuracy` | `var(--status-caution)` | Review grade `Inaccuracy`. | Annotation glyph. |
@@ -172,6 +173,12 @@ Status carries meaning, so every status token ships with a non-color partner (ic
 
 Grade badges keep their existing fills so review artwork stays recognizable; the tokenized values
 above are the source, and each badge additionally renders its glyph and an accessible name.
+
+`--status-critical` is the one status token whose raw value cannot carry text: it measures 3.37:1 on
+`--surface-1`, which clears the §8.6 3:1 non-text floor but not the 4.5:1 text floor. The critical
+family therefore ships two tokens — the raw token for borders, fills, dots, and the board check
+square, and `--status-critical-ink` for every `color:`. `scripts/verify-contrast.mjs` discovers text
+inks from source rather than from a list, so putting the raw token back on a `color:` fails the build.
 
 ### 2.7 Border family
 
@@ -474,7 +481,7 @@ validator fails.
 | `Field` | default | `--type-label` uppercase label in `--text-muted`, `--space-2` gap, optional `--type-body-sm` description. | `<label>` wraps or is bound by `for`/`id`; description linked via `aria-describedby`. |
 | `Field` | focus | Label shifts to `--text-primary`; the control shows the universal focus ring. | Focus moves to the control, never the label. |
 | `Field` | disabled | Label and control at `opacity: 0.4`. | `disabled` propagates to the control. |
-| `Field` | error | `--status-critical` 1px border on the control, an error icon plus message below in `--status-critical`. | `aria-invalid="true"`; message linked via `aria-errormessage`; message is text, never color-only. |
+| `Field` | error | `--status-critical` 1px border on the control, an error icon plus message below in `--status-critical-ink`. | `aria-invalid="true"`; message linked via `aria-errormessage` AND carries `role="alert"`, so an error that appears while focus is elsewhere is still announced; message is text, never color-only. |
 | `GroupedSelect` | default | Native `<select>`, `--canvas-sunken` fill, `--border-subtle`, `--radius-lg`, `--type-body`, min height 44px. | Native element retained for platform picker behavior and screen-reader support. |
 | `GroupedSelect` | hover | Border → `--border-strong`. | — |
 | `GroupedSelect` | focus | Universal focus ring; border → `--border-focus`. | — |
@@ -502,11 +509,11 @@ validator fails.
 | `EngineStatus` | loading | Indeterminate brass arc plus the word `Loading engine…`. | `aria-busy="true"`; under reduced motion the arc is static and the text still updates. |
 | `EngineStatus` | error | `--status-critical` dot, the word `Engine failed`, and a `Retry` `Btn`. | `role="alert"`; the retry control is keyboard-reachable and explains the consequence. |
 | `StatusNote` | default | Status line in `--type-heading`; the note sits behind a 3px `--brass-base` left rule on `--brass-wash`. | The status region is a live region; the note is plain text with an accessible heading relationship. |
-| `StatusNote` | error | Left rule and text switch to `--status-critical` with a leading error icon and the word `Error`. | `role="alert"` for the error tone only, so routine status updates do not interrupt. |
+| `StatusNote` | error | Left rule switches to `--status-critical`, text to `--status-critical-ink`, with a leading error icon and the word `Error`. | `role="alert"` for the error tone only, so routine status updates do not interrupt. |
 | `InlineFeedback` | default | Hidden until there is something to report; occupies reserved height so appearing never shifts layout. | Container is `aria-live="polite"` and present in the DOM from first render. |
 | `InlineFeedback` | loading | Skeleton rows at `--surface-2` plus the operation name (`Analyzing move 14…`). | `aria-busy="true"`; skeletons are `aria-hidden` and the text carries the meaning. |
 | `InlineFeedback` | empty | Short sentence plus one recovery action. | The recovery action is a real focusable control, not instructional text. |
-| `InlineFeedback` | error | `--status-critical` icon, plain-language cause, and a retry action. | `role="alert"`; the message names what failed and what to do next. |
+| `InlineFeedback` | error | `--status-critical-ink` icon, plain-language cause, and a retry action. | `role="alert"`; the message names what failed and what to do next. |
 | `DialogSurface` | default | `--surface-overlay` body, `--radius-xl`, `--depth-overlay`, over a `--canvas-scrim` backdrop. Enters with `opacity` + `translateY(8px)` over `--motion-base`. | Native `<dialog>` or `role="dialog" aria-modal="true"` with `aria-labelledby`; rendered in a portal. |
 | `DialogSurface` | focus | The initial focus target carries a visible focus ring on open. | Focus moves into the dialog on open, is trapped inside while open, and returns to the invoking element on close. |
 | `DialogSurface` | active | The close control and each choice follow `Btn`/`IconButton` active behavior. | `Escape` closes; a backdrop click closes only when nothing is at risk of being lost. |
@@ -515,7 +522,7 @@ validator fails.
 | `Toast` | active | Dismiss press follows `IconButton` active. | Dismissal returns focus nowhere — the user's place is never moved. |
 | `Loading` | loading | Reserved-height skeletons at `--surface-2` with a `1.6s` shimmer, plus a text label naming the operation. | `aria-busy="true"` on the region; skeletons `aria-hidden`; under reduced motion the shimmer stops and the label remains. |
 | `Empty` | empty | Centered `--icon-size-lg` mark in `--text-muted`, a one-line explanation, and exactly one primary action. | The explanation names why the region is empty; the action is a real control. |
-| `Error` | error | `--status-critical` `--icon-size-lg` mark, a plain-language cause, a retry action, and an optional technical detail behind a disclosure. | `role="alert"`; the message never exposes a raw stack trace as the primary text. |
+| `Error` | error | `--status-critical-ink` `--icon-size-lg` mark, a plain-language cause, a retry action, and an optional technical detail behind a disclosure. | `role="alert"`; the message never exposes a raw stack trace as the primary text. |
 
 ### 7.4 Composition rules
 
@@ -617,8 +624,29 @@ the validator fails.
 | `--text-on-brass` on `--brass-base` | 7.2:1 | ≥4.5:1 |
 | `--board-coord-on-ivory` on `--board-square-ivory` | 7.5:1 | ≥4.5:1 |
 | `--board-coord-on-green` on `--board-square-green` | 4.8:1 | ≥4.5:1 |
+| `--status-critical-ink` on `--surface-1` | 6.8:1 | ≥4.5:1 |
+| `--status-critical-ink` on `--surface-3` | 5.8:1 | ≥4.5:1 |
+| `--status-critical` on `--surface-1` | 3.3:1 | ≥3:1 (non-text only) |
 
 A contrast script re-computes this table in todo 9 and fails the build on any regression.
+
+The table above is hand-picked, so on its own it is blind to any pair nobody thought to write down —
+which is exactly how `--status-critical` shipped as text ink at 3.37:1 while the gate reported green.
+`scripts/verify-contrast.mjs` therefore also runs an **ink audit**: it discovers every token used as
+text ink by reading every `color:` declaration in the CSS and every `text-[color:…]` arbitrary value
+in the TSX, then measures each discovered ink against every backdrop it can render on — each opaque
+surface (`--canvas-base`, the panel card, `--surface-1/2/3`, `--surface-overlay`) plus the translucent
+films the cascade stacks on them (`--surface-inset`, `--surface-inset-hover`, `--canvas-sunken`), and
+for the review grades their own 20% status fill. The floor is 4.5:1 for all of it; enlarging text to
+claim the large-text 3:1 exemption is not an accepted answer. An ink with no declared backdrop scope
+fails the run as `UNMAPPED`, so a new text colour cannot arrive unmeasured.
+
+Two structural rules fall out of that audit and are part of the contract:
+
+- A hoverable row list on `--surface-2` or `--surface-3` sits in a `--canvas-sunken` well (the
+  `.ui-control` / `.ui-stateblock` idiom). Without the well, `--text-muted` on a hovered row over
+  `--surface-2` measures 4.41:1; with it, 4.93:1.
+- `--surface-inset-hover` over `--surface-3` carries `--text-primary` only.
 
 ### 8.7 Accepted debt
 

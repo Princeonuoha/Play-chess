@@ -178,7 +178,7 @@
   align-items: flex-start;
   gap: var(--space-2);
   font: var(--type-body-sm);
-  color: var(--status-critical);
+  color: var(--status-critical-ink);
   overflow-wrap: anywhere;
 }
 
@@ -532,7 +532,7 @@
 }
 
 .ui-statusnote[data-tone='error'] {
-  color: var(--status-critical);
+  color: var(--status-critical-ink);
 }
 
 .ui-statusnote[data-tone='error'] .ui-statusnote-note {
@@ -546,7 +546,7 @@
   gap: var(--space-2);
   font: var(--type-heading);
   letter-spacing: -0.005em;
-  color: var(--status-critical);
+  color: var(--status-critical-ink);
 }
 
 /* ------------------------------ InlineFeedback / Loading / Empty / Error 7.3 */
@@ -572,7 +572,7 @@
 }
 
 .ui-feedback-line[data-tone='error'] {
-  color: var(--status-critical);
+  color: var(--status-critical-ink);
 }
 
 .ui-feedback-actions {
@@ -618,7 +618,7 @@
 }
 
 .ui-stateblock[data-tone='error'] .ui-stateblock-text {
-  color: var(--status-critical);
+  color: var(--status-critical-ink);
 }
 
 .ui-mark {
@@ -626,7 +626,7 @@
 }
 
 .ui-mark--error {
-  color: var(--status-critical);
+  color: var(--status-critical-ink);
 }
 
 .ui-details {

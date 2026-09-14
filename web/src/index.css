@@ -71,6 +71,11 @@
   --status-caution: #d6a95d;
   --status-warning: #d08a3e;
   --status-critical: #c0453f;
+  /* TEXT ink for the critical family. `--status-critical` is a NON-text token —
+     3.37:1 on `--surface-1`, under the AA text floor — so every `color:` uses
+     this lift and the raw token stays on borders, fills, dots, and the check
+     square. Same "status toward --text-primary" lift the review grades use. */
+  --status-critical-ink: color-mix(in oklab, var(--status-critical) 55%, var(--text-primary));
   --status-best: var(--status-positive);
   --status-good: var(--status-info);
   --status-inaccuracy: var(--status-caution);
@@ -461,7 +466,7 @@ body {
 
 /* Trainer status colours + note + scoresheet + analysis */
 .tr-status .good { color: var(--status-positive); }
-.tr-status .bad { color: var(--status-critical); }
+.tr-status .bad { color: var(--status-critical-ink); }
 .tr-status .info { color: var(--brass-base); }
 .tr-status .path { display: block; margin-top: var(--space-1); font-family: var(--type-font-numeric); font-weight: 400; font-size: 11.5px; color: var(--text-muted); word-break: break-word; }
 .moves table { width: 100%; border-collapse: collapse; font: var(--type-numeric); letter-spacing: .01em; }

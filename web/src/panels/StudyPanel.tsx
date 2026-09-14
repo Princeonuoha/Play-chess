@@ -263,7 +263,10 @@ export function StudyPanel({ snap, history, reviewPly, exploring, showToast, con
                     Back to final position
                   </Btn>
                 )}
-                <div className="max-h-80 divide-y divide-[color:var(--border-hairline)] overflow-auto rounded-[var(--radius-lg)] border border-[color:var(--border-subtle)]">
+                {/* A scrolling row list is a sunken well, like `.ui-control` and
+                    `.ui-stateblock`: on the tone-2 review Surface the well is what
+                    keeps the muted move numbers at AA once a row lifts on hover. */}
+                <div className="max-h-80 divide-y divide-[color:var(--border-hairline)] overflow-auto rounded-[var(--radius-lg)] border border-[color:var(--border-subtle)] bg-[var(--canvas-sunken)]">
                   {graded.map((it) => (
                     <button
                       key={it.ply}
