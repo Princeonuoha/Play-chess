@@ -5,8 +5,8 @@
  *
  *   1. The two square fills are FROZEN. They are read out of DESIGN.md rather
  *      than copied, so the document stays the single source of the contract.
- *   2. Every board state carries a NON-COLOUR cue. Each assertion reads a shape
- *      — a border geometry, a bracket, a glyph — never a colour value, so the
+ *   2. Every board state carries a NON-COLOUR cue. Each assertion reads a shape,
+ *      luminance blend, or glyph — never hue alone, so the
  *      suite fails if a cue is ever reduced to a hue.
  *   3. Nothing on the board animates a layout property, and reduced motion is a
  *      path rather than a deletion.
@@ -118,6 +118,9 @@ type Cue = {
   readonly borderWidth: number
   readonly bracketTop: number
   readonly bracketRight: number
+  readonly beforeContent: string
+  readonly afterContent: string
+  readonly mixBlendMode: string
 }
 
 /** Reads only geometry. Nothing here can be satisfied by a colour. */
@@ -131,6 +134,9 @@ async function cueShape(page: Page, selector: string): Promise<Cue> {
       borderWidth: Number.parseFloat(own.borderTopWidth),
       bracketTop: Number.parseFloat(bracket.borderTopWidth) || 0,
       bracketRight: Number.parseFloat(bracket.borderRightWidth) || 0,
+      beforeContent: bracket.content,
+      afterContent: getComputedStyle(node, '::after').content,
+      mixBlendMode: own.mixBlendMode,
     }
   })
 }
@@ -220,10 +226,11 @@ test.describe('board presentation contract', () => {
     await expect(page.locator('.board .piece[data-square="e4"]')).toBeVisible()
     await expect(page.locator('.board .hl.last')).toHaveCount(2)
     const last = await cueShape(page, '.board .hl.last')
-    expect(last.cue, 'the last move publishes its shape').toBe('corner-brackets')
+    expect(last.cue, 'the last move publishes its luminance treatment').toBe('warm-lift')
     expect(last.borderStyle === 'none' || last.borderWidth === 0, 'the last move is not a ring').toBe(true)
-    expect(last.bracketTop, 'the bracket draws its top edge').toBeGreaterThan(0)
-    expect(last.bracketRight, 'the bracket is an open L, never a closed box').toBe(0)
+    expect(last.mixBlendMode, 'the warm wash must visibly shift both frozen square colors').toBe('normal')
+    expect(last.beforeContent, 'the origin and destination have no dark corner lines').toBe('none')
+    expect(last.afterContent, 'the origin and destination have no dark corner lines').toBe('none')
   })
 
   test('gives a king in check a double ring, not just a red square', async ({ page }) => {
@@ -298,18 +305,20 @@ test.describe('board presentation contract', () => {
         const bracket = getComputedStyle(node, '::before')
         if (cue === undefined) continue
         seen[cue] =
-          Number.parseFloat(style.borderTopWidth) > 0
-            ? `${style.borderTopStyle}-${style.borderTopWidth}`
-            : `bracket-${bracket.borderTopWidth}/${bracket.borderRightWidth}`
+          cue === 'warm-lift' && style.backgroundColor !== 'rgba(0, 0, 0, 0)'
+            ? 'luminance-wash'
+            : Number.parseFloat(style.borderTopWidth) > 0
+              ? `${style.borderTopStyle}-${style.borderTopWidth}`
+              : `bracket-${bracket.borderTopWidth}/${bracket.borderRightWidth}`
       }
       return seen
     })
 
     const drawn = Object.values(shapes)
     expect(Object.keys(shapes).sort(), 'selected, last move and check are all on the board').toEqual([
-      'corner-brackets',
       'ring-double',
       'ring-solid',
+      'warm-lift',
     ])
     for (const [cue, shape] of Object.entries(shapes)) {
       expect(shape, `${cue} must draw a real mark, not an empty one`).not.toMatch(/^bracket-0px\/0px$/)

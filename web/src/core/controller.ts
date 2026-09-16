@@ -57,11 +57,10 @@ export const GRADE_GLYPH: Record<MoveLabel, string> = {
   Blunder: '??',
 }
 
-/* DESIGN.md 8.5 A11Y-05. The shape each board state is drawn with, published on
-   the element so the cue is assertable without sampling a colour. The cascade
-   in `index.css` draws exactly these geometries. */
+/* DESIGN.md 8.5 A11Y-05. Each board state's non-hue cue is published on the
+   element so tests can assert the rendered treatment without pinning a color. */
 export const BOARD_CUE = {
-  last: 'corner-brackets',
+  last: 'warm-lift',
   hint: 'ring-dashed',
   sel: 'ring-solid',
   check: 'ring-double',
