@@ -402,8 +402,8 @@ test.describe('workspace accessibility contract', () => {
   }
 
   /* ------------------------------------------------ A11Y-05 non-colour cues */
-  test('keeps the selection, last move and check distinguishable by shape', async ({ page }) => {
-    // Given the board states todo 13 shaped, when the accessible surface exists alongside them, then each one still publishes its own geometry.
+  test('keeps selection and last move distinguishable without relying on hue', async ({ page }) => {
+    // Given a solid-ring selection and a warm-lifted last move, when both render together, then their non-hue signals stay distinct.
     await openWorkspace(page, '/study')
     await startExplore(page)
     await playTyped(page, 'e4', '1. e4.', 'e2e4')
@@ -413,14 +413,19 @@ test.describe('workspace accessibility contract', () => {
       nodes.map((node) => ({
         cue: (node as HTMLElement).dataset.cue,
         style: getComputedStyle(node).borderTopStyle,
+        blend: getComputedStyle(node).mixBlendMode,
       })),
     )
-    expect(cues.map((entry) => entry.cue).sort(), 'the last move and the selection are both shaped').toEqual([
-      'corner-brackets',
-      'corner-brackets',
+    expect(cues.map((entry) => entry.cue).sort(), 'the last move and selection publish distinct cues').toEqual([
       'ring-solid',
+      'warm-lift',
+      'warm-lift',
     ])
     expect(cues.find((entry) => entry.cue === 'ring-solid')?.style, 'selection stays a solid ring').toBe('solid')
+    expect(
+      cues.filter((entry) => entry.cue === 'warm-lift').every((entry) => entry.blend === 'normal'),
+      'both last-move squares receive a luminance-changing wash',
+    ).toBe(true)
   })
 
   /* ----------------------------------------------------- A11Y-04 motion */

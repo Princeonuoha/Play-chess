@@ -99,7 +99,7 @@ Everything drawn *on* the board is a separate, changeable token:
 | `--board-coord-on-green` | `#1b2412` | Rank/file coordinate ink on a green square. Measured 4.8:1 against `#769656` at full opacity. |
 | `--board-rim` | `#0a0f14` | 1px board frame. |
 | `--board-select` | `color-mix(in oklab, var(--brass-base) 40%, transparent)` | Selected-square wash. |
-| `--board-last` | `color-mix(in oklab, var(--brass-base) 20%, transparent)` | Last-move wash. |
+| `--board-last` | `color-mix(in oklab, var(--brass-lift) 42%, transparent)` | Warm luminance shift on both last-move squares: it lifts green and clearly warms ivory, with no dark marks. |
 | `--board-dot` | `rgba(15,21,27,0.40)` | Legal-move dot and capture ring. |
 | `--board-check` | `var(--status-critical)` | King-in-check radial. |
 
@@ -136,8 +136,9 @@ on both square colors are the replacement. Square fills are untouched by this ch
    the inspector column, the navigation, a dialog, or a toast. Two brass fills visible in the same
    region at the same time is a defect.
 2. Everywhere else brass may appear only as: a 1px rim (`--brass-rim`), a focus ring
-   (`--border-focus`), a wash at or below 20% (`--brass-wash`, `--board-select`, `--board-last`), or
-   a text accent on a link or numeric emphasis.
+   (`--border-focus`), a wash at or below 20% (`--brass-wash`, `--board-select`), the documented
+   42% `--board-last` overlay on the frozen board square fills, or a text accent on a link or numeric
+   emphasis.
 3. **Brass is never used to mean status.** Success, caution, and failure are the `--status-*` family.
    Brass means *this is the interaction*, nothing else.
 4. **No second accent hue may be introduced.** Any new hue must be a `--status-*` token with a
@@ -604,7 +605,7 @@ the validator fails.
 | A11Y-02 | Every interactive target has a hit area of at least **44px** by 44px, with at least 8px separation from adjacent targets. | Bounding-box measurement of every focusable element at `375x812` in the touch-target spec. |
 | A11Y-03 | Focus is always **visible**: a 2px `--border-focus` ring at `2px` offset, never removed, never color-change-only, and never clipped by an ancestor's overflow. | Keyboard walk of every route capturing the focused element's computed outline. |
 | A11Y-04 | A **`prefers-reduced-motion`** path exists for every animation; no information is available only through motion. | Playwright run with `reducedMotion: 'reduce'` asserting durations collapse and every state remains legible. |
-| A11Y-05 | No state, grade, or result is conveyed by color alone — every one pairs color with an icon, glyph, shape, or word (**non-color cues**). | Grayscale-forced screenshot review plus DOM assertions that each status carries text. |
+| A11Y-05 | No state, grade, or result is conveyed by hue alone — every one pairs hue with luminance, an icon, glyph, shape, or word (**non-color cues**). Last move shifts the luminance of both squares and is also stated in the move list and board console. | Grayscale-forced screenshot review plus DOM assertions that each status carries a non-hue signal or text. |
 | A11Y-06 | Text and layout survive **200%** browser zoom and a 200% OS text size with no horizontal scroll, no clipping, and no lost control. | Zoom spec at `1280x800` and `375x812`; assert `scrollWidth <= clientWidth`. |
 | A11Y-07 | Asynchronous results are announced through **live regions**: `aria-live="polite"` for status and toasts, `role="alert"` for errors. Toasts never move focus. | Accessibility-tree assertions after engine boot, move commit, copy-PGN, and engine failure. |
 | A11Y-08 | A **screen-reader board alternative** exposes, as text, the side to move, the full piece placement, the selected square and its legal destinations, the last move, check and result state, and the operating instructions — and updates on every position change. | Accessible-snapshot assertions after `e4`, after a check, after a promotion, and after a review jump. |
