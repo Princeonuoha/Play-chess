@@ -127,9 +127,15 @@ test.describe('responsive workspace shell geometry', () => {
       const board = await boxOf(page, '.board')
       const inspector = await boxOf(page, '[data-shell="inspector"]')
       const column = await boxOf(page, '[data-shell="board-column"]')
+      const evalbar = await boxOf(page, '.evalbar')
 
-      expect(Math.abs(board.y - inspector.y), 'board and inspector must share a top edge').toBeLessThanOrEqual(1)
-      expect(Math.abs(column.y - inspector.y), 'both grid tracks must start on the same row').toBeLessThanOrEqual(1)
+      // The evaluation bar renders above the board, so the plate starts one bar band
+      // below the shared top edge and the board COLUMN is what top-aligns. Measuring
+      // the column keeps this exact at 1px rather than widening the tolerance to
+      // swallow the band, which would hide any later drift with it.
+      expect(Math.abs(column.y - inspector.y), 'the board column and the inspector must share a top edge').toBeLessThanOrEqual(1)
+      expect(Math.abs(evalbar.y - column.y), 'the evaluation bar leads that column').toBeLessThanOrEqual(1)
+      expect(board.y, 'and the board follows the bar, so the band is all that separates them').toBeGreaterThanOrEqual(evalbar.bottom)
       expect(inspector.x, 'the inspector must sit beside the board, not under it').toBeGreaterThan(board.x)
     })
   }

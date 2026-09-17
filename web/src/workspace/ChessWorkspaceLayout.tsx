@@ -172,16 +172,17 @@ export function ChessWorkspaceLayout() {
               meets an empty graphic, and so the move entry is the first thing
               the skip link hands the keyboard. */}
           <BoardConsole snapshot={snapshot} boardRef={boardRef} />
-          <div className="flex w-full items-stretch justify-center gap-3">
+          {/* DESIGN.md 8.2 caps the board at 560px on a tablet and 600px on a
+              desktop. The cap sits on the wrapper the evaluation bar shares
+              with the board, so the bar spans exactly the position it is
+              measuring and `.board` keeps owning its own square sizing. */}
+          <div className="flex w-full min-w-0 flex-col items-center gap-2 sm:max-w-[560px] lg:max-w-[600px]">
             <div className="evalbar" title="Evaluation (White's perspective)">
-              <div className="white" style={{ transform: `scaleY(${(snapshot?.evalFrac ?? 0.5).toFixed(3)})` }} />
+              <div className="white" style={{ transform: `scaleX(${(snapshot?.evalFrac ?? 0.5).toFixed(3)})` }} />
               <div className="mid" />
               <div className="num">{snapshot?.evalLabel ?? '0.0'}</div>
             </div>
-            {/* DESIGN.md 8.2 caps the board at 560px on a tablet and 600px on a
-                desktop; capping the track lets `.board` keep owning its own
-                square sizing. */}
-            <div className="flex min-w-0 flex-1 justify-center sm:max-w-[560px] lg:max-w-[600px]">
+            <div className="flex w-full min-w-0 justify-center">
               <div ref={boardRef} className="board" />
             </div>
           </div>
