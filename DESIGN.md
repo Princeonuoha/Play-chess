@@ -411,7 +411,7 @@ reduced motion:
 - All transitions and animations collapse to `0.01ms` **except** state changes that would otherwise
   become invisible; those become instant, not absent.
 - Piece movement becomes an instant reposition — the piece still moves, it just does not travel.
-- The evaluation bar jumps to its new height rather than sliding.
+- The evaluation bar's fill snaps straight to its new share of the track rather than sliding across it.
 - Spinners become a static determinate mark plus text (`Thinking…`), never a silent frozen ring.
 - No information is lost in either mode. Reduced motion is a path, not a degraded product.
 
