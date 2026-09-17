@@ -55,6 +55,18 @@ const UCI_STUB = `self.onmessage = (event) => {
   else if (cmd.slice(0, 2) === 'go') setTimeout(() => self.postMessage('bestmove (none)'), 5)
 }`
 
+/**
+ * Chromium always reports a computed transform as `matrix(a, b, c, d, tx, ty)`,
+ * never as the authored function — so an axis has to be read out of the terms:
+ * `a` scales x, `d` scales y, and `b`/`c` are non-zero only under rotation or shear.
+ */
+function matrixOf(transform: string): { readonly a: number; readonly b: number; readonly c: number; readonly d: number } {
+  const terms = transform.match(/^matrix\(([^)]+)\)$/)
+  if (terms === null) throw new Error(`expected a 2-D matrix, got ${transform}`)
+  const [a, b, c, d] = terms[1].split(',').map((term) => Number.parseFloat(term))
+  return { a, b, c, d }
+}
+
 async function stubEngine(page: Page): Promise<void> {
   await page.route('**/stockfish-18-lite-single.js*', (route) =>
     route.fulfill({ status: 200, contentType: 'application/javascript', body: UCI_STUB }),
@@ -345,7 +357,11 @@ test.describe('board presentation contract', () => {
         return {
           fontSize: Number.parseFloat(getComputedStyle(num).fontSize),
           text: (num.textContent ?? '').trim(),
-          inside: numBox.left >= barBox.left - 1 && numBox.right <= barBox.right + 1 && numBox.top >= barBox.top - 1,
+          inside:
+            numBox.left >= barBox.left - 1 &&
+            numBox.right <= barBox.right + 1 &&
+            numBox.top >= barBox.top - 1 &&
+            numBox.bottom <= barBox.bottom + 1,
         }
       })
       expect(readout.fontSize, 'evaluation readout under the DESIGN.md 3.2 floor').toBeGreaterThanOrEqual(TYPE_FLOOR)
@@ -387,7 +403,8 @@ test.describe('board presentation contract', () => {
 
     const motion = await page.evaluate(() => {
       const piece = getComputedStyle(document.querySelector('.board .piece') as Element)
-      const plate = getComputedStyle(document.querySelector('.evalbar .white') as Element)
+      const plateNode = document.querySelector('.evalbar .white') as HTMLElement
+      const plate = getComputedStyle(plateNode)
       return {
         pieceProperty: piece.transitionProperty,
         pieceLeft: piece.left,
@@ -395,6 +412,8 @@ test.describe('board presentation contract', () => {
         pieceTransform: piece.transform,
         plateProperty: plate.transitionProperty,
         plateTransform: plate.transform,
+        plateInline: plateNode.style.transform,
+        plateOrigin: plate.transformOrigin,
       }
     })
 
@@ -402,8 +421,16 @@ test.describe('board presentation contract', () => {
     expect(motion.pieceLeft, 'a piece must not be positioned by a layout property it animates').toBe('0px')
     expect(motion.pieceTop, 'a piece must not be positioned by a layout property it animates').toBe('0px')
     expect(motion.pieceTransform, 'a piece is placed by its transform').not.toBe('none')
-    expect(motion.plateProperty, 'the evaluation plate must scale, never grow its height').toBe('transform')
+    expect(motion.plateProperty, 'the evaluation plate must scale, never grow its width').toBe('transform')
     expect(motion.plateTransform, 'the evaluation plate is placed by its transform').not.toBe('none')
+
+    const inlineFrac = motion.plateInline.match(/^scaleX\(([\d.]+)\)$/)
+    expect(inlineFrac, `the fill fraction must be published on the x axis, got ${motion.plateInline}`).not.toBeNull()
+    const plate = matrixOf(motion.plateTransform)
+    expect(plate.a, 'the x term is what carries the evaluation fraction').toBeCloseTo(Number(inlineFrac?.[1]), 3)
+    expect(plate.d, 'the y term must stay 1 — a scaleY fill would grow the wrong axis').toBe(1)
+    expect(plate.b === 0 && plate.c === 0, 'the fill is a pure scale, never a rotation or a shear').toBe(true)
+    expect(motion.plateOrigin, 'the fill is anchored to the left edge so it grows rightward').toMatch(/^0px /)
   })
 
   test('lights the board rim only while it is engaged', async ({ page }) => {
