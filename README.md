@@ -1,10 +1,19 @@
-# chesswithprince.com
+# ♟️ chesswithprince.com
+
+> A fish that plays chess. In your browser. With nothing behind it.
+
+[![Play now](https://img.shields.io/badge/play-play.chesswithprince.com-1f6feb?style=for-the-badge)](https://play.chesswithprince.com)
+[![CI](https://github.com/Princeonuoha/Play-chess/actions/workflows/ci.yml/badge.svg)](https://github.com/Princeonuoha/Play-chess/actions/workflows/ci.yml)
+[![Engine: Stockfish 18](https://img.shields.io/badge/engine-Stockfish%2018-000000)](https://github.com/nmrugg/stockfish.js)
+[![Engine license: GPLv3](https://img.shields.io/badge/engine%20license-GPLv3-blue)](https://www.gnu.org/licenses/gpl-3.0)
 
 A single-page chess app. Stockfish 18 runs as WebAssembly in the visitor's browser,
 so there is no backend, no server cost, and nothing to scale.
 
 Play at **play.chesswithprince.com** — test your lines against the strongest version
 of Stockfish, right in the browser.
+
+## 🗺️ The map
 
 ```
 web/                 the app — React + TypeScript + Tailwind v4 + react-router (Vite)
@@ -33,7 +42,7 @@ panel into it through the router outlet, so switching workspaces never tears dow
 the game. `/` redirects to `/play`; anything unrecognised renders an empty state
 that leaves the game untouched.
 
-## Run it locally
+## 🏃 Run it locally
 
 ```bash
 cd web
@@ -49,11 +58,12 @@ cd dist && python3 -m http.server 8000
 # open http://localhost:8000
 ```
 
-`file://` won't work — Web Workers and `fetch` require a real origin. The build
-copies `engine/` into `dist/`, so Stockfish is self-hosted; if the local files
-are missing it falls back to jsDelivr.
+> [!WARNING]
+> `file://` won't work — Web Workers and `fetch` require a real origin. The build
+> copies `engine/` into `dist/`, so Stockfish is self-hosted; if the local files
+> are missing it falls back to jsDelivr.
 
-## Serve the engine yourself (recommended for production)
+## 🐟 Serve the engine yourself (recommended for production)
 
 Removes the third-party dependency and gives you control over caching.
 
@@ -67,10 +77,11 @@ Both the `web/` app (`src/core/engine.ts`) and the legacy `index.html` check for
 `engine/stockfish-18-lite-single.js` on load and prefer it when present, falling
 back to the CDN otherwise. No code change needed.
 
-The `.wasm` is about 7 MB, so set a long cache lifetime on `engine/*` — visitors
-download it once.
+> [!TIP]
+> The `.wasm` is about 7 MB, so set a long cache lifetime on `engine/*` — visitors
+> download it once.
 
-## Deploy
+## 🚀 Deploy
 
 Deployed to Cloudflare as a Worker in front of static assets. `wrangler.jsonc`
 points `main` at `worker/index.ts` with `run_worker_first`, binds `dist/` as
@@ -89,15 +100,16 @@ npm --prefix web run build   # regenerates dist/ (app + engine + _headers)
 git add dist && git commit -m "Rebuild" && git push
 ```
 
-CI rebuilds the app and fails when the committed `dist/` output differs from the
-fresh build. Before pushing changes under `web/`, run `npm --prefix web run build`
-and commit the resulting `dist/` files.
+> [!IMPORTANT]
+> CI rebuilds the app and fails when the committed `dist/` output differs from the
+> fresh build. Before pushing changes under `web/`, run `npm --prefix web run build`
+> and commit the resulting `dist/` files.
 
 Because the apex `chesswithprince.com` already lives on Cloudflare,
 `custom_domain: true` provisions the `play` subdomain's DNS record and TLS
 certificate on deploy.
 
-## Design system
+## 🎨 Design system
 
 [`DESIGN.md`](DESIGN.md) is the contract, not a mood board: color, typography,
 spacing, radius, depth, z-index, icons, motion, primitive states, responsive
@@ -107,7 +119,7 @@ source is not allowed to reach past it for a visual value, components come from
 one icon family, and the layout and contrast rules are numbers rather than
 opinions. The `verify:*` scripts below enforce all of that in CI.
 
-## Verification
+## 🧪 Verification
 
 ```bash
 npm --prefix web run typecheck    # tsc --noEmit
@@ -126,25 +138,23 @@ chromium project, and the dev showcase (its own config) in sequence.
 
 The gates in `web/scripts/` are ordinary Node scripts you can run directly:
 
-- `validate-design-contract.mjs` — checks `DESIGN.md` itself still declares every
-  required section and token
-- `verify-token-compliance.mjs` — fails when product source hardcodes a visual
-  value instead of using a token from `index.css`
-- `verify-contrast.mjs` — recomputes documented contrast pairs from the tokens
-  actually declared in `index.css`
-- `verify-icons.mjs` — fails when the UI reaches outside `src/ui/icons.tsx`
-- `verify-baseline-manifest.mjs` — validates the Playwright baseline manifest
-- `lighthouse-real-chrome.mjs` — real-Chrome Lighthouse run; CI enforces it as a
-  budget (`LIGHTHOUSE_ENFORCE_BUDGET=1`) against `vite preview`
-- `react-scan-flows.mjs` — drives the app under react-scan to catch render churn
-- `measure-geometry.mjs` — probes shell geometry against the DESIGN.md fold rule
+| Script | What it refuses to let through |
+| --- | --- |
+| `validate-design-contract.mjs` | checks `DESIGN.md` itself still declares every required section and token |
+| `verify-token-compliance.mjs` | fails when product source hardcodes a visual value instead of using a token from `index.css` |
+| `verify-contrast.mjs` | recomputes documented contrast pairs from the tokens actually declared in `index.css` |
+| `verify-icons.mjs` | fails when the UI reaches outside `src/ui/icons.tsx` |
+| `verify-baseline-manifest.mjs` | validates the Playwright baseline manifest |
+| `lighthouse-real-chrome.mjs` | real-Chrome Lighthouse run; CI enforces it as a budget (`LIGHTHOUSE_ENFORCE_BUDGET=1`) against `vite preview` |
+| `react-scan-flows.mjs` | drives the app under react-scan to catch render churn |
+| `measure-geometry.mjs` | probes shell geometry against the DESIGN.md fold rule |
 
 CI runs typecheck, Vitest, build, React Doctor, a devtools-leak scan of `dist/`,
 the Lighthouse budget, the `dist/` drift check, and finally the complete
 Playwright suite. Playwright is explicitly permitted for browser E2E; the test
 guardrail remains no jsdom and no `@testing-library/react` component harness.
 
-## Features
+## ♞ Features — what the fish can do
 
 - Drag-and-drop **and** click-to-move, with a sliding animation
 - Legal-move dots, last-move and check highlighting
@@ -180,7 +190,7 @@ guardrail remains no jsdom and no `@testing-library/react` component harness.
   are facts (public game scores); you play a legend's side. Every game is
   verified legal against chess.js.
 
-## Upgrading to the multi-threaded engine
+## 🧵 Upgrading to the multi-threaded engine
 
 The single-threaded lite build is used deliberately — it needs no special headers
 and is already far stronger than any human. If you ever want the multi-threaded
@@ -193,15 +203,17 @@ the repo-root `_headers` file, which the build copies into `dist/`:
   Cross-Origin-Opener-Policy: same-origin
 ```
 
-Note this also blocks cross-origin resources that don't opt in. The `web/` app
-already self-hosts its fonts from `web/public/fonts/`, so only the legacy
-`index.html`, which links Google Fonts, would need changing.
+> [!NOTE]
+> This also blocks cross-origin resources that don't opt in. The `web/` app
+> already self-hosts its fonts from `web/public/fonts/`, so only the legacy
+> `index.html`, which links Google Fonts, would need changing.
 
-## Licensing
+## ⚖️ Licensing
 
-Stockfish.js is GPLv3. You're distributing it, so keep the license notice in the
-footer, don't strip the copyright header from the engine files, and be prepared to
-point at the source (linking to github.com/nmrugg/stockfish.js satisfies this).
+> [!IMPORTANT]
+> Stockfish.js is GPLv3. You're distributing it, so keep the license notice in the
+> footer, don't strip the copyright header from the engine files, and be prepared to
+> point at the source (linking to github.com/nmrugg/stockfish.js satisfies this).
 
 The self-hosted Archivo and IBM Plex Mono Latin subsets are licensed under the SIL
 Open Font License 1.1. Their copyright notices, complete licence text, and source /
@@ -212,7 +224,7 @@ as [`OFL.txt`](web/public/fonts/OFL.txt) and
 The piece artwork is original SVG written for this project (`web/src/core/pieces.ts`,
 and inline in the legacy `index.html`) — no third-party asset licenses are involved.
 
-## Notes
+## 📌 Notes
 
 - `chess.js` handles rules. The `web/` app takes it as a pinned npm dependency
   (`chess.js@1.4.0`) and bundles it; only the legacy single-file `index.html`
