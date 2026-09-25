@@ -7,13 +7,31 @@ Play at **play.chesswithprince.com** — test your lines against the strongest v
 of Stockfish, right in the browser.
 
 ```
-web/              the app — React + TypeScript + Tailwind (Vite)
-  src/core/       framework-agnostic engine + board + trainer + review controller
-  src/App.tsx     the UI (Play / Openings / Games / Study)
-dist/             built, deployable output (committed; wrangler serves this)
-engine/           self-hosted Stockfish files (copied into dist on build)
-index.html        the original single-file app (kept for reference; not deployed)
+web/                 the app — React + TypeScript + Tailwind v4 + react-router (Vite)
+  src/App.tsx        router entry: /play /openings /games /study
+  src/workspace/     the shell — ChessWorkspaceLayout (board, engine, toasts,
+                     promotion, shared state), WorkspaceRoutes (route panels),
+                     WorkspaceChrome (header/nav/footer/cards), WorkspaceGuide
+                     (first-visit dialog), BoardConsole + boardState
+                     (screen-reader board and keyboard move entry)
+  src/panels/        PlayPanel, TrainPanel, GamesPanel, StudyPanel
+  src/ui/            design-system components: primitives, controls, feedback,
+                     surfaces, overlays, icons, primitives.css
+  src/core/          framework-agnostic engine + board + trainer + review controller
+  src/dev/           dev-only primitive showcase (never built into dist/)
+  tests/             Playwright specs
+  scripts/           build + verification gates
+DESIGN.md            the design contract ("Precision Chess Studio") — machine-checked
+worker/index.ts      Cloudflare Worker: asset passthrough + SPA fallback
+dist/                built, deployable output (committed; wrangler serves this)
+engine/              self-hosted Stockfish files (copied into dist on build)
+index.html           the original single-file app (kept for reference; not deployed)
 ```
+
+The shell owns the board, the engine and all shared state; each route renders a
+panel into it through the router outlet, so switching workspaces never tears down
+the game. `/` redirects to `/play`; anything unrecognised renders an empty state
+that leaves the game untouched.
 
 ## Run it locally
 
@@ -45,16 +63,22 @@ mkdir -p engine
 cp node_modules/stockfish/bin/stockfish-18-lite-single.* engine/
 ```
 
-`index.html` checks for `engine/stockfish-18-lite-single.js` on load and prefers it
-when present, falling back to the CDN otherwise. No code change needed.
+Both the `web/` app (`src/core/engine.ts`) and the legacy `index.html` check for
+`engine/stockfish-18-lite-single.js` on load and prefer it when present, falling
+back to the CDN otherwise. No code change needed.
 
 The `.wasm` is about 7 MB, so set a long cache lifetime on `engine/*` — visitors
 download it once.
 
 ## Deploy
 
-Deployed as a Cloudflare Worker with static assets. `wrangler.jsonc` serves the
-`dist/` directory and attaches **play.chesswithprince.com** as a custom domain.
+Deployed to Cloudflare as a Worker in front of static assets. `wrangler.jsonc`
+points `main` at `worker/index.ts` with `run_worker_first`, binds `dist/` as
+`ASSETS`, and attaches **play.chesswithprince.com** as a custom domain. The worker
+is deliberately small: a request whose path looks like an asset (`/assets/...`, or
+any final segment with a file extension) is passed straight through to `ASSETS`;
+everything else is served `/`, so a deep link like `/study` or a reload on
+`/openings` returns the SPA instead of a 404.
 
 `dist/` is committed, so the connected Git build only needs to run
 `npx wrangler deploy` — no CI build step required. After changing anything under
@@ -67,23 +91,66 @@ git add dist && git commit -m "Rebuild" && git push
 
 CI rebuilds the app and fails when the committed `dist/` output differs from the
 fresh build. Before pushing changes under `web/`, run `npm --prefix web run build`
-and commit the resulting `dist/` files. CI also enforces `tsc --noEmit` as a separate typecheck step.
+and commit the resulting `dist/` files.
+
+Because the apex `chesswithprince.com` already lives on Cloudflare,
+`custom_domain: true` provisions the `play` subdomain's DNS record and TLS
+certificate on deploy.
+
+## Design system
+
+[`DESIGN.md`](DESIGN.md) is the contract, not a mood board: color, typography,
+spacing, radius, depth, z-index, icons, motion, primitive states, responsive
+layout, and accessibility constraints are all declared there as tokens, and
+`web/src/index.css` is the single place those tokens exist in code. Product
+source is not allowed to reach past it for a visual value, components come from
+one icon family, and the layout and contrast rules are numbers rather than
+opinions. The `verify:*` scripts below enforce all of that in CI.
 
 ## Verification
 
-CI runs the Node-side Playwright smoke suite against local `vite preview` after
-the Vitest core tests. Playwright is explicitly permitted for browser E2E; the
-test guardrail remains no jsdom and no `@testing-library/react` component harness.
+```bash
+npm --prefix web run typecheck    # tsc --noEmit
+npm --prefix web test             # Vitest (src/core/__tests__, src/dev/__tests__, src/*.test.ts)
+npm --prefix web run build        # verify:icons + typecheck + vite build + postbuild
+npm --prefix web run verify:design  # design contract + tokens + contrast + icons
+npm --prefix web run test:e2e     # Playwright: baseline, main (chromium), showcase
+```
 
-Because the apex `chesswithprince.com` already lives on Cloudflare, `custom_domain: true`
-provisions the `play` subdomain's DNS record and TLS certificate on deploy.
+Playwright covers the shipping surface, not just a smoke test — `tests/` holds
+`a11y`, `baseline`, `board`, `eval-bar`, `feedback`, `games`, `layout`,
+`metadata`, `navigation`, `onboarding`, `openings`, `play`, `routes`, `showcase`,
+`smoke`, `study`, and `workspace-regression` specs, the last of which carries
+committed screenshot snapshots. `test:e2e` runs the baseline pass, the main
+chromium project, and the dev showcase (its own config) in sequence.
+
+The gates in `web/scripts/` are ordinary Node scripts you can run directly:
+
+- `validate-design-contract.mjs` — checks `DESIGN.md` itself still declares every
+  required section and token
+- `verify-token-compliance.mjs` — fails when product source hardcodes a visual
+  value instead of using a token from `index.css`
+- `verify-contrast.mjs` — recomputes documented contrast pairs from the tokens
+  actually declared in `index.css`
+- `verify-icons.mjs` — fails when the UI reaches outside `src/ui/icons.tsx`
+- `verify-baseline-manifest.mjs` — validates the Playwright baseline manifest
+- `lighthouse-real-chrome.mjs` — real-Chrome Lighthouse run; CI enforces it as a
+  budget (`LIGHTHOUSE_ENFORCE_BUDGET=1`) against `vite preview`
+- `react-scan-flows.mjs` — drives the app under react-scan to catch render churn
+- `measure-geometry.mjs` — probes shell geometry against the DESIGN.md fold rule
+
+CI runs typecheck, Vitest, build, React Doctor, a devtools-leak scan of `dist/`,
+the Lighthouse budget, the `dist/` drift check, and finally the complete
+Playwright suite. Playwright is explicitly permitted for browser E2E; the test
+guardrail remains no jsdom and no `@testing-library/react` component harness.
 
 ## Features
 
 - Drag-and-drop **and** click-to-move, with a sliding animation
 - Legal-move dots, last-move and check highlighting
 - Promotion picker
-- Evaluation bar (White's perspective), updated while Stockfish searches
+- Evaluation bar (White's perspective), horizontal above the board, updated
+  while Stockfish searches
 - Take-back, board flip, play as White / Black / random
 - Engine strength via `UCI_Elo` — top of the slider ("Max") switches
   `UCI_LimitStrength` off for full strength
@@ -117,8 +184,8 @@ provisions the `play` subdomain's DNS record and TLS certificate on deploy.
 
 The single-threaded lite build is used deliberately — it needs no special headers
 and is already far stronger than any human. If you ever want the multi-threaded
-build (`stockfish-18-lite.*`), it requires cross-origin isolation. On Cloudflare
-Pages, add a `_headers` file:
+build (`stockfish-18-lite.*`), it requires cross-origin isolation — add these to
+the repo-root `_headers` file, which the build copies into `dist/`:
 
 ```
 /*
@@ -126,8 +193,9 @@ Pages, add a `_headers` file:
   Cross-Origin-Opener-Policy: same-origin
 ```
 
-Note this also blocks cross-origin resources that don't opt in, including the
-Google Fonts links in `index.html` — you'd need to self-host the fonts.
+Note this also blocks cross-origin resources that don't opt in. The `web/` app
+already self-hosts its fonts from `web/public/fonts/`, so only the legacy
+`index.html`, which links Google Fonts, would need changing.
 
 ## Licensing
 
@@ -141,15 +209,18 @@ version record ship alongside the font files in [`web/public/fonts/`](web/public
 as [`OFL.txt`](web/public/fonts/OFL.txt) and
 [`PROVENANCE.md`](web/public/fonts/PROVENANCE.md), and are copied to `dist/fonts/`.
 
-The piece artwork in `index.html` is original SVG written for this project — no
-third-party asset licenses are involved.
+The piece artwork is original SVG written for this project (`web/src/core/pieces.ts`,
+and inline in the legacy `index.html`) — no third-party asset licenses are involved.
 
 ## Notes
 
-- `chess.js` handles rules and is loaded from esm.sh. To pin it locally,
-  download the module and change the import at the top of the script block.
+- `chess.js` handles rules. The `web/` app takes it as a pinned npm dependency
+  (`chess.js@1.4.0`) and bundles it; only the legacy single-file `index.html`
+  imports it from esm.sh.
 - The evaluation bar only updates while Stockfish is searching, which is on its
   own turn. That's intentional: analysing on your turn would double CPU use and
   quietly hand you the best move.
-- Cross-origin engine loading uses a blob-shim worker: the real `.wasm` URL is
-  passed in the worker URL's hash fragment and resolved through `Module.locateFile`.
+- Cross-origin engine loading (the jsDelivr fallback path) uses a blob-shim
+  worker: the real `.wasm` URL is passed in the worker URL's hash fragment and
+  resolved through the engine's own `locateFile`. The self-hosted path loads the
+  worker directly.
